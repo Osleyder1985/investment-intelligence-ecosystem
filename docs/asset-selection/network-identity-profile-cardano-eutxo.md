@@ -23,9 +23,9 @@ El network id y network magic pueden repetirse en entornos distintos. No resolve
 
 ### 2.1 ADA
 
-ADA es el activo nativo base del ledger. Para el modelo interno se identifica mediante (network_id, NATIVE_ASSET, ADA_SCHEME_VERSION), no mediante policy ID ni asset name ficticios.
+ADA es el activo nativo base del ledger. Para el modelo interno se identifica mediante (network_id, NATIVE_ASSET), no mediante policy ID ni asset name ficticios.
 
-La unidad contable on-chain es lovelace; 1 ADA equivale a 1,000,000 lovelace. Las cantidades del ledger son enteros. No modelar ADA como un token ERC-20 ni inventar una política de emisión/contrato.
+La unidad contable on-chain es lovelace; 1 ADA equivale a 1,000,000 lovelace. Las cantidades del ledger son enteros. La versión del perfil/normalizador se conserva como procedencia y no forma parte de la clave de identidad. No modelar ADA como un token ERC-20 ni inventar una política de emisión/contrato.
 
 ### 2.2 Native token Asset ID
 
