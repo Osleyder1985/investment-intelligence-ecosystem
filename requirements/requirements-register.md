@@ -15,5 +15,7 @@
 | IIM-011 | Clasificar criptoactivos por derechos, función y captura de valor, admitiendo tipologías híbridas | Crítica | Propuesto | Taxonomía versionada y casos de clasificación con evidencia |
 | IIM-012 | Seleccionar métodos de valoración según el objeto y la tipología económica | Crítica | Propuesto | Catálogo y matriz de aplicabilidad con condiciones y contraejemplos |
 | IIM-013 | Abstenerse de estimar valor razonable cuando falten derechos o evidencia suficientes | Crítica | Propuesto | Casos de prueba que exijan abstención y expliquen datos faltantes |
+| IIM-014 | Clasificar la brecha entre precio ejecutable y rango de valor razonable con incertidumbre y costes explícitos | Crítica | Propuesto | Casos de prueba de rango, costes, liquidez y no aplicabilidad matemática |
+| IIM-015 | Habilitar la categoría extrema solo tras calibración y validación temporal independiente | Crítica | Propuesto | Protocolo walk-forward/out-of-sample, control de sesgos y falsos descubrimientos |
 
 Los requisitos no se consideran aprobados hasta su análisis, trazabilidad y aceptación formal.
