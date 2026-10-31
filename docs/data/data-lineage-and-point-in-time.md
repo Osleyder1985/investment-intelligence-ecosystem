@@ -40,7 +40,12 @@ No almacenar datos cuyo almacenamiento esté prohibido. En ese caso conservar so
 
 ## 4. Reglas point-in-time
 
-Para una evaluación con decision_time = t, distinguir dos modalidades:\n\n- REPLAY_OPERATIONAL: solo se admite información que el sistema concreto había ingerido y tenía disponible antes de t.\n- RECONSTRUCTION_POINT_IN_TIME: puede utilizarse información publicada y demostrablemente accesible antes de t aunque se capture después, pero debe identificarse como reconstrucción retrospectiva y no como reproducción de lo que el sistema realmente procesó entonces.\n\nEn ambas modalidades:
+Para una evaluación con decision_time = t, distinguir dos modalidades:
+
+- REPLAY_OPERATIONAL: solo se admite información que el sistema concreto había ingerido y tenía disponible antes de t.
+- RECONSTRUCTION_POINT_IN_TIME: puede utilizarse información publicada y demostrablemente accesible antes de t aunque se capture después, pero debe identificarse como reconstrucción retrospectiva y no como reproducción de lo que el sistema realmente procesó entonces.
+
+En ambas modalidades:
 - admitir solo información con availability_time ≤ t;
 - si availability_time es desconocido y la variable puede introducir look-ahead, excluirla o marcar evaluación no reproducible;
 - no usar revisiones posteriores como si fueran valores originales;
