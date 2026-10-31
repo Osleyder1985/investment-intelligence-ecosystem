@@ -58,7 +58,23 @@ jobs:
           emulator-boot-timeout: 900
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: gradle :app:connectedDebugAndroidTest
+          script: |
+            set +e
+            gradle :app:connectedDebugAndroidTest
+            test_status=$?
+            mkdir -p app/build/reports/androidTests/connected/debug
+            adb logcat -d -v threadtime > app/build/reports/androidTests/connected/debug/logcat.txt || true
+            exit $test_status
+
+      - name: Upload instrumentation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-instrumentation-diagnostics
+          path: |
+            app/build/reports/androidTests/connected/debug/
+            app/build/outputs/androidTest-results/connected/debug/
+          if-no-files-found: ignore
 
       - name: Upload generated Room schema
         if: always()
