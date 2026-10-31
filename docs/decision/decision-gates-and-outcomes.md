@@ -28,7 +28,8 @@ Un gate posterior nunca anula un bloqueo anterior.
 | Identidad | RESOLVED / UNRESOLVED / CONFLICTED | UNRESOLVED o CONFLICTED bloquea valoración y ranking dependientes |
 | Elegibilidad | ELIGIBLE / INELIGIBLE / CONDITIONAL / UNKNOWN | INELIGIBLE bloquea la finalidad; UNKNOWN no presume elegibilidad |
 | Datos críticos | ADMISSIBLE / ADMISSIBLE_WITH_LIMITATIONS / QUARANTINED / REJECTED / UNKNOWN | Datos críticos no admisibles impiden conclusiones que dependan de ellos |
-| Riesgo/veto | VETO_ACTIVE / VETO_REVIEW_REQUIRED / RISK_UNKNOWN / NO_VETO_IDENTIFIED | Aplicar reglas de la sección 4 |
+| Riesgo por dominio (RiskDomainStatus) | ASSESSED_WITH_FINDINGS / ASSESSED_NO_MATERIAL_FINDING / UNKNOWN / NOT_ASSESSED / STALE / CONFLICTED / INVALID | UNKNOWN y estados no favorables bloquean conclusiones dependientes |
+| Decisión de veto (VetoDecision) | VETO_ACTIVE / VETO_REVIEW_REQUIRED / VETO_NOT_ASSESSED / NO_VETO_IDENTIFIED | Aplicar reglas de la sección 4; separado de RiskDomainStatus |
 | Valoración | ESTIMABLE / CONDITIONAL / NOT_APPLICABLE / INSUFFICIENT_EVIDENCE | Sin rango defendible no se afirma descuento cuantificado |
 | Infravaloración | SUPPORTED_BY_MODEL / CONDITIONAL / NO_SUFFICIENT_EVIDENCE / NOT_ESTIMABLE / WITHIN_RANGE / OVERVALUED_BY_MODEL | Salida del modelo, no recomendación autónoma |
 
