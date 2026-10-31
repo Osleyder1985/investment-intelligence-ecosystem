@@ -12,6 +12,8 @@ import com.iie.android.data.local.entity.DataSourceEntity
 import com.iie.android.data.local.entity.NetworkEntity
 import com.iie.android.data.local.entity.WatchlistEntryEntity
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
+import com.iie.android.data.market.CoinPaprikaDailyHistoryFetcher
+import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -585,6 +587,78 @@ class IIEDatabaseTest {
                 )
             }
         }
+    }
+
+
+    @Test
+    fun controlledHistoryDownloadUsesConfirmedProviderIdAndReportsInsertCounts(): Unit = runBlocking {
+        val now = 1_800_000_000_000L
+        DemoAssetSeeder(database) { now }.seed()
+        val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
+        val requestedProviderIds = mutableListOf<String>()
+        val start = LocalDate.ofEpochDay(now / 86_400_000L - 2L)
+        val end = LocalDate.ofEpochDay(now / 86_400_000L - 1L)
+        val fetcher = object : CoinPaprikaDailyHistoryFetcher {
+            override suspend fun fetchDaily(
+                providerId: String,
+                start: LocalDate,
+                end: LocalDate?,
+                retrievedAtEpochMs: Long
+            ): List<CoinPaprikaHistoricalPoint> {
+                requestedProviderIds += providerId
+                assertEquals(LocalDate.ofEpochDay(now / 86_400_000L - 2L), start)
+                assertEquals(LocalDate.ofEpochDay(now / 86_400_000L - 1L), end)
+                assertEquals(now, retrievedAtEpochMs)
+                return listOf(
+                    CoinPaprikaHistoricalPoint(providerId, (now / 86_400_000L - 2L) * 86_400_000L, 1.0001, null, null, now),
+                    CoinPaprikaHistoricalPoint(providerId, (now / 86_400_000L - 1L) * 86_400_000L, 0.9999, null, null, now)
+                )
+            }
+        }
+
+        val first = repository.downloadAndPersistCoinPaprikaDailyHistory(
+            "asset:usd-coin", "USDC", start, end, fetcher
+        )
+        val repeated = repository.downloadAndPersistCoinPaprikaDailyHistory(
+            "asset:usd-coin", "USDC", start, end, fetcher
+        )
+
+        assertEquals(listOf("usdc-usd-coin", "usdc-usd-coin"), requestedProviderIds)
+        assertEquals(2, first.pointsReceived)
+        assertEquals(2, first.pointsInserted)
+        assertEquals(0, first.pointsAlreadyPresent)
+        assertEquals(2, repeated.pointsReceived)
+        assertEquals(0, repeated.pointsInserted)
+        assertEquals(2, repeated.pointsAlreadyPresent)
+    }
+
+    @Test
+    fun controlledHistoryDownloadRejectsSymbolMismatchBeforeCallingFetcher(): Unit = runBlocking {
+        val now = 1_800_000_000_000L
+        DemoAssetSeeder(database) { now }.seed()
+        val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
+        var fetchCalled = false
+        val fetcher = object : CoinPaprikaDailyHistoryFetcher {
+            override suspend fun fetchDaily(
+                providerId: String,
+                start: LocalDate,
+                end: LocalDate?,
+                retrievedAtEpochMs: Long
+            ): List<CoinPaprikaHistoricalPoint> {
+                fetchCalled = true
+                return emptyList()
+            }
+        }
+
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking {
+                repository.downloadAndPersistCoinPaprikaDailyHistory(
+                    "asset:usd-coin", "USDT", LocalDate.of(2026, 10, 29),
+                    LocalDate.of(2026, 10, 30), fetcher
+                )
+            }
+        }
+        assertEquals(false, fetchCalled)
     }
 
     private suspend fun insertQuote(
