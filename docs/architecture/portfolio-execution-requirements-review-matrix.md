@@ -51,9 +51,10 @@ La revisión preliminar de IIM-026, IIM-029, IIM-030 e IIM-031 está documentada
 
 La revisión preliminar de IIM-032, IIM-035 e IIM-037 está documentada en [`portfolio-execution-lot-c-review.md`](portfolio-execution-lot-c-review.md) y se sigue en el [Issue #37](https://github.com/Osleyder1985/investment-intelligence-ecosystem/issues/37). La recomendación técnica es REVISE para los tres requisitos. Sus estados formales permanecen PENDING_REVIEW hasta decisión autorizada en el Issue #34.
 
-## 2.3. Revisión técnica del lote C
 
-La revisión preliminar de IIM-032, IIM-035 e IIM-037 está documentada en [`portfolio-execution-lot-c-review.md`](portfolio-execution-lot-c-review.md) y se sigue en el [Issue #37](https://github.com/Osleyder1985/investment-intelligence-ecosystem/issues/37). La recomendación técnica es REVISE para los tres requisitos. Los estados formales permanecen PENDING_REVIEW.
+## 2.4. Revisión técnica del lote D
+
+La revisión preliminar de IIM-033, IIM-034 e IIM-036 está documentada en [`portfolio-execution-lot-d-review.md`](portfolio-execution-lot-d-review.md) y se sigue en el [Issue #38](https://github.com/Osleyder1985/investment-intelligence-ecosystem/issues/38). La recomendación técnica es REVISE para los tres requisitos. Los estados formales permanecen PENDING_REVIEW hasta decisión autorizada en el Issue #34.
 
 ## 3. Riesgos de solapamiento que deben resolverse
 
@@ -91,16 +92,3 @@ No iniciar contratos de ejecución real mientras los lotes C y D no tengan decis
 ## 6. Decisión global
 
 **PENDING_REVIEW.** La matriz sirve como instrumento de revisión. No incorpora los requisitos al registro oficial, no modifica los estados de IIM-001 a IIM-024, no declara contratos SPECIFIED y no habilita operación real.
-
-
-## 8. Revisión técnica preliminar — lote D
-
-El análisis documental de IIM-033, IIM-034 e IIM-036 está registrado en [portfolio-execution-lot-d-review.md](portfolio-execution-lot-d-review.md) y se sigue en [Issue #38](https://github.com/Osleyder1985/investment-intelligence-ecosystem/issues/38).
-
-| ID | Recomendación técnica | Estado formal |
-|---|---|---|
-| IIM-033 | REVISE — estados inciertos, eventos duplicados/fuera de orden, semántica de idempotencia externa y fills parciales. | PENDING_REVIEW |
-| IIM-034 | REVISE — controles fail-closed, reservas atómicas, alcance del kill switch y reanudación autorizada. | PENDING_REVIEW |
-| IIM-036 | REVISE — fuentes de verdad, conciliación bidireccional, finality y resolución auditable de discrepancias. | PENDING_REVIEW |
-
-Esta revisión es asistida y documental. No constituye aprobación, implementación, pruebas ejecutadas ni autorización de operación. El Issue #34 permanece como autoridad de seguimiento y el registro oficial no se modifica.
