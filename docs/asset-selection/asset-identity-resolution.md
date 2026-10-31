@@ -211,3 +211,8 @@ La aplicación de un perfil debe declarar su versión, red resuelta, método de 
 ## 13. Perfiles Cosmos SDK/IBC y UTXO Bitcoin-like
 
 Las reglas genéricas se amplían con [network-identity-profiles-cosmos-utxo](network-identity-profiles-cosmos-utxo.md). El alcance es deliberadamente acotado: Cosmos SDK con bank/IBC-ICS20 y UTXO Bitcoin-like con activos nativos y contrato para adaptadores de emisión protocolaria. No se extrapolan estas reglas a todas las cadenas Cosmos, Cardano/eUTXO, sidechains ni protocolos de activos sin perfil específico.
+
+
+## 14. Perfil Cardano/eUTXO
+
+Las reglas para ADA y native tokens Cardano se concretan en [network-identity-profile-cardano-eutxo](network-identity-profile-cardano-eutxo.md). El perfil separa el activo nativo ADA del par policy_id + asset_name bytes, y distingue metadata CIP-25/CIP-26/CIP-68 de la identidad del ledger. No aplicar las reglas Bitcoin-like a Cardano sin este adaptador específico.
