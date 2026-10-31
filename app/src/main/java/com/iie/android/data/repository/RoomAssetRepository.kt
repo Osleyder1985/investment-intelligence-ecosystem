@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.map
 
 class RoomAssetRepository(
     private val database: IIEDatabase,
-    private val nowEpochMs: () -> Long = System::currentTimeMillis
+    private val nowEpochMs: () -> Long = { System.currentTimeMillis() }
 ) : AssetRepository {
 
     override fun observeAssets(query: String): Flow<List<Asset>> =
