@@ -63,3 +63,23 @@ Priorizar la fuente más cercana al hecho económico y técnicamente verificable
 ## Historial
 
 No sobrescribir aprobaciones anteriores. Cada revisión genera una nueva versión con timestamp UTC, autor/rol, evidencia, diferencias y campos afectados. Una fuente puede estar aprobada para un uso y restringida para otro.
+
+
+## Expediente probatorio por uso (aclaración v0.2.0)
+
+La ficha de fuente debe permitir demostrar por separado el permiso para cada operación. Para cada proveedor/producto/dataset y alcance de uso, registrar además:
+
+- entidad proveedora y, cuando se conozca, entidad contratante/usuario autorizado;
+- jurisdicción y ley/foro contractual declarados en los términos, sin inferirlos;
+- versión, fecha de vigencia y fecha de consulta de los términos;
+- copia o referencia verificable y hash del texto, cuando su conservación esté permitida;
+- permiso/estado independiente para consulta, captura, almacenamiento, retención, transformación, uso en modelos, visualización, exportación y redistribución;
+- atribución obligatoria, cuotas, límites, condiciones de autenticación, borrado y retención;
+- campos, redes, activos, mercados, endpoints y periodos realmente cubiertos;
+- revisor, fecha, razonamiento, limitaciones, expiración/revisión y evidencia.
+
+El estado `APPROVED_FOR_SCOPE` debe asociarse a una combinación explícita de fuente, producto/campos, periodo, finalidad, operación permitida y versión de términos. No es una aprobación general del proveedor.
+
+Si los términos no están disponibles, son ambiguos o no permiten confirmar una operación, mantener esa operación en `TERMS_PENDING` o `RESTRICTED`. No realizar captura/retención/exportación que requiera permiso no demostrado. El acceso técnico, la ausencia de coste o la disponibilidad pública no constituyen por sí solos permiso.
+
+La ficha registra una evaluación interna de evidencia; no es asesoramiento jurídico ni sustituye la revisión de los términos por una persona competente.
