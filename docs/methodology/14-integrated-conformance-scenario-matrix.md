@@ -1,10 +1,10 @@
 # Matriz integrada de escenarios de conformidad
 
 **ID:** IIE-METH-CONFORMANCE-010  
-**Versión:** 0.1.0-draft  
+**Versión:** 0.2.0-draft  
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
-**Hallazgo:** X-09 (MEDIUM), auditoría cruzada M-02/M-03/M-04  
+**Hallazgo:** X-09; revisión 0.2.0 incorpora resoluciones propuestas A01-A08 de auditoría 15  
 **Dependencias:** M-02 a M-13; resoluciones X-01 a X-08  
 **Propósito:** especificar escenarios, combinaciones, resultados esperados e invariantes antes de construir fixtures y pruebas ejecutables.
 
@@ -146,9 +146,9 @@ Esta tabla ofrece expectativas mínimas para un scope dependiente. Las causas ad
 |---|---|---|---|---|
 | B-01 | APPLICABLE | NOT_ASSESSED | VETO_NOT_ASSESSED | Conclusión dependiente no favorable; abstención/incompleto |
 | B-02 | APPLICABLE | UNKNOWN | VETO_NOT_ASSESSED | Conclusión dependiente no favorable; información insuficiente |
-| B-03 | APPLICABLE | STALE | NO_VETO_IDENTIFIED antiguo | Invalidar conclusión dependiente; reevaluar veto y riesgo |
+| B-03 | APPLICABLE | STALE | NO_VETO_IDENTIFIED antiguo | No usar como favorable la conclusión dependiente hasta verificar vigencia. Evaluar por separado freshness del RiskDomainAssessment, VetoDecision, evidencia subyacente y policy; no invalidar ni levantar automáticamente un veto cuya evidencia/decisión siga vigente |
 | B-04 | APPLICABLE | CONFLICTED | VETO_REVIEW_REQUIRED | REVIEW_REQUIRED en scope |
-| B-05 | APPLICABLE | ASSESSED_WITH_FINDINGS | VETO_ACTIVE | VETOED en scope aplicable |
+| B-05 | APPLICABLE | ASSESSED_WITH_FINDINGS | VETO_ACTIVE | Para cada unidad afectada, aplicar el DecisionOutcome tipado (p. ej. DECISION_INELIGIBLE o ROUTE_INELIGIBLE según decision_type); VETO_ACTIVE permanece en VetoDecision y no sustituye el outcome |
 | B-06 | APPLICABLE | ASSESSED_NO_MATERIAL_FINDING | NO_VETO_IDENTIFIED | Puede continuar gates dependientes; no implica riesgo cero |
 | B-07 | NOT_APPLICABLE justificado | Sin evaluación del dominio excluido | No aplica regla asociada | Excluir solo ese dominio/regla del denominador; conservar justificación |
 | B-08 | APPLICABILITY_UNRESOLVED | Cualquier estado no concluyente | Cualquier resultado favorable aparente | No asumir NOT_APPLICABLE; revisión/insuficiencia |
@@ -166,8 +166,8 @@ La evaluación debe considerar por separado la finalidad analítica y la activid
 
 | Caso | Veto/scope | RESEARCH | VALUATION | MARKET_DATA | TRADE | DEPOSIT | WITHDRAWAL |
 |---|---|---|---|---|---|---|---|
-| P-01 | Suspensión exclusiva de WITHDRAWAL | No bloquear por inferencia | No bloquear por inferencia | No bloquear por inferencia | No bloquear por inferencia | No bloquear por inferencia | Bloquear/revisar según veto |
-| P-02 | Compromiso de bridge para representación wrapped | Investigación del activo nativo sigue posible | Valorar representación afectada con cautela | Bloquear/revisar feeds/ruta afectados | Bloquear representación/ruta afectada | Según scope de representación | Según scope de representación |
+| P-01 | Suspensión exclusiva de WITHDRAWAL | No bloquear por inferencia | No bloquear por inferencia | No bloquear por inferencia | No bloquear si settlement/financiación/ruta son independientes y la policy lo permite; si dependen del servicio suspendido, bloquear/revisar | No bloquear por inferencia | Bloquear/revisar según veto |
+| P-02 | Compromiso de bridge para representación wrapped | Investigación del activo nativo sigue posible, si es independiente | Para wrapper: NOT_ESTIMABLE/INSUFFICIENT_EVIDENCE si la paridad/redención es material y no verificable; ESTIMABLE_WITH_LIMITATIONS solo con modelo alternativo independiente y limitaciones explícitas | Bloquear/revisar feeds/ruta afectados | Bloquear representación/ruta afectada | Según scope de representación | Según scope de representación |
 | P-03 | Compromiso de custodia de cuenta concreta | No bloquear investigación general | No bloquear valoración general | Puede seguir disponible fuera de cuenta | Bloquear operaciones que dependan de custodia afectada | Bloquear depósitos a cuenta afectada | Bloquear retiros desde custodia afectada |
 | P-04 | Riesgo legal/jurisdiccional de una actividad específica | Puede restringirse finalidad según regla | Puede restringirse finalidad según regla | Según jurisdicción y actividad | Bloquear actividad prohibida | Bloquear actividad prohibida | Bloquear actividad prohibida |
 | P-05 | Venue comprometido | Investigación de activo posible | Análisis general posible | Datos del venue cuestionado no admisibles sin corroboración | Bloquear ruta en venue afectado | No inferir bloqueo universal | No inferir bloqueo universal |
@@ -204,10 +204,10 @@ Regla: cada resultado requiere una regla de propagación identificable, versión
 | S-016 | NO_VETO_IDENTIFIED sin cobertura de una regla material | Invalidar la conclusión de veto favorable | Negativo |
 | S-017 | VETO_REVIEW_REQUIRED por señal creíble, sin confirmación final | Suspender conclusión favorable en scope, sin afirmar condición probada | Negativo |
 | S-018 | VETO_ACTIVE para scope concreto | Bloqueo no compensable dentro de ese scope | Negativo |
-| S-019 | VETO_ACTIVE solo para retiros | No propagar automáticamente a research o deposit; aplicar tabla M-10 | Scope |
+| S-019 | VETO_ACTIVE solo para retiros | No propagar automáticamente a research o deposit; para TRADE verificar independencia de settlement, financiación, custodia y ruta; dependencia desconocida implica revisión/bloqueo de la unidad dependiente | Scope |
 | S-020 | VETO_ACTIVE sobre bridge/wrapped representation | No extender automáticamente al activo nativo no afectado | Scope |
 | S-021 | VETO_NOT_ASSESSED y sin señales adversas | No convertir ausencia de señales en NO_VETO_IDENTIFIED | Negativo |
-| S-022 | VETO_ACTIVE recibe TTL vencido | El veto no se levanta; revisar vigencia y estado, mantener bloqueo hasta decisión autorizada | Lifecycle |
+| S-022 | TTL/freshness policy de VetoDecision o evidencia del veto vence | TTL no levanta VETO_ACTIVE. Emitir evento FRESHNESS_EXPIRED/revisión; mantener bloqueo conservador hasta nueva VetoDecision autorizada. Evaluar separadamente freshness de decisión, evidencia y RiskDomainAssessment | Lifecycle |
 | S-023 | Veto liberado con evidencia de remediación, revisión independiente y autoridad válida | Nueva VetoDecision versionada; conservar el veto histórico | Positivo condicionado |
 | S-024 | Veto levantado por el mismo proponente o por job automático sin autoridad | Rechazar liberación y registrar violación SoD | Gobernanza |
 
@@ -221,7 +221,7 @@ Regla: cada resultado requiere una regla de propagación identificable, versión
 | S-028 | ORE ELIGIBLE_WITH_LIMITATIONS con limitación fuera del scope de la orden | Orden denegada o reconfigurada; no ignorar limitación | Enforcement |
 | S-029 | ORE favorable pero TradeAuthorization ausente | No ejecutar orden | Autorización |
 | S-030 | ORE favorable pero pre-trade control falla | Bloquear orden | Enforcement |
-| S-031 | AE y ORE favorables, pero inputs con policy versions incompatibles | REVIEW_REQUIRED/INPUTS_INCONSISTENT; no elegir versión favorable | Integridad |
+| S-031 | AE y ORE favorables, pero inputs con policy versions incompatibles | Envelope de validación REVIEW_REQUIRED o REJECTED_INVALID_INPUT según causa; no producir outcome favorable ni inventar enum INPUTS_INCONSISTENT. Registrar VERSION_INCOMPATIBLE y conservar decision_type/scope | Integridad |
 | S-032 | Un dominio no evaluado afecta solo una finalidad concreta | Bloquear la finalidad dependiente; preservar otras finalidades no dependientes si la política lo permite | Scope |
 | S-033 | DECISION recibe causa primaria y tres causas secundarias | Conservar todas; presentación primaria no elimina causas | Determinismo |
 | S-034 | Dos órdenes de inputs idénticos, versiones y contexto idénticos | Resultado idéntico y replay reproducible | Determinismo |
@@ -237,9 +237,9 @@ Regla: cada resultado requiere una regla de propagación identificable, versión
 | S-039 | Assessment stale, veto activo vigente | Staleness no elimina veto; mantener bloqueo y reevaluar | Precedencia |
 | S-040 | Veto no evaluado y TTL vencido | Sigue no evaluado; TTL no crea ausencia de veto | Precedencia |
 | S-041 | Revisión nueva supersede assessment anterior | Nueva versión enlazada; decisiones históricas reproducibles | Versionado |
-| S-042 | Dependencia no declarada recibe evento | Registrar gap de dependency map; no declarar invalidación completa | Observabilidad |
+| S-042 | Dependencia no declarada recibe evento | Registrar dependency-map gap; consumidores potencialmente dependientes no resueltos quedan no favorables (REVIEW_REQUIRED/INCOMPLETE/STALE tipado según causa) hasta reconciliar el grafo; no declarar invalidación completa ni mantener PASS antiguo | Observabilidad |
 | S-043 | Repetición del mismo evento de invalidación | Procesamiento idempotente; no duplicar efectos de estado | Idempotencia |
-| S-044 | Error parcial de propagación | Estado parcial explícito, retry/reconciliation; no reportar propagación completa | Fail-closed |
+| S-044 | Error parcial de propagación | Estado PARTIALLY_AFFECTED explícito; bloquear uso favorable de todos los consumidores potencialmente afectados cuyo estado no esté reconciliado; retry/reconciliation idempotente; no reportar propagación completa | Fail-closed |
 | S-045 | Lifecycle Owner intenta levantar veto directamente | Denegar; derivar a autoridad Veto Release | SoD |
 | S-046 | Un evento de policy change altera reglas futuras | Versionar policy; no reescribir decisiones pasadas sin evento de revisión | Gobernanza temporal |
 
@@ -253,8 +253,8 @@ Regla: cada resultado requiere una regla de propagación identificable, versión
 | S-050 | Delegación expirada o fuera de scope | Denegar aprobación/acción | Negativo |
 | S-051 | Aprobador recusado intenta votar | Denegar y registrar recusación | Negativo |
 | S-052 | Aprobación válida, pero objeto cambió de versión antes de ejecutar | Revalidar aprobación contra versión exacta; exigir nueva aprobación si cambió materialmente | TOCTOU |
-| S-053 | Service identity intenta aprobar decisión reservada a persona | Denegar salvo política explícita y aprobación automatizada permitida | Negativo |
-| S-054 | Break-glass utilizado para contención | Permitir solo acción de emergencia delimitada; alerta, expiración y revisión posterior | Excepción |
+| S-053 | Service identity intenta aprobar decisión reservada a persona | Denegar. Solo se permite automatización para tipos de decisión expresamente delegables mediante policy aprobada/versionada, owner accountable, scope y límites, control independiente, identidad de servicio y pruebas de bypass; decisiones no delegables siempre denegadas | Negativo |
+| S-054 | Break-glass utilizado para contención | Permitir únicamente acciones enumeradas en un catálogo aprobado de control de emergencia, con principal autorizado, scope mínimo, dual control/justificación, expiración, alertas y revisión independiente; nunca habilitar acción comercial ni levantar veto | Excepción |
 | S-055 | Break-glass intenta habilitar trade bloqueado | Denegar; break-glass no sustituye TradeAuthorization | Negativo |
 | S-056 | Mismo operador ejecuta y reconcilia operación | Denegar certificación unilateral; exigir reconciliación independiente | SoD |
 | S-057 | IAM administrator se otorga privilegio de negocio | Denegar; requerir flujo independiente y log externo | SoD |
@@ -275,7 +275,7 @@ Los escenarios siguientes prueban interacciones de tres o más dimensiones y tie
 | C-05 | AE favorable + ORE ELIGIBLE_WITH_LIMITATIONS + orden excede limitación + dual approval | Denegar orden; doble aprobación no anula límites |
 | C-06 | VETO_REVIEW_REQUIRED + decisión analítica previa favorable + evidencia nueva conflictiva | Suspender conclusión favorable en scope y generar nueva evaluación |
 | C-07 | Bridge compromised + representación nativa y wrapped mezcladas en un mismo portfolio proposal | Separar representaciones y scopes; bloquear solo exposición/ruta afectada según regla |
-| C-08 | Custody incident + invalidación de cuenta + orden pendiente + break-glass | Aplicar suspensión de acciones afectadas; break-glass solo contención; reconciliación independiente |
+| C-08 | Custody incident + invalidación de cuenta + orden pendiente + break-glass | Particionar órdenes/rutas afectadas; ejecutar solo acciones de emergencia explícitamente autorizadas (p. ej. pausa/cancelación si están en catálogo); no inferir reducción/cierre/transferencia; break-glass no habilita trade ni levanta veto; reconciliación independiente |
 | C-09 | Lifecycle event tardío + decisión histórica + nueva policy version | Mantener reproducibilidad histórica; nueva evaluación bajo policy nueva |
 | C-10 | Veto release request + evidencia de remediación + proponente original como único aprobador disponible | No liberar; mantener bloqueo hasta revisión independiente |
 | C-11 | AE y ORE favorables + identidad de activo conflictuada + evidencia de precio de representación incorrecta | Invalidar inputs dependientes; no producir decisión favorable |
@@ -355,14 +355,19 @@ Los fixtures usarán datos sintéticos. No deben incluir secretos, claves privad
 - **INV-19 No break-glass bypass:** emergencia no equivale a autorización de inversión/trading.
 - **INV-20 Audit independence:** auditoría no altera objetos ni resultados auditados.
 - **INV-21 Applicability integrity:** NOT_APPLICABLE requiere justificación y versión taxonómica.
-- **INV-22 Partial propagation honesty:** fallo parcial no se informa como invalidación completa.
+- **INV-22 Partial propagation honesty:** fallo parcial no se informa como invalidación completa y los consumidores potencialmente afectados sin reconciliar no conservan un resultado favorable utilizable.
 - **INV-23 Version coherence:** snapshots incompatibles no se mezclan para elegir resultado favorable.
 - **INV-24 No hidden override:** toda intervención manual produce decisión separada, actor, razón, scope y expiración.
+- **INV-25 Typed outcomes:** DecisionOutcome, RouteEligibilityStatus, VetoDecision y validation envelope no se intercambian ni usan abreviaturas ambiguas.
+- **INV-26 Veto freshness separation:** la expiración de riesgo, evidencia o política no levanta por sí sola un VETO_ACTIVE; su vigencia se evalúa por objeto y dependencia.
+- **INV-27 Dependency uncertainty:** consumidores potencialmente afectados por dependencias no resueltas no reciben resultado favorable hasta reconciliación.
+- **INV-28 Emergency action confinement:** break-glass solo ejecuta acciones de control enumeradas y autorizadas; nunca crea autorización comercial.
+- **INV-29 Service identity least authority:** una identidad de servicio no ejerce decisiones no delegables ni aprueba fuera de policy aprobada.
 
 ## 11. Criterios de cobertura y métricas
 
 Antes de aceptar una suite futura, exigir:
-- 100% de cobertura de estados canónicos por dimensión, incluidos estados no favorables;
+- 100% de cobertura de estados canónicos por dimensión, incluidos estados no favorables, demostrada mediante inventarios versionados y crosswalks;
 - 100% de cobertura de transiciones permitidas y prohibidas identificadas;
 - 100% de invariantes con al menos un test verificable;
 - 100% de escenarios combinados críticos C-01 a C-16;
@@ -422,3 +427,192 @@ Esta propuesta no prueba que los documentos X-01 a X-08 estén aprobados ni que 
 Se trata de una especificación documental de escenarios y resultados esperados. No se crearon fixtures, schemas ni pruebas ejecutables; no se ejecutaron tests, backtests ni validaciones empíricas. No constituye aprobación de requisitos IIM ni autorización para producción o trading.
 
 No modificar `requirements/requirements-register.md`, requisitos normativos, schemas o código hasta recibir aprobación explícita de la matriz y de sus dependencias.
+
+
+## 16. Resoluciones de auditoría A01-A08 y ampliación de cobertura (v0.2.0-draft)
+
+Esta sección forma parte de la revisión 0.2.0. Sus reglas son propuestas sujetas a aprobación; no convierten X-01..X-08 en normas aprobadas ni sustituyen sus catálogos fuente.
+
+### 16.1 A01 — Namespaces y outcomes tipados
+
+Los siguientes tipos son independientes y no intercambiables:
+
+| Tipo | Catálogo de referencia | Uso |
+|---|---|---|
+| DecisionOutcome | DECISION_NOT_ASSESSED, DECISION_IN_PROGRESS, DECISION_REVIEW_REQUIRED, DECISION_INELIGIBLE, DECISION_ABSTAIN, DECISION_ELIGIBLE_WITH_LIMITATIONS, DECISION_ELIGIBLE | Resultado analítico por unidad/finalidad |
+| RouteEligibilityStatus | Los 10 estados ROUTE_* de X-04 | Resultado ORE por ruta y actividad |
+| VetoDecision | VETO_ACTIVE, VETO_REVIEW_REQUIRED, VETO_NOT_ASSESSED, NO_VETO_IDENTIFIED | Decisión de veto por regla/scope |
+| RiskDomainStatus | Los 8 estados de X-01/X-03 | Estado del assessment de dominio |
+| ValidationEnvelope | VALID, INCOMPLETE, REVIEW_REQUIRED, REJECTED_INVALID_INPUT | Admisibilidad/validación de inputs de composición |
+| ValuationStatus | ESTIMABLE, ESTIMABLE_WITH_LIMITATIONS, NOT_ESTIMABLE, INSUFFICIENT_EVIDENCE, NOT_RUN | Estado independiente de valoración |
+
+No utilizar VETOED, INELIGIBLE, REVIEW_REQUIRED o INPUTS_INCONSISTENT sin indicar el tipo. En escenarios, un resultado debe identificar decision_type, purpose/activity, scope_id, atomic_unit_id y validation_envelope. El envelope puede impedir que se emita un DecisionOutcome/RouteEligibilityStatus nuevo; no lo sustituye.
+
+### 16.2 A02/A06 — Freshness por objeto y ciclo de revisión del veto
+
+La evaluación temporal debe mantener al menos cuatro referencias separadas: evidencia subyacente, RiskDomainAssessment, VetoDecision y policy/version que gobierna su vigencia. Un evento FRESHNESS_EXPIRED afecta solo los objetos y consumidores definidos por dependency graph y freshness policy.
+
+Reglas:
+1. TTL vencido nunca convierte VETO_ACTIVE en NO_VETO_IDENTIFIED ni libera el scope.
+2. Si la VetoDecision y su evidencia siguen vigentes, la obsolescencia de un RiskDomainAssessment no invalida automáticamente esa decisión.
+3. Si la evidencia material que sustenta el veto se retira, compromete o invalida, abrir revisión del veto; mantener bloqueo conservador en el scope plausible hasta adjudicación.
+4. Si vence la vigencia/review date del propio veto, crear revisión obligatoria y mantener bloqueo; no borrar ni sobrescribir la decisión histórica.
+5. Solo una nueva VetoDecision emitida por Veto Release Authority con remediación verificada, revisión independiente y policy válida puede cambiar el bloqueo.
+6. Registrar freshness_status/lifecycle_status fuera del enum VetoDecision. No añadir un estado “expired veto” que se confunda con liberación.
+
+### 16.3 A03 — Crosswalk de dominios de riesgo y tipologías
+
+Cobertura de escenarios existente y ampliada. La asignación indica pruebas de interacción, no demuestra que todos los subcontroles estén probados.
+
+| Catálogo X-02 | Escenarios de cobertura mínima |
+|---|---|
+| RSK-01 Protocol & Smart Contract | S-020, S-061, S-067 |
+| RSK-02 Cybersecurity & Key Management | S-062, S-068, C-08 |
+| RSK-03 Consensus & Network | S-063, S-069 |
+| RSK-04 Economic Design & Tokenomics | S-064, S-070 |
+| RSK-05 Market, Liquidity & Market Integrity | S-065, S-071, S-072 |
+| RSK-06 Financial & Counterparty | S-066, S-073 |
+| RSK-07 Custody & Operational | S-045, S-074, C-08 |
+| RSK-08 Governance & Control | S-024, S-075, S-076 |
+| RSK-09 Legal & Regulatory | S-077, S-078 |
+| RSK-10 Data Integrity & Market Abuse | S-002, S-004, S-079 |
+| RSK-11 Bridge & Interoperability | S-020, S-061, S-067 |
+| RSK-12 Environmental & External Dependencies | S-080 |
+
+| Tipología X-02 | Escenarios de cobertura mínima |
+|---|---|
+| CAT-01 NATIVE_NETWORK_ASSET | S-063, S-064 |
+| CAT-02 SMART_CONTRACT_TOKEN | S-061, S-067 |
+| CAT-03 STABLECOIN_OR_REFERENCED_VALUE | S-066, S-073 |
+| CAT-04 WRAPPED_OR_BRIDGED_ASSET | S-020, S-061 |
+| CAT-05 LIQUID_STAKING_OR_RESTAKING | S-068, S-070 |
+| CAT-06 DEFI_PROTOCOL_OR_POSITION | S-067, S-071 |
+| CAT-07 EXCHANGE_OR_PLATFORM_TOKEN | S-065, S-075 |
+| CAT-08 GOVERNANCE_OR_UTILITY_TOKEN | S-075, S-076 |
+| CAT-09 PRIVACY_OR_SPECIALIZED_NETWORK_ASSET | S-077, S-080 |
+
+Una tipología puede coexistir con otras; las pruebas combinadas deben preservar todas las etiquetas aplicables. Esta tabla es cobertura mínima de tipologías, no cobertura exhaustiva de todas las combinaciones CAT × RSK.
+
+### 16.4 A03 — Crosswalk de clases de veto
+
+| Clase X-05 | Escenarios de cobertura mínima |
+|---|---|
+| V-01 Asset / rights / fraud | S-081 |
+| V-02 Protocol / contract | S-061, S-067 |
+| V-03 Network / consensus | S-063, S-069 |
+| V-04 Bridge / wrapped representation | S-020, S-061 |
+| V-05 Venue / market integrity | S-065, S-071 |
+| V-06 Counterparty / issuer / reserve | S-066, S-073 |
+| V-07 Custody / account / key control | S-074, C-08 |
+| V-08 Legal / sanctions / jurisdiction | S-077, S-078 |
+| V-09 Liquidity / settlement / market access | S-071, S-072, S-082 |
+| V-10 Data / oracle / evidence integrity | S-002, S-079 |
+
+### 16.5 A03 — Crosswalk de estados ORE
+
+| Estado ORE X-04 | Escenario de cobertura |
+|---|---|
+| ROUTE_NOT_ASSESSED | S-026 |
+| ROUTE_ASSESSMENT_IN_PROGRESS | S-083 |
+| ROUTE_ELIGIBLE | S-029, S-034 |
+| ROUTE_ELIGIBLE_WITH_LIMITATIONS | S-028 |
+| ROUTE_INELIGIBLE | S-025, S-027 |
+| ROUTE_REVIEW_REQUIRED | S-084 |
+| ROUTE_INSUFFICIENT_INFORMATION | S-026, S-035 |
+| ROUTE_STALE | S-003, S-039 |
+| ROUTE_CONFLICTED | S-004, S-031 |
+| ROUTE_INVALID | S-007, S-036 |
+
+Los escenarios citados son objetivos de cobertura: antes de convertirlos en fixtures se deben fijar inputs, scope y expected outcomes exactos. No se afirma que la cobertura esté probada por la sola existencia de la referencia.
+
+### 16.6 A04 — Dependencias de settlement y actividad
+
+Un veto exclusivo de WITHDRAWAL no bloquea TRADE por simple equivalencia de actividades. Sin embargo, el resultado TRADE solo puede continuar cuando el grafo de dependencias demuestra que financiación, settlement, finality, custodia, rutas de salida y controles posteriores son independientes del servicio suspendido. Si la dependencia es desconocida o no está modelada, la unidad operativa dependiente recibe REVIEW_REQUIRED/INSUFFICIENT_INFORMATION y no puede recibir autorización favorable. Añadir S-082 como prueba de frontera.
+
+### 16.7 A05 — Fail-closed ante dependencia desconocida o propagación parcial
+
+Para S-042/S-044:
+- consumidores confirmados como no afectados pueden conservar su evaluación si la independencia está demostrada;
+- consumidores afectados reciben invalidación/revisión en el scope correspondiente;
+- consumidores potencialmente afectados pero no resueltos quedan no favorables hasta reconciliación;
+- el sistema informa PARTIALLY_AFFECTED y no declara propagación completa;
+- retries son idempotentes y registran dependency graph version, consumer set, error y resultado de reconciliación.
+
+No se permite mantener un PASS/ELIGIBLE anterior para un consumidor cuya dependencia material está sin resolver.
+
+### 16.8 A07 — Catálogo de acciones break-glass
+
+Este documento no concede permisos. La siguiente lista es un esquema para aprobación separada de Governance, Security, Risk y Operations:
+
+| Acción de emergencia | Default propuesto | Condición |
+|---|---|---|
+| PAUSE_NEW_ORDERS | Permitida solo si se delega explícitamente | Incidente/scope/autoridad/expiración |
+| CANCEL_OPEN_ORDERS | No implícita; requiere permiso explícito | Política de cancelación, protección de cliente y registro |
+| REDUCE_ONLY | Denegada por defecto | Solo autoridad de riesgo y política específica |
+| CLOSE_POSITION | Denegada por defecto | Autoridad específica, ruta segura y autorización |
+| TRANSFER_ASSETS | Denegada por defecto | Nunca habilitada por break-glass genérico |
+| RELEASE_VETO | Prohibida vía break-glass | Workflow Veto Release separado |
+| ENABLE_TRADING | Prohibida vía break-glass | TradeAuthorization independiente |
+
+Toda acción permitida requiere principal autenticado, incidente, motivo, scope mínimo, policy_id/version, ventana temporal, doble control o justificación de imposibilidad, logging externo, alerta y revisión posterior. La ausencia de policy aprobada significa DENY.
+
+### 16.9 A08 — Aprobación por service identity
+
+S-053 debe evaluar policy_id/version, acción exacta, tipo de objeto, scope, límite, entorno, owner accountable, aprobador institucional, independencia del workflow, identidad/credenciales propias, evidencia de ejecución y expiración. Automatización solo puede aprobar tareas expresamente delegables. Se prohíbe automatizar: liberación de vetos críticos, dispensas legales, cambios de apetito/límites no delegables, aprobación de su propia evidencia o aprobación de su propio cambio de policy. Si la clasificación delegable no existe o está sin aprobar, DENY.
+
+### 16.10 Escenarios adicionales para cobertura explícita
+
+| ID | Condición | Resultado esperado | Dimensión |
+|---|---|---|---|
+| S-061 | Contrato/token bridged con upgrade/admin exploit | Evaluar RSK-01/RSK-11; bloquear representación y funciones dependientes; no extender al nativo sin dependencia | Protocol/bridge |
+| S-062 | Clave de validador, signer o administrador comprometida | RSK-02; scope a claves, cuentas, contratos y activos expuestos; revisión de consumidores dependientes | Cyber/key |
+| S-063 | Halt/fork/finality failure de una red | RSK-03; bloquear transferencias/settlement dependientes en esa red; no extender a redes independientes | Network |
+| S-064 | Emisión/unlock/supply restatement material | RSK-04; invalidar tokenomics/valoración dependientes y recomponer con point-in-time | Tokenomics |
+| S-065 | Wash trading/manipulación en venue específico | RSK-05/RSK-10; excluir datos afectados, mantener fuentes independientes verificadas | Market integrity |
+| S-066 | Emisor/reservas/contraparte insolvente o no verificable | RSK-06; distinguir evidencia insuficiente de incumplimiento probado; aplicar veto solo según regla | Counterparty |
+| S-067 | Protocolo DeFi o contrato de posición explotado | RSK-01/RSK-11 según dependencia; aislar contrato/posición y rutas relacionadas | Protocol |
+| S-068 | Staking/restaking depende de operadores o claves comprometidas | RSK-02/RSK-07; bloquear exposición y rutas que dependan de control comprometido | Custody/security |
+| S-069 | Red depende de proveedor/consenso externo interrumpido | RSK-03/RSK-12; revisar disponibilidad y finality en scope | External dependency |
+| S-070 | Token liquid-staking cambia derechos, redemption queue o exchange rate | RSK-04/RSK-06; valuation NOT_ESTIMABLE o limitada según evidencia independiente | Tokenomics/rights |
+| S-071 | Liquidez insuficiente para lado/tamaño/ventana concretos | RSK-05/RSK-09; limitar solo scope medido; no extrapolar a todos los tamaños | Liquidity |
+| S-072 | Settlement/withdrawal suspendido y trade usa la misma ruta de salida | TRADE no favorable por dependencia demostrada; si no se conoce, REVIEW_REQUIRED | Settlement |
+| S-073 | Stablecoin/reserve/redemption no verificable o suspendida | RSK-06; separar paridad de mercado, solvencia del emisor y derecho de redención | Stablecoin |
+| S-074 | Custody/account/key control comprometido | RSK-07; bloquear acciones dependientes de cuenta/custodio; preservar investigación independiente | Custody |
+| S-075 | Exchange/platform token depende de entidad/venue con conflicto de gobernanza | RSK-08/RSK-06; evaluación por entidad, poder y obligaciones | Governance |
+| S-076 | Cambio de quorum, multisig, timelock o control administrativo | RSK-08; invalidar assessment de gobernanza dependiente | Governance |
+| S-077 | Restricción legal/sanción aplica a sujeto, actividad y jurisdicción precisos | RSK-09; bloquear solo conducta dentro del alcance legal aplicable; revisión competente | Legal |
+| S-078 | Privacidad/activo especializado cambia clasificación regulatoria según jurisdicción | CAT-09/RSK-09; APPLICABILITY_UNRESOLVED hasta análisis competente | Legal/taxonomy |
+| S-079 | Oráculo/feed comprometido alimenta precio, NAV o collateral | RSK-10; invalidar solo cálculos/decisiones dependientes y exigir fuente alternativa independiente | Oracle/data |
+| S-080 | Dependencia ambiental/proveedor/geográfica crítica concentrada | RSK-12; evaluar materialidad y continuidad, no emitir veto automático por etiqueta | External |
+| S-081 | Fraude de identidad/derechos o activo falso con ticker similar | V-01; bloquear representación falsa; no contaminar activos homónimos | Asset identity |
+| S-082 | Veto WITHDRAWAL; TRADE depende de la misma ruta de settlement/salida | TRADE recibe REVIEW_REQUIRED/ROUTE_INSUFFICIENT_INFORMATION o ROUTE_INELIGIBLE según evidencia y regla; no autorizar | Activity dependency |
+| S-083 | ORE assessment se inició y permanece en curso | ROUTE_ASSESSMENT_IN_PROGRESS; no operar | ORE lifecycle |
+| S-084 | Alerta creíble sobre ruta/venue requiere adjudicación | ROUTE_REVIEW_REQUIRED; suspender conclusión favorable en scope | ORE review |
+
+### 16.11 A09/A10 — Inventario de transiciones y trazabilidad
+
+Antes de aprobación de la futura suite, cada máquina de estados deberá publicar un inventario versionado con: state_machine_id/version, estado origen, evento/guard, actor/autoridad, estado destino, side effects, scope, TTL/review trigger, transición prohibida y regla de recuperación. Los escenarios de esta matriz no prueban por sí solos todas las transiciones.
+
+Crosswalk mínimo de trazabilidad:
+- INV-01..INV-29 → escenarios S/C específicos → regla fuente X-01..X-08 → requisito IIM aplicable → futuro test_id.
+- B-01..B-15 y P-01..P-06 → regla fuente y decisión expected.
+- Cada S/C → dimensión, catálogo, finalidad/actividad, scope, causa y test futuro.
+- Todo requisito sin test o escenario se marca GAP; no se infiere cobertura.
+
+No se declaran porcentajes de cobertura hasta que los inventarios de estados/transiciones y el crosswalk estén completos, revisados y aprobados.
+
+## 17. Registro de resolución de auditoría A01-A08
+
+| Hallazgo | Cambio propuesto en 0.2.0 | Estado |
+|---|---|---|
+| A01 | Namespaces explícitos, tabla de tipos, corrección B-05/S-031 | ADDRESSED_IN_DRAFT |
+| A02 | Freshness separado para evidencia/riesgo/veto/policy; B-03/S-022 ampliados | ADDRESSED_IN_DRAFT |
+| A03 | Crosswalks RSK, CAT, Veto classes y ORE states; S-061..S-084 | ADDRESSED_IN_DRAFT |
+| A04 | P-01/S-019/S-082 incluyen dependencia de settlement | ADDRESSED_IN_DRAFT |
+| A05 | S-042/S-044 exigen estado no favorable para consumidores no reconciliados | ADDRESSED_IN_DRAFT |
+| A06 | Expiración de veto genera revisión y mantiene bloqueo hasta nueva decisión autorizada | ADDRESSED_IN_DRAFT |
+| A07 | Catálogo break-glass propuesto con DENY por defecto para acciones no aprobadas | ADDRESSED_IN_DRAFT |
+| A08 | Automatización de service identity limitada a acciones delegables aprobadas | ADDRESSED_IN_DRAFT |
+
+**Importante:** ADDRESSED_IN_DRAFT significa que el texto de la propuesta incorpora una respuesta al hallazgo. No significa que el hallazgo haya sido aceptado por sus owners, que la matriz esté aprobada, que exista implementación o que se hayan ejecutado pruebas.
+
