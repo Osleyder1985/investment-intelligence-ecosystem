@@ -78,4 +78,10 @@ interface AssetObservationDao {
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertObservations(observations: List<AssetObservationEntity>)
+
+    /** Inserts only unseen deterministic observation IDs; returns -1 for conflicts. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertHistoricalObservationsIfAbsent(
+        observations: List<AssetObservationEntity>
+    ): List<Long>
 }
