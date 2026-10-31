@@ -154,8 +154,6 @@ class ContractSchemaTests(unittest.TestCase):
     def test_invalid_date_time_format_is_rejected_when_present(self):
         checked = 0
         for filename, schema in self.schemas.items():
-            path = find_pattern_path(schema, "__never_matches__")
-            del path
             # Contract timestamp fields are declared with format=date-time.
             timestamp_path = self._find_format_path(schema, "date-time")
             if timestamp_path is None:
