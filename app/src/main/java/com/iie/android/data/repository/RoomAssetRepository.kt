@@ -7,6 +7,9 @@ import com.iie.android.data.local.entity.WatchlistEntryEntity
 import com.iie.android.data.market.CoinPaprikaTickerClient
 import com.iie.android.data.market.CoinPaprikaQuote
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
+import com.iie.android.data.market.CoinPaprikaDailyHistoryFetcher
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.security.MessageDigest
 import java.util.UUID
 import org.json.JSONObject
@@ -17,6 +20,12 @@ import com.iie.android.domain.model.AssetObservationProvenance
 import com.iie.android.domain.repository.AssetRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+
+data class CoinPaprikaHistorySyncResult(
+    val pointsReceived: Int,
+    val pointsInserted: Int,
+    val pointsAlreadyPresent: Int
+)
 
 class RoomAssetRepository(
     private val database: IIEDatabase,
@@ -265,6 +274,50 @@ class RoomAssetRepository(
                 .insertHistoricalObservationsIfAbsent(observations)
                 .count { it != -1L }
         }
+    }
+
+    suspend fun downloadAndPersistCoinPaprikaDailyHistory(
+        assetId: String,
+        expectedSymbol: String,
+        start: LocalDate,
+        end: LocalDate,
+        fetcher: CoinPaprikaDailyHistoryFetcher
+    ): CoinPaprikaHistorySyncResult {
+        require(!end.isBefore(start)) { "Historical end date precedes start date" }
+        val sourceId = "source:coinpaprika"
+        val source = database.dataSourceDao().getSource(sourceId)
+            ?: error("CoinPaprika source is not registered")
+        check(source.permittedUseStatus == "PERSONAL_USE_ONLY") {
+            "CoinPaprika source is not enabled for this app's personal-use scope"
+        }
+        val asset = database.assetDao().getAsset(assetId)
+            ?: error("Cannot download history for an unknown IIE asset")
+        require(asset.symbol.equals(expectedSymbol, ignoreCase = true)) {
+            "Expected symbol does not match the canonical asset"
+        }
+        val identifier = database.assetIdentifierDao().findForAsset(
+            assetId = assetId, sourceId = sourceId, namespace = "coinpaprika"
+        ) ?: error("No CoinPaprika provider identifier is mapped to this asset")
+        check(identifier.verificationStatus == "PROVIDER_ID_CONFIRMED") {
+            "CoinPaprika provider identifier is not confirmed"
+        }
+        val retrievedAt = nowEpochMs()
+        require(retrievedAt > 0L) { "Invalid local retrieval clock" }
+        val todayUtc = java.time.Instant.ofEpochMilli(retrievedAt).atZone(ZoneOffset.UTC).toLocalDate()
+        require(!end.isAfter(todayUtc)) { "Historical end date cannot be in the future" }
+
+        val points = fetcher.fetchDaily(
+            providerId = identifier.identifierValue,
+            start = start,
+            end = end,
+            retrievedAtEpochMs = retrievedAt
+        )
+        val inserted = persistCoinPaprikaDailyHistory(assetId, expectedSymbol, points)
+        return CoinPaprikaHistorySyncResult(
+            pointsReceived = points.size,
+            pointsInserted = inserted,
+            pointsAlreadyPresent = points.size - inserted
+        )
     }
 
     suspend fun getLatestCoinPaprikaQuote(assetId: String): Pair<AssetObservationEntity, String>? {
