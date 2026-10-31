@@ -50,10 +50,10 @@ class FreshnessEvaluatorTest {
     fun identifiesFreshObservation() {
         val result = evaluator.evaluate(
             "source:market-test", "MARKET_PRICE", "PAPER_TRADING",
-            150_000L, 155_000L, 200_000L
+            160_000L, 165_000L, 200_000L
         ) as FreshnessEvaluation.Evaluated
         assertEquals(FreshnessStatus.FRESH, result.assessment.status)
-        assertEquals(50_000L, result.assessment.ageMs)
+        assertEquals(40_000L, result.assessment.ageMs)
         assertEquals("test-market-policy", result.assessment.policyId)
     }
 
