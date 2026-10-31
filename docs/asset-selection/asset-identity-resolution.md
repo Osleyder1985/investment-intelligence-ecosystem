@@ -206,3 +206,8 @@ Este modelo no determina todavía un esquema físico, tipos SQL, formato de seri
 Las reglas genéricas de la sección 10.2 se concretan, para EVM y Solana, en [network-identity-profiles-evm-solana](network-identity-profiles-evm-solana.md). Ese documento distingue identidad de red, identidad de representación, activo nativo, atributos de comportamiento y evidencia temporal. Sus perfiles son borradores; no equivalen a adaptadores implementados ni validación.
 
 La aplicación de un perfil debe declarar su versión, red resuelta, método de normalización, endpoint/fuente, bloque o slot y nivel de finalización. Si la instancia de red no se puede distinguir o la cuenta/contrato no cumple las condiciones del perfil, el resultado debe permanecer AMBIGUOUS, UNVERIFIED o CONFLICTED según la evidencia. No degradar silenciosamente a una coincidencia por ticker.
+
+
+## 13. Perfiles Cosmos SDK/IBC y UTXO Bitcoin-like
+
+Las reglas genéricas se amplían con [network-identity-profiles-cosmos-utxo](network-identity-profiles-cosmos-utxo.md). El alcance es deliberadamente acotado: Cosmos SDK con bank/IBC-ICS20 y UTXO Bitcoin-like con activos nativos y contrato para adaptadores de emisión protocolaria. No se extrapolan estas reglas a todas las cadenas Cosmos, Cardano/eUTXO, sidechains ni protocolos de activos sin perfil específico.
