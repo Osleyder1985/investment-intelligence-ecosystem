@@ -25,5 +25,6 @@
 | IIM-021 | Especificar modelos de valoración reproducibles con atribución demostrada, escenarios, sensibilidad y abstención | Crítica | Propuesto | Contratos de modelo, especificaciones por tipología y pruebas de doble conteo y aplicabilidad |
 | IIM-022 | Emitir decisiones informativas y rankings parciales reproducibles por horizonte, con gates no compensables, dominancia y abstención | Crítica | Propuesto | Árbol de gates, vetos bloqueantes, comparabilidad por dimensión, casos de dominancia/no comparabilidad y reconstrucción de ranking |
 | IIM-023 | Producir informes de evaluación trazables y snapshots inmutables comparables longitudinalmente con descomposición de cambios | Crítica | Propuesto | Contrato estructurado validable, evidencia enlazada, versionado, comparabilidad y pruebas de cambios de datos/metodología/activo |
+| IIM-024 | Orquestar evaluaciones reproducibles bajo demanda con estados, gates, idempotencia, recuperación y observabilidad | Crítica | Propuesto | Máquina de estados, dependencias, control de ejecución, manejo de fallos, trazabilidad por etapa y pruebas de recuperación/idempotencia |
 
 Los requisitos no se consideran aprobados hasta su análisis, trazabilidad y aceptación formal.
