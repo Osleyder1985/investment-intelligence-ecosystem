@@ -216,3 +216,38 @@ Las reglas genéricas se amplían con [network-identity-profiles-cosmos-utxo](ne
 ## 14. Perfil Cardano/eUTXO
 
 Las reglas para ADA y native tokens Cardano se concretan en [network-identity-profile-cardano-eutxo](network-identity-profile-cardano-eutxo.md). El perfil separa el activo nativo ADA del par policy_id + asset_name bytes, y distingue metadata CIP-25/CIP-26/CIP-68 de la identidad del ledger. No aplicar las reglas Bitcoin-like a Cardano sin este adaptador específico.
+
+
+## 15. Armonización transversal de perfiles de red
+
+Los perfiles específicos deben obedecer estas reglas comunes:
+
+1. **Clave estable:** los identificadores internos no incorporan versión del parser, versión documental del perfil, endpoint, ticker, metadata ni checkpoint. Esos elementos son procedencia/observaciones. Una revisión del adaptador no crea un activo nuevo.
+2. **Activo nativo:** usar (network_id, NATIVE_ASSET) cuando el protocolo no ofrece un identificador local separado para el activo nativo (por ejemplo, EVM, Solana, UTXO Bitcoin-like y ADA). Cuando la cadena define el activo mediante un identificador propio —como un bank denom Cosmos— conservar ese identificador como clave de representación y marcar su rol nativo por separado.
+3. **Identificadores compuestos:** preservar bytes/valores exactos del protocolo y el namespace de red. No normalizar un identificador binario a texto salvo como representación reversible.
+4. **Versión de protocolo frente a versión de parser:** solo una versión que el propio protocolo incorpore a su espacio de identidad puede afectar la clave. La versión de implementación, decoder, RPC, metadata o perfil siempre es metadato.
+5. **Estados:** todos los perfiles utilizan los estados canónicos de la sección 4. Los estados de evidencia de una afirmación individual no sustituyen el estado global de resolución de identidad.
+6. **Temporalidad:** cada observación conserva tiempo efectivo y tiempo de conocimiento/ingestión conforme al contrato point-in-time; block/slot/height no prueban por sí solos cuándo un dato estuvo públicamente disponible o fue ingerido por el sistema.
+
+La tabla siguiente resume la clave conceptual, sin sustituir los perfiles ni resolver sus excepciones:
+
+| Familia | Identidad de representación conceptual | Activo nativo |
+|---|---|---|
+| EVM | network_id + dirección de contrato de 20 bytes | network_id + NATIVE_ASSET |
+| Solana SPL | network_id + mint public key de 32 bytes | network_id + NATIVE_ASSET |
+| Cosmos bank | network_id + denom exacto | denom base designado, identificado por su denom exacto |
+| Cosmos CW20 | network_id + contract address | según denom nativo de la cadena |
+| IBC voucher | network_id destino + denom local exacto; trace como evidencia/relación | no aplica como regla universal |
+| UTXO Bitcoin-like | network_id + namespace de protocolo + asset ID, cuando el protocolo lo defina | network_id + NATIVE_ASSET |
+| Cardano native token | network_id + policy_id + asset_name bytes | network_id + NATIVE_ASSET |
+
+### 15.1 Estado de resolución canónico
+
+- RESOLVED: evidencia suficiente para el uso declarado.
+- RESOLVED_WITH_LIMITATIONS: identidad utilizable con limitaciones explícitas.
+- AMBIGUOUS: más de una identidad candidata no resuelta.
+- UNVERIFIED: evidencia insuficiente.
+- CONFLICTED: fuentes/evidencias incompatibles.
+- RETIRED_OR_MIGRATED: entidad histórica retirada o migrada, conservada con relación temporal al sucesor.
+
+Un perfil puede registrar el estado de cada afirmación (por ejemplo, relación bridge o autoridad) de forma separada, pero debe mapearlo al estado global cuando afecte a la identidad. Mapping recomendado: CONFIRMED → RESOLVED; PARTIALLY_CONFIRMED → RESOLVED_WITH_LIMITATIONS; DISPUTED → CONFLICTED; UNVERIFIED → UNVERIFIED. AMBIGUOUS y RETIRED_OR_MIGRATED se mantienen como estados globales propios.
