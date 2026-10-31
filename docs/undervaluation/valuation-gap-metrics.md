@@ -10,7 +10,7 @@
 - P_sell: ingreso neto de venta por unidad estimado para la cantidad objetivo, descontando costes aplicables.
 - V_L: límite inferior del rango de valor razonable.
 - V_U: límite superior del rango de valor razonable.
-- V_M: estimación central, solo si el método justifica su existencia.
+- V_M: estimación central, solo si el método justifica su existencia.\n- P_ref: referencia de ejecución elegida para la finalidad de la comparación; para entrada será P_buy y para salida será P_sell. No mezclar ambos en una misma brecha.
 
 Registrar moneda, unidad, mercado, timestamp y horizonte de todas las variables. No combinar datos incompatibles.
 
