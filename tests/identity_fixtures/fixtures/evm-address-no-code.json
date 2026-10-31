@@ -1,0 +1,63 @@
+{
+  "fixture_version": "1.0.0",
+  "fixture_kind": "SYNTHETIC",
+  "requirement_ids": [
+    "IIM-001",
+    "IIM-019"
+  ],
+  "profile_version": "0.1.0",
+  "adapter_version": "synthetic-harness-0.1.0",
+  "provenance": {
+    "synthetic": true,
+    "source": null,
+    "permission_record": null
+  },
+  "created_at": "2026-10-31T00:00:00Z",
+  "updated_at": "2026-10-31T00:00:00Z",
+  "fixture_id": "FX-EVM-NO-CODE-001",
+  "purpose": "Una dirección hexadecimal válida sin código en el checkpoint no se confirma como contrato token.",
+  "case_ids": [
+    "AS-036",
+    "AS-041"
+  ],
+  "profile_id": "EVM",
+  "input": {
+    "network_context": {
+      "family": "EVM",
+      "network_id_fixture": "NET-EVM-SYNTH-01",
+      "chain_id": "999001",
+      "genesis_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "checkpoint": {
+        "height_or_slot": 100,
+        "block_or_state_hash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "observations": [
+      {
+        "entity_type": "asset_representation",
+        "raw_identifier": "0x52908400098527886e0f7030069857d2e4169ee7",
+        "encoding": "hex-20-byte-lowercase",
+        "normalized_identifier": "0x52908400098527886e0f7030069857d2e4169ee7",
+        "normalization_method": "EVM_ADDRESS_20_BYTES_CASE_INSENSITIVE_v1",
+        "observation_ref": "synthetic-no-code-observation",
+        "contract_state": {
+          "code_present": false
+        }
+      }
+    ]
+  },
+  "expected_result": {
+    "resolution_status": "UNVERIFIED",
+    "entity_candidates": [],
+    "assertions": [
+      "valid_address_does_not_prove_contract"
+    ],
+    "abstention_scope": [
+      "token_contract_classification",
+      "token_interface_claims"
+    ],
+    "expected_diagnostics": [
+      "contract_code_absent_at_checkpoint"
+    ]
+  }
+}

@@ -66,6 +66,35 @@ class IdentityFixtureHarnessTests(unittest.TestCase):
         result = harness.evaluate_fixture(fixture, self.schema)
         self.assertEqual(result["execution_status"], "FAIL")
 
+    def test_evm_address_without_code_is_not_a_confirmed_token_contract(self):
+        result = harness.evaluate_fixture(self.fixtures["FX-EVM-NO-CODE-001"], self.schema)
+        self.assertEqual(result["execution_status"], "INCONCLUSIVE")
+        self.assertEqual(result["resolution_status"], "UNVERIFIED")
+        self.assertIn("contract_code_absent_at_checkpoint", result["diagnostics"])
+
+    def test_unsupported_token2022_extension_limits_behavioral_conclusions(self):
+        result = harness.evaluate_fixture(
+            self.fixtures["FX-SOL-TOKEN2022-UNSUPPORTED-EXT-001"], self.schema
+        )
+        self.assertEqual(result["execution_status"], "INCONCLUSIVE")
+        self.assertEqual(result["resolution_status"], "RESOLVED_WITH_LIMITATIONS")
+        self.assertIn("unsupported_token2022_extension", result["diagnostics"])
+
+    def test_same_evm_address_on_distinct_networks_has_distinct_keys(self):
+        first = copy.deepcopy(self.fixtures["FX-EVM-CASE-001"])
+        second = copy.deepcopy(first)
+        second["fixture_id"] = "FX-EVM-OTHER-NETWORK-TEST"
+        second["input"]["network_context"]["network_id_fixture"] = "NET-EVM-SYNTH-OTHER"
+        second["expected_result"]["entity_candidates"][0]["key"][0] = "NET-EVM-SYNTH-OTHER"
+        first_result = harness.evaluate_fixture(first, self.schema)
+        second_result = harness.evaluate_fixture(second, self.schema)
+        self.assertEqual(first_result["execution_status"], "PASS")
+        self.assertEqual(second_result["execution_status"], "PASS")
+        self.assertNotEqual(
+            first["expected_result"]["entity_candidates"][0]["key"],
+            second["expected_result"]["entity_candidates"][0]["key"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

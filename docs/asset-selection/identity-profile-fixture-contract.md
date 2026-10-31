@@ -265,3 +265,15 @@ El prototipo solo comprueba reglas sintéticas acotadas: formato/canonicalizaci�
 La suite inicial contiene dos resultados PASS y un INCONCLUSIVE esperado. INCONCLUSIVE no es una resolución aprobada. Las pruebas unitarias incluyen escenarios controlados para FAIL, BLOCKED y NOT_RUN; estos escenarios no se cuentan como fixtures reales aprobados.
 
 El harness es un primer instrumento de prueba, no un adaptador de producción ni evidencia de conformidad de todos los perfiles. No se incluyen fixtures CAPTURED o REDACTED_CAPTURE. IIM-001 e IIM-019 permanecen REVISION_REQUIRED; IIM-002 permanece BLOCKED para aprobar fuentes concretas.
+
+
+## 13. Segunda ampliación de cobertura: casos límite EVM/Solana
+
+Se añaden fixtures sintéticos para dos condiciones que deben provocar abstención parcial o total:
+
+- Dirección EVM válida sin código en el checkpoint: no se confirma como contrato token; la clasificación del contrato permanece UNVERIFIED.
+- Mint Token-2022 con extensión no soportada por el harness: la clave del mint puede mantenerse con limitaciones, pero se abstiene de concluir sobre comportamiento y transferibilidad.
+
+Las pruebas unitarias verifican además que una misma dirección EVM bajo dos `network_id_fixture` distintos produce claves compuestas distintas. Esta prueba es sintética y no demuestra resolución de instancias de red reales.
+
+No se implementa detección de proxies, upgrades, forks ni validación de programas Token-2022 reales. La presencia de `unsupported_extensions` en estos fixtures es una señal de prueba controlada, no un decodificador de extensiones on-chain.
