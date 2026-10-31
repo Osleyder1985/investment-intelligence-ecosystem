@@ -40,6 +40,7 @@ No mezclar cotizaciones de mercados distintos sin normalización y justificació
 | WITHIN_FAIR_VALUE_RANGE | Dentro del rango estimado | Precio comparable está dentro del rango |
 | POTENTIAL_UNDERVALUATION | Posible infravaloración | Precio está por debajo del rango, pero persiste incertidumbre o condiciones materiales |
 | MODEL_SUPPORTED_UNDERVALUATION | Infravaloración respaldada por el modelo | Precio ejecutable está por debajo del límite conservador del rango y se satisfacen controles de evidencia, robustez, liquidez y riesgo |
+| EXTREME_UNDERVALUATION_NOT_CALIBRATED | Categoría extrema no calibrada | La metodología no tiene calibración independiente aprobada; no es una etiqueta activa de oportunidad |
 | EXTREME_UNDERVALUATION | Infravaloración extrema | Solo tras definición y calibración empírica aprobadas, con validación independiente fuera de muestra |
 
 Los estados son mutuamente excluyentes para una evaluación concreta. El sistema puede conservar resultados secundarios y motivos, pero no asignar simultáneamente estados contradictorios.
