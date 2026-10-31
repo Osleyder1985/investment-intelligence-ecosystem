@@ -13,6 +13,7 @@ interface AssetRepository {
     fun observeAsset(assetId: String): Flow<Asset?>
     fun observeDeployments(assetId: String): Flow<List<AssetDeploymentSummary>>
     suspend fun addToWatchlist(assetId: String, note: String? = null)
+    suspend fun toggleWatchlist(assetId: String): Boolean
     suspend fun removeFromWatchlist(assetId: String)
     fun observeWatchlist(): Flow<List<String>>
 }
