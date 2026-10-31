@@ -36,6 +36,8 @@ La capa estratégica PORTFOLIO & EXECUTION necesita requisitos explícitos. Se p
 
 La revisión individual de los 13 requisitos se gestiona mediante [`portfolio-execution-requirements-review-matrix.md`](portfolio-execution-requirements-review-matrix.md) y el Issue de seguimiento dedicado. El estado global permanece PENDING_REVIEW; cada identificador mantiene carácter provisional hasta una decisión formal. La revisión técnica preliminar del lote A (IIM-025, IIM-027 e IIM-028) recomienda REVISE y está documentada en [`portfolio-execution-lot-a-review.md`](portfolio-execution-lot-a-review.md); no constituye aprobación. La aceptación para registro no equivale a especificación, implementación, pruebas ni autorización de operación.
 
+La revisión técnica preliminar del lote B (IIM-026, IIM-029, IIM-030 e IIM-031) recomienda REVISE y está documentada en [`portfolio-execution-lot-b-review.md`](portfolio-execution-lot-b-review.md); no constituye aprobación.
+
 ## 3. Reglas de diseño comunes
 
 Todos los requisitos anteriores deben cumplir:
