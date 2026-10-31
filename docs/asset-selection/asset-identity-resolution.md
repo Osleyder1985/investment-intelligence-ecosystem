@@ -77,3 +77,45 @@ No sobrescribir ticker, contrato o proveedor histórico. Cada cambio genera even
 ## 9. Salida
 
 La resolución produce canonical_asset_id, representation_id cuando corresponda, identidad de red/contrato, relación económica, estado, evidencia, fuentes consultadas, timestamp UTC, conflictos y limitaciones. Cada evaluación referencia esos IDs, nunca solo el ticker.
+
+
+## 10. Modelo de entidades, claves y relaciones (aclaración v0.2.0)
+
+Los identificadores internos deben ser namespaced por tipo de entidad. No reutilizar un único identificador para entidades con semántica diferente.
+
+| Entidad | Identificador interno | Alcance |
+|---|---|---|
+| Economic asset | `economic_asset_id` | Exposición/derecho económico que se pretende analizar, si puede definirse |
+| Network | `network_id` | Instancia concreta de una red, incluyendo entorno y génesis/fork cuando corresponda |
+| Asset representation | `representation_id` | Activo nativo o token emitido en una red concreta |
+| Market instrument | `instrument_id` | Instrumento negociable definido por representación, venue, mercado y moneda de cotización |
+| Listing | `listing_id` | Instancia/versionado de la admisión del instrumento en un mercado |
+| Project/protocol | `project_id` | Proyecto o protocolo asociado; no implica propiedad ni derecho del titular |
+
+Las relaciones entre entidades deben ser explícitas, tipadas, con cardinalidad documentada y vigencia temporal. Ejemplos de relación: REPRESENTS, WRAPS, BRIDGES, BACKED_BY, MIGRATES_TO, FORKED_FROM, IMPLEMENTS, ISSUED_BY, LISTED_AS. No asumir que toda representación tiene un único subyacente ni que un subyacente tiene una sola representación.
+
+### 10.1 Clave de red
+
+`network_id` es una clave interna estable y no debe derivarse únicamente de `chain_id`. Registrar namespace, identificadores externos, entorno (mainnet/testnet/private), genesis identifier o ancla equivalente cuando exista, reglas de consenso/identidad y relaciones de fork. Los identificadores externos deben guardar proveedor/esquema/versión.
+
+### 10.2 Identificador de representación
+
+La clave técnica depende de la familia de red:
+
+- EVM: network_id + dirección de contrato normalizada según reglas EVM.
+- Solana: network_id + mint address.
+- Cosmos y redes similares: network_id + denom/identificador nativo o de módulo, según semántica de la red.
+- UTXO: network_id + definición de activo nativo o mecanismo de emisión/asset ID aplicable.
+- Otras redes: adaptador de identidad documentado; no forzar el formato EVM.
+
+Para activos nativos usar un discriminador tipado (por ejemplo, `NATIVE_ASSET`) junto con network_id. No usar una dirección ficticia ni una cadena centinela que pueda colisionar con una dirección válida.
+
+### 10.3 Contratos actualizables
+
+Cuando la representación use proxy, registrar por separado la dirección estable del proxy y cada implementación observada, mecanismo de actualización, autoridad/admin conocida, eventos de actualización, bloque/tiempo efectivo y evidencia. El cambio de implementación crea una nueva versión de comportamiento; no sobrescribe el historial ni implica automáticamente una nueva representación económica. Evaluar si cambian derechos, supply, control o riesgo.
+
+### 10.4 Evidencia de resolución
+
+Cada afirmación de identidad debe indicar qué demuestra cada evidencia: existencia/despliegue, control/administración, derechos, respaldo, redención o relación económica. Registrar independencia conocida entre fuentes; dos exploradores que dependen del mismo indexador no son corroboración plenamente independiente. Para evidencia on-chain conservar red, bloque/hash, altura, estado de finalización y referencia de consulta.
+
+Estas aclaraciones siguen siendo borrador hasta completar casos y revisión formal. No constituyen un esquema de base de datos definitivo.
