@@ -273,6 +273,22 @@ class IIEDatabaseTest {
     }
 
     @Test
+    fun provenanceQueryJoinsObservationToRegisteredSource() = runBlocking {
+        DemoAssetSeeder(database) { 300L }.seed()
+
+        val observations = database.assetObservationDao()
+            .observeProvenanceForAsset("asset:bitcoin").first()
+
+        assertEquals(1, observations.size)
+        assertEquals("IIE local demonstration fixture", observations.single().sourceDisplayName)
+        assertEquals("LOCAL_FIXTURE", observations.single().sourceProviderType)
+        assertEquals("INTERNAL_DEMO_ONLY", observations.single().sourcePermittedUseStatus)
+        assertEquals("IDENTITY_FIXTURE", observations.single().observationType)
+        assertEquals("DEMO", observations.single().status)
+        assertEquals("UNVERIFIED", observations.single().quality)
+    }
+
+    @Test
     fun demoSeederIsIdempotentAndPreservesUserWatchlistData() = runBlocking {
         DemoAssetSeeder(database) { 100L }.seed()
         database.watchlistDao().add(
