@@ -120,16 +120,6 @@ class RoomAssetRepository(
         expectedSymbol: String,
         client: CoinPaprikaTickerClient
     ): AssetObservationEntity {
-        val cached = database.assetObservationDao().getLatestObservation(
-            assetId, MARKET_QUOTE_OBSERVATION_TYPE
-        )
-        val now = nowEpochMs()
-        if (cached != null && now >= cached.retrievedAtEpochMs &&
-            now - cached.retrievedAtEpochMs < QUOTE_CACHE_TTL_MS
-        ) {
-            return cached
-        }
-
         val sourceId = "source:coinpaprika"
         val source = database.dataSourceDao().getSource(sourceId)
             ?: error("CoinPaprika source is not registered")
@@ -143,6 +133,16 @@ class RoomAssetRepository(
         ) ?: error("No CoinPaprika provider identifier is mapped to this asset")
         check(identifier.verificationStatus == "PROVIDER_ID_CONFIRMED") {
             "CoinPaprika provider identifier is not confirmed"
+        }
+
+        val cached = database.assetObservationDao().getLatestObservation(
+            assetId, MARKET_QUOTE_OBSERVATION_TYPE
+        )
+        val now = nowEpochMs()
+        if (cached != null && now >= cached.retrievedAtEpochMs &&
+            now - cached.retrievedAtEpochMs < QUOTE_CACHE_TTL_MS
+        ) {
+            return cached
         }
 
         val quote = client.fetch(
