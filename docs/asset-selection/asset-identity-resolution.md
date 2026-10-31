@@ -1,6 +1,6 @@
 # Resolución de identidad de criptoactivos
 
-**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.0
+**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.1
 
 ## 1. Principio
 
@@ -20,9 +20,9 @@ El ticker y el nombre comercial no identifican un activo de forma inequívoca. L
 
 Un mismo proyecto puede tener varios activos. Un mismo activo económico puede tener representaciones distintas, con riesgos y derechos diferentes.
 
-## 3. Clave canónica
+## 3. Identificadores internos y atributos de identidad
 
-La identidad interna debe usar un identificador estable propio y conservar, cuando aplique:
+No existe una clave universal única para todas las entidades. La identidad interna utiliza identificadores tipados y namespaced conforme a la sección 10. Los atributos externos no sustituyen esas claves. Conservar, cuando aplique:
 
 - nombre y ticker observado, como atributos no únicos;
 - tipo de activo y tipología económica;
