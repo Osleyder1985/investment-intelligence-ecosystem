@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.iie.android.data.local.DemoAssetSeeder
 import com.iie.android.data.local.IIEDatabaseProvider
 import com.iie.android.data.market.CoinPaprikaTickerClient
+import com.iie.android.data.market.QuoteFreshnessEvaluator
 import org.json.JSONObject
 import com.iie.android.data.repository.RoomAssetRepository
 import com.iie.android.domain.model.Asset
@@ -31,6 +32,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     private val repository = RoomAssetRepository(database)
     private val evidenceEvaluator = LocalDemoEvidenceEvaluator.create()
     private val coinPaprikaClient = CoinPaprikaTickerClient()
+    private val quoteFreshnessEvaluator = QuoteFreshnessEvaluator()
 
     private val _marketQuotes = MutableStateFlow<Map<String, MarketQuoteUiState>>(emptyMap())
     val marketQuotes: StateFlow<Map<String, MarketQuoteUiState>> = _marketQuotes.asStateFlow()
@@ -167,6 +169,14 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             retrievedAtEpochMs = retrievedAtEpochMs,
             attribution = attribution,
             providerId = json.getString("providerId"),
+            freshnessStatus = quoteFreshnessEvaluator.evaluate(
+                json.optLong("providerUpdatedAtEpochMs").takeIf { it > 0L },
+                System.currentTimeMillis()
+            ).status.name,
+            freshnessReason = quoteFreshnessEvaluator.evaluate(
+                json.optLong("providerUpdatedAtEpochMs").takeIf { it > 0L },
+                System.currentTimeMillis()
+            ).reason,
             isLoading = false
         )
     }
@@ -198,6 +208,8 @@ data class MarketQuoteUiState(
     val retrievedAtEpochMs: Long? = null,
     val attribution: String? = null,
     val providerId: String? = null,
+    val freshnessStatus: String = "UNKNOWN",
+    val freshnessReason: String = "Frescura no evaluada",
     val isLoading: Boolean = false,
     val error: String? = null
 )
