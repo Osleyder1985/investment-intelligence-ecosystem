@@ -268,16 +268,23 @@ Este desempate solo selecciona la causa principal que se muestra primero; nunca 
 
 ### 10.1 Regla de agregación
 
-Para un scope solicitado compuesto por unidades atómicas:
+La propuesta específica de precedencia agregada A12 se desarrolla en [18-x09-atomic-aggregation-precedence.md](18-x09-atomic-aggregation-precedence.md) v0.1.0-draft. Hasta aprobación, se considera una regla propuesta y no una política institucional vigente.
 
-- Todas las unidades DECISION_ELIGIBLE → DECISION_ELIGIBLE.
-- Todas elegibles o elegibles con limitaciones, y al menos una limitada → DECISION_ELIGIBLE_WITH_LIMITATIONS.
-- Una o más unidades INELIGIBLE y ninguna unidad fuera del scope solicitado que requiera revisión → la salida agregada no puede ser ELIGIBLE; reportar DECISION_INELIGIBLE con desglose por unidad.
-- Cualquier unidad REVIEW_REQUIRED impide una salida agregada plenamente favorable; usar DECISION_REVIEW_REQUIRED y conservar los resultados independientes de las demás unidades.
-- Cualquier unidad ABSTAIN impide una salida agregada plenamente favorable para el scope completo; usar DECISION_ABSTAIN y desglose.
-- IN_PROGRESS o NOT_ASSESSED se usan solo cuando no exista una condición de mayor precedencia y el estado del expediente lo justifique.
+Para un scope solicitado compuesto por unidades atómicas, una vez que ValidationEnvelope=VALID y la partición sea exacta, exhaustiva, disjunta y homogénea:
 
-Para ORE, conservar los resultados por ruta. No resumir un conjunto de rutas heterogéneas en un único ROUTE_ELIGIBLE. Si un consumidor solicita una ruta concreta, solo se evalúa esa ruta; si solicita un conjunto, se devuelve matriz por ruta y un resumen restrictivo, nunca permiso global implícito.
+1. Una o más unidades DECISION_INELIGIBLE → DECISION_INELIGIBLE agregado.
+2. En ausencia de INELIGIBLE, cualquier DECISION_REVIEW_REQUIRED → DECISION_REVIEW_REQUIRED.
+3. En ausencia de los anteriores, cualquier DECISION_ABSTAIN → DECISION_ABSTAIN.
+4. En ausencia de los anteriores, cualquier DECISION_IN_PROGRESS → DECISION_IN_PROGRESS.
+5. En ausencia de los anteriores, cualquier DECISION_NOT_ASSESSED → DECISION_NOT_ASSESSED.
+6. Todas las unidades elegibles o elegibles con limitaciones, con al menos una limitada → DECISION_ELIGIBLE_WITH_LIMITATIONS, solo con enforcement.
+7. Solo todas las unidades DECISION_ELIGIBLE → DECISION_ELIGIBLE.
+
+La precedencia propuesta es INELIGIBLE > REVIEW_REQUIRED > ABSTAIN > IN_PROGRESS > NOT_ASSESSED > ELIGIBLE_WITH_LIMITATIONS > ELIGIBLE. No es un score. Se conservan todos los outcomes y causas atómicos. Un ValidationEnvelope distinto de VALID impide emitir outcome agregado: REJECTED_INVALID_INPUT rechaza; REVIEW_REQUIRED exige adjudicación; INCOMPLETE impide concluir sobre el requested_scope completo.
+
+El resultado agregado siempre describe el requested_scope original. Un subset permitido requiere scope derivado y decisión independiente; nunca sustituye ni mejora silenciosamente el resultado del scope original.
+
+Para ORE, conservar los resultados por ruta. No resumir un conjunto de rutas heterogéneas en un único ROUTE_ELIGIBLE. Esta propuesta no redefine la precedencia operativa ni crea permiso global implícito.
 
 ### 10.2 Restricciones parciales
 
@@ -395,7 +402,7 @@ Una futura suite de conformidad debe verificar, como mínimo:
 
 ## 15. Cuestiones abiertas para revisión
 
-1. ¿Debe DECISION_REVIEW_REQUIRED prevalecer sobre DECISION_INELIGIBLE cuando coexisten un criterio fallido demostrado y un conflicto independiente? Propuesta: el outcome primario sigue INELIGIBLE si el fallo es suficiente por sí mismo; el conflicto permanece como causa secundaria y puede impedir acciones posteriores.
+1. La precedencia agregada propuesta para coocurrencia INELIGIBLE/REVIEW/ABSTAIN se desarrolla en [X-09 documento 18](18-x09-atomic-aggregation-precedence.md): INELIGIBLE > REVIEW_REQUIRED > ABSTAIN para el resumen del requested_scope, después de validar el envelope. Sigue pendiente aprobación de owners; conservar outcomes y causas atómicos.
 2. ¿Cómo mapear exactamente ROUTE_CONFLICTED/ROUTE_INVALID/ROUTE_STALE frente al envelope de validación? Requiere armonización con X-04 y contrato ORE.
 3. ¿Qué criterios de evidencia son suficientes para NO_VETO_IDENTIFIED por cada dominio/tipología? Requiere política de riesgo/veto aprobada.
 4. ¿Qué restricciones parciales puede aplicar realmente cada consumidor? Requiere contratos de enforcement y pruebas.
