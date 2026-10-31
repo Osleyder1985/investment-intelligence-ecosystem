@@ -54,7 +54,7 @@ Los estados son acumulativos, pero no se heredan automáticamente: DOCUMENTED no
 
 ## 3.1 Revisión cruzada fundacional — Issue #19
 
-La revisión posterior al PR #22 detectó contradicciones residuales entre las secciones heredadas y las aclaraciones v0.2.0. Se preparan correcciones documentales en la rama `docs/issue-19-cross-document-consistency`; hasta su integración, esta matriz no debe interpretarse como aprobación.
+La revisión posterior al PR #22 detectó contradicciones residuales entre las secciones heredadas y las aclaraciones v0.2.0. Se preparan correcciones documentales en la rama `docs/issue-19-cross-document-consistency`; hasta su integración, esta matriz no debe interpretarse como aprobación. El detalle de hallazgos, decisiones y evidencia pendiente está en [issue-19-cross-document-review](issue-19-cross-document-review.md).
 
 | Requisito | Decisión de revisión | Estado | Evidencia / bloqueo |
 |---|---|---|---|
