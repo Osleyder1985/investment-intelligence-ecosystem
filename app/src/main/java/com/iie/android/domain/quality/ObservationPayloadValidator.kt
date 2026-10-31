@@ -2,7 +2,6 @@ package com.iie.android.domain.quality
 
 import com.iie.android.domain.model.ObservationPayloadContract
 import com.iie.android.domain.model.ObservationPayloadValidation
-import com.iie.android.domain.model.PayloadField
 import com.iie.android.domain.model.PayloadFieldType
 import com.iie.android.domain.model.PayloadValidationIssue
 import kotlinx.serialization.SerializationException
@@ -13,7 +12,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.jsonObject
 
 /**
  * Validates normalized JSON payloads against an explicit observation-type/version contract.
@@ -76,8 +74,7 @@ class ObservationPayloadValidator(
             )
         }
 
-        val rootObject = root as? JsonObject
-            ?: return ObservationPayloadValidation.Valid(observationType, schemaVersion)
+        val rootObject = root as JsonObject
 
         val issues = mutableListOf<PayloadValidationIssue>()
         val declaredFields = contract.fields.associateBy { it.name }
