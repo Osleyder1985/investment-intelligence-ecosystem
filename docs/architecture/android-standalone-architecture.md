@@ -213,10 +213,10 @@ Such a future service is not part of the first release and must require a separa
 At the time of this draft:
 - the Android development branch contains a Jetpack Compose explorer connected to a Room-backed repository and local watchlist;
 - an initial Room schema, DAOs, database provider, asset repository, and instrumentation-test source have been added on a development branch;
-- the local data model and explorer integration remain pending Android compilation, generated schema review, and instrumentation execution;
+- the initial Android build and instrumentation-test compilation passed in CI; emulator execution and generated schema review remain pending;
 - a transactional demo-fixture seeder and persistent watchlist interaction have been added as implementation work;
 - the analytical engine and external provider integration are not yet implemented;
-- a Gradle Wrapper is not yet present; an Android CI workflow has been added, but no successful run is recorded yet;
+- a Gradle Wrapper is not yet present; Android CI has passed compilation once, while the expanded emulator workflow is pending;
 - no Android build, emulator test, performance benchmark, or security assessment is claimed by this document.
 
 This is an architecture proposal and implementation baseline, not evidence of implementation, empirical validation, or ISO certification.
