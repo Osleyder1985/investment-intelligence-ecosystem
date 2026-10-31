@@ -43,9 +43,9 @@ Las relaciones siguientes representan dependencias lógicas para construir una e
 
 ## 4. Revisión fundacional en curso
 
-La auditoría cruzada posterior al PR #22 identificó GAP-08 y preparó una corrección documental en la rama `docs/issue-19-cross-document-consistency`. El registro individual de decisiones se incorpora en `issue-19-cross-document-review.md`. Ningún requisito se eleva a `SPECIFIED` por la integración de estas correcciones.
+La auditoría cruzada del PR #23 está integrada en `main`. La siguiente iteración añade un contrato conceptual de cardinalidades, claves y relaciones temporales en la sección 11 de `asset-identity-resolution.md`, junto con los casos de diseño AS-024 a AS-032. Esta ampliación reduce ambigüedades documentales, pero no aprueba requisitos, adaptadores ni fuentes. Ningún requisito se eleva a `SPECIFIED` por la integración de cambios documentales.
 
-Los hallazgos preliminares de IIM-001, IIM-002, IIM-018, IIM-019 e IIM-020 están registrados en [issue-19-foundational-review-findings](issue-19-foundational-review-findings.md). Las decisiones son REVISION_REQUIRED o BLOCKED; no se ha aprobado ningún requisito ni fuente concreta. El documento identifica las evidencias y correcciones necesarias antes de considerar SPECIFIED estos requisitos.
+Los hallazgos de IIM-001, IIM-002, IIM-018, IIM-019 e IIM-020 están registrados en [issue-19-foundational-review-findings](issue-19-foundational-review-findings.md) y [issue-19-cross-document-review](issue-19-cross-document-review.md). Las decisiones siguen siendo REVISION_REQUIRED o BLOCKED; no se ha aprobado ningún requisito ni fuente concreta. Persisten brechas de perfiles por familia de red/venue, pruebas interoperables, cobertura histórica, controles de calidad y expedientes probatorios de fuentes.
 
 ## 5. Paquetes de trabajo futuros sugeridos
 
