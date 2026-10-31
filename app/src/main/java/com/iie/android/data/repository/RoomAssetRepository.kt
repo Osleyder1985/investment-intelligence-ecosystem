@@ -208,11 +208,14 @@ class RoomAssetRepository(
         }
         val now = nowEpochMs()
         require(now > 0L) { "Invalid local retrieval clock" }
+        require(points.map { it.timestampEpochMs }.distinct().size == points.size) {
+            "Historical batch contains duplicate timestamps"
+        }
         require(points.all { point ->
             point.providerId == identifier.identifierValue &&
                 point.retrievedAtEpochMs in 1L..now &&
                 point.timestampEpochMs > 0L &&
-                point.timestampEpochMs <= point.retrievedAtEpochMs + 86_400_000L &&
+                point.timestampEpochMs <= point.retrievedAtEpochMs &&
                 point.priceUsd.isFinite() && point.priceUsd > 0.0 &&
                 (point.volume24hUsd == null || (point.volume24hUsd.isFinite() && point.volume24hUsd >= 0.0)) &&
                 (point.marketCapUsd == null || (point.marketCapUsd.isFinite() && point.marketCapUsd >= 0.0))
