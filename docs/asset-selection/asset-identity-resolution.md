@@ -1,6 +1,6 @@
 # Resolución de identidad de criptoactivos
 
-**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.0
+**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.1
 
 ## 1. Principio
 
@@ -20,14 +20,14 @@ El ticker y el nombre comercial no identifican un activo de forma inequívoca. L
 
 Un mismo proyecto puede tener varios activos. Un mismo activo económico puede tener representaciones distintas, con riesgos y derechos diferentes.
 
-## 3. Clave canónica
+## 3. Identificadores internos y atributos de identidad
 
-La identidad interna debe usar un identificador estable propio y conservar, cuando aplique:
+No existe una clave universal única para todas las entidades. La identidad interna utiliza identificadores tipados y namespaced conforme a la sección 10. Los atributos externos no sustituyen esas claves. Conservar, cuando aplique:
 
 - nombre y ticker observado, como atributos no únicos;
 - tipo de activo y tipología económica;
-- red, chain_id y estándar;
-- dirección de contrato normalizada o marcador explícito NATIVE_ASSET;
+- `network_id` namespaced para la instancia concreta de red; `chain_id` y otros identificadores externos se conservan como atributos con namespace/proveedor, nunca como clave global universal;
+- identificador de representación tipado según la familia de red: dirección de contrato, mint, denom, asset ID u otro esquema documentado; para activos nativos, discriminador `NATIVE_ASSET` asociado a `network_id`, nunca una dirección ni marcador insertado en el campo de dirección;
 - emisor/administrador y fuente oficial de identificación;
 - identificadores externos de proveedores, con proveedor y versión;
 - fecha de creación, despliegue, activación y vigencia;
@@ -51,12 +51,13 @@ AMBIGUOUS, UNVERIFIED y CONFLICTED no deben pasar a una valoración que dependa 
 ## 5. Resolución y corroboración
 
 1. Obtener identificadores desde documentación oficial y fuentes primarias de red.
-2. Verificar chain_id y contrato mediante explorador/nodo independiente.
-3. Contrastar símbolo, nombre, emisor, decimales, estándar y estado de despliegue.
-4. Contrastar IDs de proveedores; no tratarlos como autoridad única.
-5. Identificar clones, forks y contratos falsos.
-6. Documentar conflictos y conservar todas las candidaturas.
-7. Registrar evidencia, fecha de verificación, responsable y protocolo aplicado.
+2. Resolver `network_id` y corroborar identificadores externos (incluido `chain_id` cuando aplique) junto con la identidad de la red mediante evidencia apropiada; `chain_id` aislado no identifica universalmente una red.
+3. Verificar contrato/mint/denom/asset ID según la familia de red mediante nodo o fuente independiente cuando sea posible.
+4. Contrastar símbolo, nombre, emisor, decimales, estándar y estado de despliegue.
+5. Contrastar IDs de proveedores; no tratarlos como autoridad única.
+6. Identificar clones, forks y contratos falsos.
+7. Documentar conflictos y conservar todas las candidaturas.
+8. Registrar evidencia, fecha de verificación, responsable y protocolo aplicado.
 
 La documentación oficial puede estar desactualizada; corroborar despliegue y estado actual on-chain.
 

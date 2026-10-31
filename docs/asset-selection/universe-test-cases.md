@@ -13,9 +13,9 @@
 - Fallo: heredar identidad por ticker.
 
 ## AS-003 — Activo nativo
-- Entrada: moneda nativa sin contrato.
-- Esperado: identidad basada en red/chain_id y atributos propios; contract_address=NATIVE_ASSET.
-- Fallo: inventar dirección de contrato.
+- Entrada: activo nativo sin contrato en una red cuya identidad externa puede colisionar con la de otra red.
+- Esperado: `network_id` namespaced + discriminador tipado `NATIVE_ASSET`; `chain_id` se conserva solo como atributo namespaced cuando aplique; el campo de dirección permanece ausente/no aplicable.
+- Fallo: usar `chain_id` como clave global, insertar `NATIVE_ASSET` en `contract_address` o inventar una dirección.
 
 ## AS-004 — Wrapper y subyacente
 - Entrada: token envuelto respaldado por activo en otra red.
@@ -105,9 +105,9 @@ Comprobar identidad, snapshot, finalidad, estado, evidencia, variables, licencia
 - Fallo: tratar ausencia de resultado como inexistencia del activo.
 
 ## AS-020 — Evento de membresía conocido después
-- Entrada: deslistado efectivo en t1, evidencia publicada/disponible en t2 posterior.
-- Esperado: conservar effective_time=t1 y knowledge/availability_time=t2; no usarlo como conocido en t1.
-- Fallo: backdatear el conocimiento.
+- Entrada: deslistado efectivo en t1, evidencia pública o autorizada solo demostrable en t2 posterior.
+- Esperado: conservar `effective_time=t1` y el timestamp de conocimiento/disponibilidad aplicable en t2, identificando la vía; no usarlo como conocido en t1 ni confundirlo con `system_ingestion_time`.
+- Fallo: retrotraer el conocimiento o colapsar disponibilidad pública, autorizada e ingestión interna.
 
 ## AS-021 — Precio último frente a resultado de salida
 - Entrada: activo desaparecido con última cotización antigua y sin mercado ejecutable posterior.

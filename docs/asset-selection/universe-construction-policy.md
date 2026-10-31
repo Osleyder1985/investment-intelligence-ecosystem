@@ -1,6 +1,6 @@
 # Política de construcción del universo de criptoactivos
 
-**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.0
+**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.1
 
 ## 1. Propósito
 
@@ -22,8 +22,11 @@ La pertenencia a un universo no implica recomendación de inversión.
 Cada snapshot debe registrar:
 - universe_id, versión del protocolo y timestamp UTC;
 - decision_time y finalidad;
-- fuentes, licencias, cobertura y availability_time;
-- canonical_asset_id y representation_id;
+- fuentes, licencias, cobertura y timestamps de disponibilidad/conocimiento/captura según la modalidad point-in-time;
+- `economic_asset_id` cuando exista una unidad económica identificable;
+- `network_id` y `representation_id` para la red y representación concretas;
+- `instrument_id` y `listing_id` cuando el universo opere a nivel de instrumento/listing;
+- `project_id` solo como entidad relacionada, nunca como sustituto de identidad económica;
 - estado de identidad;
 - inclusión, exclusión o cuarentena y motivo;
 - evidencia y transformaciones;
@@ -88,8 +91,13 @@ Un snapshot debe distinguir al menos:
 - `snapshot_created_at`: momento real de generación del snapshot;
 - `knowledge_cutoff`: límite temporal de información admisible;
 - `valid_from` / `valid_to`: vigencia efectiva de una característica o membresía;
-- `availability_time`: primer momento demostrable en que la evidencia pudo conocerse por la vía definida;
-- `capture_time`: momento de captura por el sistema.
+- `public_availability_time`: primera disponibilidad pública demostrable por una vía identificada;
+- `authorized_availability_time`: primera disponibilidad demostrable para una cuenta/usuario autorizado concreto;
+- `system_ingestion_time`: momento en que el sistema evaluado incorporó el dato;
+- `capture_time`: momento de captura de una copia/respuesta;
+- `processing_time`: momento en que terminó la validación/transformación.
+
+`availability_time` puede conservarse como campo derivado de compatibilidad solo si declara la modalidad y la vía de acceso; no debe colapsar disponibilidad pública, autorizada e ingestión interna. `knowledge_time` identifica cuándo una evidencia/evento pudo conocerse por la vía y población declaradas, no sustituye esos timestamps específicos.
 
 No intercambiar estos campos. Un snapshot reconstruido posteriormente debe identificarse como tal y conservar su fecha real de creación.
 
@@ -101,7 +109,7 @@ No etiquetar el universo como exhaustivo salvo que exista método de enumeració
 
 ### 9.2 Eventos de membresía
 
-Cada transición debe ser un evento inmutable con event_id, universe_id, entity IDs, estado anterior/nuevo, motivo, effective_time, knowledge_time, source/evidence refs, protocolo y versión. Eventos posibles incluyen DISCOVERED, INCLUDED, INCLUDED_WITH_LIMITATIONS, QUARANTINED, EXCLUDED, DELISTED, MIGRATED, RETIRED y UNRESOLVED. No inferir DELISTED solo por ausencia en un proveedor.
+Cada transición debe ser un evento inmutable con event_id, universe_id, IDs tipados de las entidades afectadas, estado anterior/nuevo, motivo, effective_time, knowledge_time, referencia a la vía/población de conocimiento, source/evidence refs, protocolo y versión. Eventos posibles incluyen DISCOVERED, INCLUDED, INCLUDED_WITH_LIMITATIONS, QUARANTINED, EXCLUDED, DELISTED, MIGRATED, RETIRED y UNRESOLVED. No inferir DELISTED solo por ausencia en un proveedor.
 
 ### 9.3 Reconstrucción histórica
 

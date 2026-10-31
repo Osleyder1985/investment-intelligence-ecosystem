@@ -1,6 +1,6 @@
 # Linaje de datos y semántica point-in-time
 
-**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.0
+**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.1
 
 ## 1. Objetivo
 
@@ -12,12 +12,15 @@ Poder reconstruir qué dato se utilizó, de dónde provino, cómo se transformó
 |---|---|
 | event_time | Momento en que ocurrió el hecho económico/técnico |
 | publication_time | Momento en que el proveedor publicó el dato |
-| availability_time / knowledge_time | Primer momento demostrable en que el dato estuvo disponible públicamente o para el usuario autorizado |
+| public_availability_time | Primera disponibilidad pública demostrable por una vía identificada |
+| authorized_availability_time | Primera disponibilidad demostrable para una cuenta/usuario autorizado concreto |
+| system_ingestion_time | Momento en que el sistema bajo evaluación incorporó el dato |
+| knowledge_time | Momento en que una evidencia pudo conocerse por una población y vía declaradas; no sustituye los timestamps específicos anteriores |
 | capture_time | Momento en que el sistema lo capturó |
 | processing_time | Momento en que se validó/transformó |
 | decision_time | Momento de corte de la evaluación |
 
-Todos los tiempos deben normalizarse a UTC y conservar el valor/origen original cuando sea necesario. Si publication_time o availability_time no se conocen, registrar DESCONOCIDO; no inferirlos a partir de capture_time. Para evaluar qué conocía el sistema concreto, registrar además su momento real de ingestión/captura y disponibilidad interna.
+Todos los tiempos deben normalizarse a UTC y conservar el valor/origen original cuando sea necesario. Si `publication_time`, `public_availability_time` o `authorized_availability_time` no se conocen, registrar UNKNOWN; no inferirlos a partir de `capture_time`. Para evaluar qué conocía el sistema concreto, exigir `system_ingestion_time` y disponibilidad interna demostrables. `availability_time` solo puede usarse como alias derivado si identifica expresamente la modalidad (pública o autorizada) y no se confunde con ingestión.
 
 Para datos on-chain, conservar block height, block timestamp, hash de bloque/transacción, red y semántica de finalización. Un timestamp de bloque no demuestra por sí solo cuándo el dato estuvo indexado o disponible para un observador.
 
@@ -46,15 +49,15 @@ Para una evaluación con decision_time = t, distinguir dos modalidades:
 - RECONSTRUCTION_POINT_IN_TIME: puede utilizarse información publicada y demostrablemente accesible antes de t aunque se capture después, pero debe identificarse como reconstrucción retrospectiva y no como reproducción de lo que el sistema realmente procesó entonces.
 
 En ambas modalidades:
-- admitir solo información con availability_time ≤ t;
-- si availability_time es desconocido y la variable puede introducir look-ahead, excluirla o marcar evaluación no reproducible;
+- admitir solo información cuya disponibilidad pública o autorizada pertinente esté demostrada en o antes de t; en `REPLAY_OPERATIONAL`, exigir además `system_ingestion_time` y disponibilidad interna anteriores a t;
+- si la disponibilidad pertinente es UNKNOWN y la variable puede introducir look-ahead, excluirla o marcar evaluación no reproducible;
 - no usar revisiones posteriores como si fueran valores originales;
 - preservar versiones y fechas de revisión del proveedor;
 - distinguir fecha del evento de fecha en que se conoció;
 - no usar calendarios futuros, unlocks, anuncios o estados publicados después de t, salvo que fueran públicamente conocidos antes y exista evidencia temporal;
 - cualquier dato derivado hereda la disponibilidad más tardía entre sus insumos y la fecha de procesamiento que corresponda.
 
-Un valor corregido retrospectivamente debe guardarse como nueva versión con su propio availability_time. No reemplazar silenciosamente el valor que se conocía en t.
+Un valor corregido retrospectivamente debe guardarse como nueva versión con su propio timestamp de disponibilidad pública o autorizada, según corresponda. No reemplazar silenciosamente el valor que se conocía en t.
 
 ## 5. Linaje de derivados
 
@@ -85,7 +88,7 @@ En `REPLAY_OPERATIONAL`, exigir que el sistema concreto hubiera ingerido y tenid
 
 ## 9. Disponibilidad de datos on-chain y datos derivados
 
-Para datos on-chain separar event/block time, bloque y hash, estado de finalización, reorganización, disponibilidad del nodo/indexador y system_ingestion_time. El timestamp de bloque no prueba cuándo un proveedor terminó de indexar ni cuándo el sistema lo consumió.
+Para datos on-chain separar event/block time, bloque y hash, estado de finalización, reorganización, disponibilidad pública/autorizada del nodo o indexador y `system_ingestion_time`. El timestamp de bloque no prueba cuándo un proveedor terminó de indexar ni cuándo el sistema lo consumió.
 
 Para agregaciones, velas y derivados, documentar cierre de ventana, retrasos, revisiones, backfills y regla de publicación. La disponibilidad del derivado no puede ser anterior a la disponibilidad de sus insumos ni al momento en que el cálculo estuvo terminado y disponible. Conservar valores preliminares y finales como versiones diferentes cuando el proveedor los revise.
 

@@ -1,8 +1,8 @@
 # Matriz de trazabilidad de requisitos IIM
 
-**Versión:** 0.1.0  
-**Corte de revisión:** 2026-10-30  
-**Rama de referencia:** `main`, commit `cb106f7eaf40e70ba9277d0e3bb28c80b3e973df`  
+**Versión:** 0.2.0  
+**Corte de revisión:** 2026-10-31  
+**Rama de referencia:** rama de revisión `docs/issue-19-cross-document-consistency`, basada en `main` en `df32d5e5a9ed584d1f096c8c55e085b8b7e07fb5`  
 **Issue:** [#18](https://github.com/Osleyder1985/investment-intelligence-ecosystem/issues/18)
 
 ## 1. Propósito y límites
@@ -51,6 +51,20 @@ Los estados son acumulativos, pero no se heredan automáticamente: DOCUMENTED no
 | IIM-022 | Decisión y ranking parcial reproducible por horizonte | [Issue/PR #15](https://github.com/Osleyder1985/investment-intelligence-ecosystem/pull/15), merge `45b9bf6469441f3fbcf750efc519a4f2b80f5f1b` | [decision-gates-and-outcomes](../decision/decision-gates-and-outcomes.md), [opportunity-comparison-framework](../decision/opportunity-comparison-framework.md), [ranking-and-dominance-policy](../decision/ranking-and-dominance-policy.md) | DOCUMENTED; SPECIFICATION_DRAFTED | IMPLEMENTED: no evidenciado; TESTED: casos documentales, ejecución no evidenciada; EMPIRICALLY_VALIDATED: no evidenciado |
 | IIM-023 | Informes trazables y snapshots inmutables comparables | [Issue/PR #16](https://github.com/Osleyder1985/investment-intelligence-ecosystem/pull/16), merge `dc3319affa8e53fabe031c6ae68ff0ff62d59a9e` | [evaluation-report-contract](../reporting/evaluation-report-contract.md), [structured-evaluation-schema](../reporting/structured-evaluation-schema.md), [evaluation-snapshot-and-versioning](../history/evaluation-snapshot-and-versioning.md), [longitudinal-comparison-policy](../history/longitudinal-comparison-policy.md) | DOCUMENTED; SPECIFICATION_DRAFTED | IMPLEMENTED: no evidenciado; TESTED: casos documentales, ejecución no evidenciada; EMPIRICALLY_VALIDATED: no evidenciado |
 | IIM-024 | Workflow bajo demanda, estados, idempotencia y recuperación | [Issue/PR #17](https://github.com/Osleyder1985/investment-intelligence-ecosystem/pull/17), merge `cb106f7eaf40e70ba9277d0e3bb28c80b3e973df` | [evaluation-workflow](../execution/evaluation-workflow.md), [execution-state-machine](../execution/execution-state-machine.md), [failure-recovery-and-idempotency](../execution/failure-recovery-and-idempotency.md), [execution-observability](../execution/execution-observability.md) | DOCUMENTED; SPECIFICATION_DRAFTED | IMPLEMENTED: no evidenciado; TESTED: casos documentales, ejecución no evidenciada; EMPIRICALLY_VALIDATED: no evidenciado |
+
+## 3.1 Revisión cruzada fundacional — Issue #19
+
+La revisión posterior al PR #22 detectó contradicciones residuales entre las secciones heredadas y las aclaraciones v0.2.0. Se preparan correcciones documentales en la rama `docs/issue-19-cross-document-consistency`; hasta su integración, esta matriz no debe interpretarse como aprobación. El detalle de hallazgos, decisiones y evidencia pendiente está en [issue-19-cross-document-review](issue-19-cross-document-review.md).
+
+| Requisito | Decisión de revisión | Estado | Evidencia / bloqueo |
+|---|---|---|---|
+| IIM-001 | REVISION_REQUIRED | DOCUMENTED; SPECIFICATION_DRAFTED | La separación de IDs y `network_id` está definida, pero falta cerrar cardinalidades, unicidad, estados/transiciones y reglas de resolución por red con ejemplos verificables. |
+| IIM-019 | REVISION_REQUIRED | DOCUMENTED; SPECIFICATION_DRAFTED | La taxonomía de entidades y relaciones está ampliada; falta contrato interoperable completo de cardinalidades, temporalidad y tratamiento de cambios/relaciones complejas. |
+| IIM-020 | REVISION_REQUIRED | DOCUMENTED; SPECIFICATION_DRAFTED | Se definen cobertura, eventos y timestamps; faltan criterios verificables de completitud por alcance y pruebas históricas con evidencia de cobertura real. |
+| IIM-018 | REVISION_REQUIRED | DOCUMENTED; SPECIFICATION_DRAFTED | Se separan disponibilidad pública, autorizada e ingestión; falta cerrar el catálogo de controles obligatorios por finalidad y demostrar resultados con datos reales. |
+| IIM-002 | BLOCKED para aprobar fuentes concretas | DOCUMENTED; SPECIFICATION_DRAFTED | El registro define expediente probatorio, pero no contiene expedientes concretos con términos/versiones y permisos por operación/finalidad. No habilitar usos no demostrados. |
+
+No se asigna `SPECIFIED` a ninguno de estos requisitos. La revisión es técnica-documental asistida y no equivale a aprobación independiente, dictamen jurídico ni validación empírica.
 
 ## 4. Lectura consolidada
 
