@@ -172,6 +172,7 @@ def resolve_observations(
     refs: list[str] = []
     evm_code_hashes: list[str] = []
     solana_owner_programs: list[str] = []
+    normalization_mismatch = False
     for observation in observations:
         if not isinstance(observation, Mapping):
             return finish("UNRESOLVED", family, ["malformed_observation"])
@@ -205,8 +206,7 @@ def resolve_observations(
             # Hash syntax is checked only; no bytecode is available to recompute it.
             evm_code_hashes.append(code_hash.lower())
             if observation.get("normalized_identifier") != canonical:
-                return finish("UNRESOLVED", family, ["declared_normalization_mismatch"],
-                               network_key=network.network_key, evidence_refs=refs)
+                normalization_mismatch = True
             identifiers.append(canonical)
         else:
             try:
@@ -239,8 +239,7 @@ def resolve_observations(
                                network_key=network.network_key, evidence_refs=refs)
             # Deliberately ignore the fixture's free-text token_program label.
             if observation.get("normalized_identifier") != raw:
-                return finish("UNRESOLVED", family, ["declared_normalization_mismatch"],
-                               network_key=network.network_key, evidence_refs=refs)
+                normalization_mismatch = True
             solana_owner_programs.append(owner)
             identifiers.append(raw)
 
@@ -252,6 +251,9 @@ def resolve_observations(
                        network_key=network.network_key, evidence_refs=refs)
     if len(set(identifiers)) != 1:
         return finish("CONFLICTED", family, ["observations_identify_different_representations"],
+                       network_key=network.network_key, evidence_refs=refs)
+    if normalization_mismatch:
+        return finish("UNRESOLVED", family, ["declared_normalization_mismatch"],
                        network_key=network.network_key, evidence_refs=refs)
     return finish("RESOLVED", family, ["representation_key_derived_from_observations"],
                    network_key=network.network_key, canonical_identifier=identifiers[0],
