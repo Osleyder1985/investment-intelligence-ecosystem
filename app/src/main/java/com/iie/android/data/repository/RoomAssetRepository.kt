@@ -200,19 +200,24 @@ class RoomAssetRepository(
         observation: AssetObservationEntity,
         expectedProviderId: String,
         expectedSymbol: String
-    ): Boolean = try {
-        if (observation.sourceId != "source:coinpaprika" ||
-            observation.observationType != MARKET_QUOTE_OBSERVATION_TYPE ||
-            observation.status != "ACCEPTED"
-        ) return false
-        val payload = JSONObject(observation.valueJson)
-        payload.optString("schema") == "iie.market-quote.v1" &&
-            payload.optString("providerId") == expectedProviderId &&
-            payload.optString("symbol").equals(expectedSymbol, ignoreCase = true) &&
-            payload.optString("quoteCurrency") == "USD" &&
-            payload.optDouble("price", Double.NaN).let { it.isFinite() && it > 0.0 }
-    } catch (_: Exception) {
-        false
+    ): Boolean {
+        return try {
+            if (observation.sourceId != "source:coinpaprika" ||
+                observation.observationType != MARKET_QUOTE_OBSERVATION_TYPE ||
+                observation.status != "ACCEPTED"
+            ) {
+                false
+            } else {
+                val payload = JSONObject(observation.valueJson)
+                payload.optString("schema") == "iie.market-quote.v1" &&
+                    payload.optString("providerId") == expectedProviderId &&
+                    payload.optString("symbol").equals(expectedSymbol, ignoreCase = true) &&
+                    payload.optString("quoteCurrency") == "USD" &&
+                    payload.optDouble("price", Double.NaN).let { it.isFinite() && it > 0.0 }
+            }
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun CoinPaprikaQuote.toObservationJson(): String =
