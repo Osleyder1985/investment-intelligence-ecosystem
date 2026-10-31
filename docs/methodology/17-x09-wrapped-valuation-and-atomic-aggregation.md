@@ -10,7 +10,7 @@
 
 Este documento propone condiciones explícitas de valoración para representaciones wrapped/bridged (A11) y un procedimiento determinista de partición y agregación por unidades atómicas (A12).
 
-A11 y A12 quedan **ADDRESSED_IN_DRAFT**, no aprobados. Se mantienen independientes:
+A11 y A12 quedan **ADDRESSED_IN_DRAFT**, no aprobados. A11 conserva un GAP de armonización/migración con el catálogo legacy de valoración. Se mantienen independientes:
 - `ValuationStatus`: estado del modelo/estimación de valor.
 - `VetoDecision`: resultado de regla de veto y scope.
 - `DecisionOutcome`: conclusión analítica para una finalidad y unidad.
@@ -72,6 +72,21 @@ No convertir automáticamente:
 - NAV del subyacente en NAV del wrapper;
 - paridad histórica en paridad futura;
 - ausencia de incidente conocido en evidencia de seguridad.
+
+### 2.3.1 Compatibilidad con el catálogo de valoración existente — GAP
+
+El catálogo `docs/valuation/valuation-method-catalog.md` v0.1.0 todavía publica los estados legacy `VALUATION_SUPPORTED`, `VALUATION_CONDITIONAL`, `INSUFFICIENT_EVIDENCE`, `NO_APPLICABLE_METHOD` y `NOT_VALUABLE_WITH_AVAILABLE_EVIDENCE`. No coinciden uno-a-uno con el catálogo canónico de X-06.
+
+No realizar migración automática. Como propuesta para revisión:
+- `VALUATION_SUPPORTED` podría mapear a `ESTIMABLE` solo después de verificar método, evidencia, derechos y ausencia de limitación material.
+- `VALUATION_CONDITIONAL` podría mapear a `ESTIMABLE_WITH_LIMITATIONS` únicamente cuando condiciones, límites y enforcement estén identificados; si no, REVIEW/ABSTAIN según el caso.
+- `INSUFFICIENT_EVIDENCE` mantiene el mismo significado.
+- `NO_APPLICABLE_METHOD` podría mapear a `NOT_ESTIMABLE` solo si objeto y derechos están suficientemente identificados y se ha determinado que no existe método defendible.
+- `NOT_VALUABLE_WITH_AVAILABLE_EVIDENCE` es ambiguo entre insuficiencia de evidencia y falta de método; requiere reclasificación caso por caso, no mapping automático.
+
+La matriz `valuation-applicability-matrix.md` usa `CONDITIONAL` como estado de aplicabilidad de una familia de métodos, no como ValuationStatus. Son dimensiones distintas y no deben mezclarse.
+
+**GAP A11:** la matriz X-09 define los outcomes objetivo, pero el catálogo legacy y sus consumidores todavía no han sido armonizados ni migrados. Se requiere actualización versionada, crosswalk aprobado, compatibilidad hacia atrás y revisión de los Requirement Owners antes de considerar A11 cerrado.
 
 ### 2.4 Condiciones para ESTIMABLE_WITH_LIMITATIONS
 
