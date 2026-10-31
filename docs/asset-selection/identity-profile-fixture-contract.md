@@ -171,12 +171,26 @@ El siguiente ejemplo es ilustrativo y no corresponde a una red real. Las direcci
         "entity_type": "asset_representation",
         "raw_identifier": "0x52908400098527886e0f7030069857d2e4169ee7",
         "encoding": "hex-20-byte-lowercase",
+        "normalized_identifier": "0x52908400098527886e0f7030069857d2e4169ee7",
+        "normalization_method": "EVM_ADDRESS_20_BYTES_CASE_INSENSITIVE_v1",
+        "contract_state": {
+          "code_present": true,
+          "code_hash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "token_interface_check": "ERC20_MINIMAL_INTERFACE_SYNTHETIC"
+        },
         "observation_ref": "synthetic-observation-a"
       },
       {
         "entity_type": "asset_representation",
         "raw_identifier": "0x52908400098527886E0F7030069857D2E4169EE7",
         "encoding": "hex-20-byte-EIP55",
+        "normalized_identifier": "0x52908400098527886e0f7030069857d2e4169ee7",
+        "normalization_method": "EVM_ADDRESS_20_BYTES_CASE_INSENSITIVE_v1",
+        "contract_state": {
+          "code_present": true,
+          "code_hash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "token_interface_check": "ERC20_MINIMAL_INTERFACE_SYNTHETIC"
+        },
         "observation_ref": "synthetic-observation-b"
       }
     ]
