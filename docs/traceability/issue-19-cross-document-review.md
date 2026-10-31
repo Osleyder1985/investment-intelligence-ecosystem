@@ -81,3 +81,28 @@ La rama corrige contradicciones detectadas y actualiza la trazabilidad. No cierr
 ### No-conclusiones
 
 No se definió esquema físico de base de datos, algoritmo universal de matching, umbrales de confianza, adaptadores productivos ni cardinalidades empíricas para todos los protocolos. AS-024 a AS-032 son casos de diseño; no se automatizaron ni ejecutaron. No se realizó validación con datos reales, revisión jurídica ni aprobación independiente. Los cinco requisitos conservan sus estados anteriores.
+
+
+## 8. Perfiles EVM y Solana — borrador v0.1.0
+
+**Artefacto:** [network-identity-profiles-evm-solana](../asset-selection/network-identity-profiles-evm-solana.md).  
+**Casos añadidos:** AS-033 a AS-042.
+
+| ID | Regla documentada | Límite pendiente |
+|---|---|---|
+| XCR-11 | EVM: chain_id no es global; se combina con genesis, checkpoints, endpoint y evidencia de fork. | Probar resolución ante clones, endpoints inconsistentes y redes con historia compartida. |
+| XCR-12 | EVM: representación token por network_id + 20 bytes; EIP-55 es formato/validación, no identidad distinta. | Fixtures de checksum, direcciones no-contract y comportamiento no estándar. |
+| XCR-13 | EVM: proxy separado de implementación, con observaciones temporales de upgrade. | Fixtures de patrones proxy, admin y upgrades; no existe detector universal validado. |
+| XCR-14 | Solana: mint por network_id + public key de 32 bytes, verificando cuenta, inicialización y owner program. | Fixtures para Token Program clásico, Token-2022 y cuentas inválidas. |
+| XCR-15 | Solana: SOL nativo separado de WSOL; extensiones Token-2022 y autoridades son atributos críticos versionados. | Parser de extensiones completo y validación de comportamiento por versión de programa. |
+
+### Decisión por requisito
+
+- **IIM-001: REVISION_REQUIRED.** EVM y Solana cuentan con perfiles documentales; no se han validado adaptadores ni cubierto todas las familias de red.
+- **IIM-019: REVISION_REQUIRED.** Las relaciones y atributos de red están mejor concretados, pero falta revisión independiente y validación interoperable de las relaciones complejas.
+- **IIM-020 e IIM-018: REVISION_REQUIRED.** Esta iteración no demuestra cobertura histórica ni controles point-in-time.
+- **IIM-002: BLOCKED para aprobar fuentes concretas.** No se aportan expedientes de permisos/términos de proveedores.
+
+### No-conclusiones
+
+Los perfiles son borradores de especificación, no software ejecutable. AS-033 a AS-042 no se han automatizado ni ejecutado. No se probaron endpoints, snapshots ni parsers; no se hizo revisión jurídica ni aprobación metodológica independiente. No se afirma cobertura completa de EVM o Solana.
