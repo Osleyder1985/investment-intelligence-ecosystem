@@ -169,14 +169,14 @@ El siguiente ejemplo es ilustrativo y no corresponde a una red real. Las direcci
     "observations": [
       {
         "entity_type": "asset_representation",
-        "raw_identifier": "0x1111111111111111111111111111111111111111",
-        "encoding": "hex-20-byte",
+        "raw_identifier": "0x52908400098527886e0f7030069857d2e4169ee7",
+        "encoding": "hex-20-byte-lowercase",
         "observation_ref": "synthetic-observation-a"
       },
       {
         "entity_type": "asset_representation",
-        "raw_identifier": "0x1111111111111111111111111111111111111111",
-        "encoding": "hex-20-byte-checksum-display",
+        "raw_identifier": "0x52908400098527886E0F7030069857D2E4169EE7",
+        "encoding": "hex-20-byte-EIP55",
         "observation_ref": "synthetic-observation-b"
       }
     ]
@@ -187,7 +187,7 @@ El siguiente ejemplo es ilustrativo y no corresponde a una red real. Las direcci
       {
         "entity_fixture_id": "REP-EVM-SYNTH-01",
         "entity_type": "asset_representation",
-        "key": ["NET-EVM-SYNTH-01", "0x1111111111111111111111111111111111111111"]
+        "key": ["NET-EVM-SYNTH-01", "0x52908400098527886e0f7030069857d2e4169ee7"]
       }
     ],
     "assertions": [
