@@ -1,7 +1,7 @@
 # Matriz integrada de escenarios de conformidad
 
 **ID:** IIE-METH-CONFORMANCE-010  
-**Versión:** 0.7.0-draft  
+**Versión:** 0.8.0-draft  
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
 **Hallazgo:** X-09; revisión 0.3.0 incorpora resoluciones propuestas A01-A10 de auditoría 15  
@@ -792,3 +792,32 @@ La estrategia de obligaciones formales, certificados, TCB, complejidad y pruebas
 - **INV-63 Partition proof completeness:** cobertura, contención, no vacío y disjunción se verifican como obligaciones distintas.
 
 **Estado:** A13 ADDRESSED_IN_DRAFT / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED. S-129..S-140 e INV-56..INV-63 no son fixtures ni pruebas ejecutadas.
+
+## 24. FSA-01 — Semántica de pertenencia e incertidumbre (v0.8.0-draft)
+
+La propuesta formal de evaluación de pertenencia, lógica de Kleene fuerte con INVALID estricto, aproximaciones inferior/superior, cuantificación y reglas fail-closed está en [22-x09-scope-algebra-membership-uncertainty-semantics.md](22-x09-scope-algebra-membership-uncertainty-semantics.md) v0.1.0-draft.
+
+| ID | Condición | Resultado esperado | Dimensión |
+|---|---|---|---|
+| S-141 | P(x)=UNKNOWN y se evalúa NOT P(x) | UNKNOWN; nunca TRUE ni FALSE | Negación |
+| S-142 | A(x)=FALSE, B(x)=UNKNOWN; evaluar A∩B | FALSE local; conservar incertidumbre/diagnostics de B | Intersección |
+| S-143 | A(x)=TRUE, B(x)=UNKNOWN; evaluar A∪B | TRUE local; no declarar completa la denotación global | Unión |
+| S-144 | A(x)=TRUE, B(x)=UNKNOWN; evaluar A\\B | UNKNOWN; no incluir ni excluir el punto | Diferencia |
+| S-145 | Universo cerrado, todas las pertenencias de P son FALSE | EMPTY solo con certificado exhaustivo | Vacío |
+| S-146 | No hay witness TRUE y queda región UNKNOWN | UNRESOLVED; prohibido EMPTY | Vacío incompleto |
+| S-147 | A∩B conserva región UNKNOWN sin witness TRUE/TRUE | No DISJOINT; relación UNRESOLVED | Disjunción |
+| S-148 | Existe witness x con A(x)=TRUE y B(x)=TRUE | OVERLAPS demostrado | Solapamiento |
+| S-149 | Subexpresión requerida es INVALID dentro de AND/OR | INVALID estricto; no ocultar por absorción | Validez |
+| S-150 | EXISTS sobre universo incompleto sin witness TRUE | UNKNOWN, no FALSE | Cuantificación |
+| S-151 | FORALL sobre universo completo con al menos un witness FALSE | FALSE | Cuantificación |
+
+### 24.1 Invariantes adicionales
+
+- **INV-64 Unknown preservation:** UNKNOWN no se convierte en TRUE/FALSE sin prueba adicional.
+- **INV-65 Invalid strictness:** INVALID en expresión requerida invalida la composición.
+- **INV-66 Exact denotation:** RESOLVED exige igualdad de extensiones inferior y superior en universo cerrado.
+- **INV-67 Empty proof completeness:** EMPTY exige exhaustividad y ausencia demostrada de miembros.
+- **INV-68 Disjointness proof completeness:** UNKNOWN residual bloquea DISJOINT.
+- **INV-69 Quantifier completeness:** resultados negativos de FORALL/EXISTS requieren cobertura completa o witness suficiente.
+
+**Estado:** FSA-01 ADDRESSED_IN_DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED. S-141..S-151 e INV-64..INV-69 son criterios conceptuales; no son fixtures ni tests ejecutados.
