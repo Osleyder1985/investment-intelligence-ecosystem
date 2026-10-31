@@ -182,6 +182,19 @@ class IIEDatabaseTest {
     }
 
     @Test
+    fun repositoryWatchlistToggleIsAtomicAndAlternatesState() = runBlocking {
+        database.assetDao().insertAsset(
+            asset("asset-toggle", "canonical:toggle", "Toggle Asset", "TGL")
+        )
+        val repository = com.iie.android.data.repository.RoomAssetRepository(database) { 500L }
+
+        assertEquals(true, repository.toggleWatchlist("asset-toggle"))
+        assertNotNull(database.watchlistDao().getEntry("asset-toggle"))
+        assertEquals(false, repository.toggleWatchlist("asset-toggle"))
+        assertEquals(null, database.watchlistDao().getEntry("asset-toggle"))
+    }
+
+    @Test
     fun searchMatchesAssetNameAndSymbolWithoutAssumingUniqueSymbols() = runBlocking {
         database.assetDao().insertAssets(
             listOf(
