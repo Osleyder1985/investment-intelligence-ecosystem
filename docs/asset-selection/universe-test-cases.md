@@ -169,3 +169,54 @@ Comprobar identidad, snapshot, finalidad, estado, evidencia, variables, licencia
 - Entrada: emisor inicial, administrador operativo y controlador del proxy son entidades diferentes.
 - Esperado: roles independientes, temporales y sustentados por evidencia; UNKNOWN cuando no se conozca.
 - Fallo: inferir propiedad/control desde el nombre del proyecto o del emisor.
+
+
+## AS-033 — EVM: chain_id no único entre redes candidatas
+- Entrada: dos endpoints EVM anuncian el mismo chain_id.
+- Esperado: comparar genesis hash, checkpoints y evidencia de endpoint; si no se distinguen de forma defendible, mantener network_id separados como candidatos y resolución AMBIGUOUS/UNVERIFIED.
+- Fallo: usar chain_id como clave global o elegir por popularidad.
+
+## AS-034 — EVM: checksum/capitalización de dirección
+- Entrada: la misma dirección de 20 bytes representada en minúsculas y con checksum EIP-55 válido.
+- Esperado: una misma representación dentro del mismo network_id; conservar forma original y normalización.
+- Fallo: crear dos representation_id por capitalización o aceptar checksum inválido sin advertencia.
+
+## AS-035 — EVM: misma dirección en redes distintas
+- Entrada: igual dirección hexadecimal observada en dos network_id distintos.
+- Esperado: dos representaciones distintas, con evidencia independiente de despliegue/código en cada red.
+- Fallo: fusionarlas por dirección, ticker o code hash.
+
+## AS-036 — EVM: activo nativo
+- Entrada: activo nativo de una red EVM sin contrato ERC-20.
+- Esperado: discriminador NATIVE_ASSET asociado al network_id y esquema nativo versionado.
+- Fallo: inventar dirección de contrato o tratar un wrapped token como activo nativo.
+
+## AS-037 — EVM: proxy con upgrade
+- Entrada: proxy estable con cambio de implementación en un bloque posterior.
+- Esperado: conservar proxy como representación y registrar implementación/code hash/autoridad por intervalos temporales.
+- Fallo: reemplazar la identidad del proxy por la implementación actual al reconstruir el pasado.
+
+## AS-038 — EVM: dirección sin contrato/token verificable
+- Entrada: dirección válida de 20 bytes sin código o con comportamiento que no demuestra ser token.
+- Esperado: identidad de dirección observada, pero no clasificar como token confirmado; estado UNVERIFIED/NOT_A_TOKEN según evidencia.
+- Fallo: asumir ERC-20 por ticker, ABI de tercero o metadata.
+
+## AS-039 — Solana: mint válido y programa propietario
+- Entrada: cuenta de 32 bytes inicializada con datos de mint y owner program compatible.
+- Esperado: representation_id por network_id + mint pubkey; registrar programa propietario, slot y commitment.
+- Fallo: aceptar una public key válida sin verificar existencia, inicialización y owner.
+
+## AS-040 — Solana: SOL nativo frente a WSOL
+- Entrada: activo nativo SOL y mint Wrapped SOL.
+- Esperado: identidades de representación separadas y relación explícita de conversión/representación si está justificada.
+- Fallo: usar el mint WSOL como identificador de SOL nativo.
+
+## AS-041 — Solana: Token-2022 con extensión no soportada
+- Entrada: mint Token-2022 con extensión que el parser no reconoce.
+- Esperado: conservar identidad si está confirmada, marcar extensión UNKNOWN/UNSUPPORTED y bloquear conclusiones de transferibilidad/compatibilidad afectadas.
+- Fallo: ignorar la extensión o declarar transferibilidad estándar.
+
+## AS-042 — Solana: autoridades y metadata mutables
+- Entrada: mint con cambio de authority o metadata entre slots.
+- Esperado: conservar observaciones temporales; separar mint authority/freeze authority/extensiones de metadata y proyecto.
+- Fallo: usar metadata como clave o asumir que autoridad revocada en un slot nunca puede haber existido.
