@@ -65,5 +65,5 @@ See:
 - No analytical engine or external provider is integrated.
 - The demo fixture does not establish production asset identity; USDC is intentionally left without a network deployment because its representation is multi-chain.
 - No generated Room schema JSON has been verified or committed.
-- An Android CI workflow has been added, but no successful run is recorded yet; Android compilation, instrumentation execution, and device/emulator verification remain pending.
+- The first Android CI run successfully assembled the app and compiled the instrumentation tests. A later workflow adds emulator execution and Room schema artifact publication; its latest run is pending. No successful emulator execution or reviewed schema artifact is claimed yet.
 - The application ID `com.iie.android` is provisional.
