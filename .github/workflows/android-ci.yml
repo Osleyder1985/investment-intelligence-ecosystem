@@ -113,6 +113,18 @@ jobs:
           test -f "$ANDROID_AVD_HOME/iie-api35.ini"
           avdmanager list avd
 
+      - name: Enable KVM access for the emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -e /dev/kvm ]; then
+            echo "KVM device /dev/kvm is not available on this runner."
+            exit 1
+          fi
+          sudo chmod 666 /dev/kvm
+          ls -l /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+
       - name: Start emulator with bounded boot detection
         shell: bash
         run: |
