@@ -9,6 +9,7 @@ import com.iie.android.data.local.DemoAssetSeeder
 import com.iie.android.data.local.IIEDatabaseProvider
 import com.iie.android.data.repository.RoomAssetRepository
 import com.iie.android.domain.model.Asset
+import com.iie.android.domain.model.AssetDeploymentSummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -49,6 +50,9 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             }
         }
     }
+
+    fun observeDeployments(assetId: String): kotlinx.coroutines.flow.Flow<List<AssetDeploymentSummary>> =
+        repository.observeDeployments(assetId)
 
     fun updateSearchQuery(value: String) {
         query.value = value
