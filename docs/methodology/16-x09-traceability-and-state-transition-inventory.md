@@ -5,7 +5,7 @@
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
 **Objeto:** resolver documentalmente A09 y A10 de la auditoría `15-x09-cross-document-consistency-audit.md`.  
-**Matriz base:** `14-integrated-conformance-scenario-matrix.md` v0.5.0-draft.
+**Matriz base:** `14-integrated-conformance-scenario-matrix.md` v0.6.0-draft.
 
 ## 1. Dictamen y límites
 
@@ -276,3 +276,39 @@ La regla propuesta está especificada en [18-x09-atomic-aggregation-precedence.m
 - ORE requiere revisión separada; S-114 solo afirma que no se hereda la regla analítica.
 
 Los escenarios S-100..S-114 e invariantes INV-36..INV-43 son especificaciones futuras. No existen fixtures ni tests ejecutables asociados y no se han ejecutado pruebas. La precedencia propuesta sigue NOT_APPROVED.
+
+
+## 14. Trazabilidad de Scope Algebra — X-09 v0.6.0
+
+La especificación propuesta está en [19-x09-scope-algebra-and-atomic-partition.md](19-x09-scope-algebra-and-atomic-partition.md) v0.1.0-draft. Define dimensiones tipadas, estados RESOLVED/EMPTY/UNRESOLVED/INVALID, operaciones parciales, dependency graph, derived scopes y condiciones de partición exacta.
+
+### 14.1 Escenarios
+
+| Escenarios | Regla fuente | Dimensión | Requisito IIM candidato | Test futuro | Estado |
+|---|---|---|---|---|---|
+| S-115..S-118 | X-05 §3; X-06 §3–4; documento 19 §§3–4 | Identidad, dimensiones y comparación | IIM-001,019,020,022; mappings sujetos a owners | TC-X09-S-115..118 | PARTIAL_DRAFT |
+| S-119..S-121 | Documento 19 §§4–5,10 | Intervalos/unidades/tiempo | IIM-018,020,022; mappings sujetos a owners | TC-X09-S-119..121 | PARTIAL_DRAFT |
+| S-122..S-123 | X-05; X-06 §3–4; documento 19 §7 | Intersección, residual, exhaustividad | IIM-020,022,024 | TC-X09-S-122..123 | PARTIAL_DRAFT |
+| S-124..S-125 | X-05; X-07; documento 19 §8 | Dependencias causales y no inferencia de independencia | IIM-019,020,022,024 | TC-X09-S-124..125 | PARTIAL_DRAFT |
+| S-126..S-128 | X-06 §10; documento 19 §§7,9,11 | Derived scope, homogeneidad y envelope gate | IIM-020,022,024 | TC-X09-S-126..128 | PARTIAL_DRAFT |
+
+### 14.2 Invariantes
+
+| Invariante | Escenarios mínimos | Regla fuente | Test futuro | Estado |
+|---|---|---|---|---|
+| INV-44 No implicit wildcard | S-117 | Documento 19 §3.2 | TC-X09-INV-44 | PARTIAL_DRAFT |
+| INV-45 Unknown is not empty | S-116,S-128 | Documento 19 §4.2 | TC-X09-INV-45 | PARTIAL_DRAFT |
+| INV-46 Canonical subject identity | S-116 | Documento 19 §4.1 | TC-X09-INV-46 | PARTIAL_DRAFT |
+| INV-47 Typed scope operations | S-119,S-120 | Documento 19 §4.3 | TC-X09-INV-47 | PARTIAL_DRAFT |
+| INV-48 Exact partition coverage | S-122,S-123,S-128 | Documento 19 §7 | TC-X09-INV-48 | PARTIAL_DRAFT |
+| INV-49 Pairwise disjointness | S-122,S-128 | Documento 19 §7 | TC-X09-INV-49 | PARTIAL_DRAFT |
+| INV-50 Residual conservation | S-122,S-123 | Documento 19 §7.3 | TC-X09-INV-50 | PARTIAL_DRAFT |
+| INV-51 Dependency provenance | S-124,S-125 | Documento 19 §8 | TC-X09-INV-51 | PARTIAL_DRAFT |
+| INV-52 No implicit transitivity | S-124,S-125 | Documento 19 §8.2 | TC-X09-INV-52 | PARTIAL_DRAFT |
+| INV-53 Derived scope isolation | S-126 | Documento 19 §9 | TC-X09-INV-53 | PARTIAL_DRAFT |
+| INV-54 Scope context homogeneity | S-127,S-128 | Documento 19 §§3,7 | TC-X09-INV-54 | PARTIAL_DRAFT |
+| INV-55 Scope deterministic normalization | S-118,S-119,S-121 | Documento 19 §§4,10 | TC-X09-INV-55 | PARTIAL_DRAFT |
+
+### 14.3 Límites
+
+Los mappings IIM son candidatos, no declaración de cobertura normativa. Requirement Owners deben validar cada asignación. No hay JSON Schemas, código, fixtures, property-based tests ni ejecución de pruebas. Architecture, Risk, Security, Operations y Governance deben aprobar la semántica y el método de demostración de partición antes de implementación.
