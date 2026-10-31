@@ -1,6 +1,6 @@
 # Política de calidad y admisibilidad de datos
 
-**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.1.0
+**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.0
 
 ## 1. Principio
 
