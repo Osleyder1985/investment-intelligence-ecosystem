@@ -11,6 +11,7 @@ import com.iie.android.data.local.entity.AssetObservationEntity
 import com.iie.android.data.local.entity.DataSourceEntity
 import com.iie.android.data.local.entity.NetworkEntity
 import com.iie.android.data.local.entity.WatchlistEntryEntity
+import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -503,6 +504,87 @@ class IIEDatabaseTest {
             .getLatestCoinPaprikaQuote("asset:usd-coin")
 
         assertEquals(null, result)
+    }
+
+    @Test
+    fun coinPaprikaDailyHistoryPersistenceIsIdempotentAndKeepsUsdcUsdtSeparate() = runBlocking {
+        val now = 1_800_000_000_000L
+        DemoAssetSeeder(database) { now }.seed()
+        val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
+        val usdcPoints = listOf(
+            CoinPaprikaHistoricalPoint("usdc-usd-coin", now - 172_800_000L, 1.0001, 1200.0, 45_000_000_000.0, now),
+            CoinPaprikaHistoricalPoint("usdc-usd-coin", now - 86_400_000L, 0.9999, 1300.0, 44_900_000_000.0, now)
+        )
+        val firstInsert = repository.persistCoinPaprikaDailyHistory("asset:usd-coin", "USDC", usdcPoints)
+        val repeatedInsert = repository.persistCoinPaprikaDailyHistory("asset:usd-coin", "USDC", usdcPoints)
+        val usdtInsert = repository.persistCoinPaprikaDailyHistory(
+            "asset:tether",
+            "USDT",
+            listOf(CoinPaprikaHistoricalPoint("usdt-tether", now - 86_400_000L, 1.0002, 900.0, 110_000_000_000.0, now))
+        )
+
+        assertEquals(2, firstInsert)
+        assertEquals(0, repeatedInsert)
+        assertEquals(1, usdtInsert)
+        val usdcHistory = database.assetObservationDao()
+            .observeForAsset("asset:usd-coin").first()
+            .filter { it.observationType == "MARKET_HISTORY_DAILY" }
+        val usdtHistory = database.assetObservationDao()
+            .observeForAsset("asset:tether").first()
+            .filter { it.observationType == "MARKET_HISTORY_DAILY" }
+        assertEquals(2, usdcHistory.size)
+        assertEquals(1, usdtHistory.size)
+        assertEquals(setOf("usdc-usd-coin"), usdcHistory.map {
+            org.json.JSONObject(it.valueJson).getString("providerId")
+        }.toSet())
+        assertEquals(setOf("usdt-tether"), usdtHistory.map {
+            org.json.JSONObject(it.valueJson).getString("providerId")
+        }.toSet())
+        assertEquals(true, usdcHistory.all { it.payloadSha256?.matches(Regex("[a-f0-9]{64}")) == true })
+        assertEquals(true, usdcHistory.all { it.licenseReference == "https://coinpaprika.com/terms-of-use" })
+    }
+
+    @Test
+    fun coinPaprikaDailyHistoryRejectsWrongProviderAndFutureTimestamp() = runBlocking {
+        val now = 1_800_000_000_000L
+        DemoAssetSeeder(database) { now }.seed()
+        val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
+
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking {
+                repository.persistCoinPaprikaDailyHistory(
+                    "asset:usd-coin", "USDC",
+                    listOf(CoinPaprikaHistoricalPoint("usdt-tether", now - 1_000L, 1.0, null, null, now))
+                )
+            }
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking {
+                repository.persistCoinPaprikaDailyHistory(
+                    "asset:usd-coin", "USDC",
+                    listOf(CoinPaprikaHistoricalPoint("usdc-usd-coin", now + 1_000L, 1.0, null, null, now))
+                )
+            }
+        }
+        assertEquals(0, database.assetObservationDao()
+            .observeForAsset("asset:usd-coin").first()
+            .count { it.observationType == "MARKET_HISTORY_DAILY" })
+    }
+
+    @Test
+    fun coinPaprikaDailyHistoryRejectsDuplicateTimestampsWithinBatch() = runBlocking {
+        val now = 1_800_000_000_000L
+        DemoAssetSeeder(database) { now }.seed()
+        val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
+        val duplicate = CoinPaprikaHistoricalPoint("usdc-usd-coin", now - 1_000L, 1.0, null, null, now)
+
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking {
+                repository.persistCoinPaprikaDailyHistory(
+                    "asset:usd-coin", "USDC", listOf(duplicate, duplicate.copy(priceUsd = 1.01))
+                )
+            }
+        }
     }
 
     private suspend fun insertQuote(
