@@ -412,10 +412,10 @@ class IIEDatabaseTest {
             )
         )
 
-        val usdc = dao.getLatestObservation("asset:usd-coin", "MARKET_QUOTE")
-        val usdt = dao.getLatestObservation("asset:tether", "MARKET_QUOTE")
-        assertEquals("usdc-usd-coin", org.json.JSONObject(usdc!!.valueJson).getString("providerId"))
-        assertEquals("usdt-tether", org.json.JSONObject(usdt!!.valueJson).getString("providerId"))
+        val usdc = dao.getLatestObservation("asset:usd-coin", "MARKET_QUOTE") ?: error("USDC quote missing")
+        val usdt = dao.getLatestObservation("asset:tether", "MARKET_QUOTE") ?: error("USDT quote missing")
+        assertEquals("usdc-usd-coin", org.json.JSONObject(usdc.valueJson).getString("providerId"))
+        assertEquals("usdt-tether", org.json.JSONObject(usdt.valueJson).getString("providerId"))
         assertEquals("USDC", org.json.JSONObject(usdc.valueJson).getString("symbol"))
         assertEquals("USDT", org.json.JSONObject(usdt.valueJson).getString("symbol"))
     }
