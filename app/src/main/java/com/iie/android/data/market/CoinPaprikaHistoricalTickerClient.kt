@@ -15,6 +15,15 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
+fun interface CoinPaprikaDailyHistoryFetcher {
+    suspend fun fetchDaily(
+        providerId: String,
+        start: LocalDate,
+        end: LocalDate?,
+        retrievedAtEpochMs: Long
+    ): List<CoinPaprikaHistoricalPoint>
+}
+
 data class CoinPaprikaHistoricalPoint(
     val providerId: String,
     val timestampEpochMs: Long,
