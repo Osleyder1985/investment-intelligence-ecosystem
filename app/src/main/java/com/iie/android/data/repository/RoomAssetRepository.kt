@@ -5,6 +5,7 @@ import com.iie.android.data.local.IIEDatabase
 import com.iie.android.data.local.entity.WatchlistEntryEntity
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetDeploymentSummary
+import com.iie.android.domain.model.AssetObservation
 import com.iie.android.domain.model.AssetObservationProvenance
 import com.iie.android.domain.repository.AssetRepository
 import kotlinx.coroutines.flow.Flow
@@ -77,6 +78,32 @@ class RoomAssetRepository(
                 )
             }
         }
+
+    /** Returns the latest typed observation and its registered source-use status. */
+    suspend fun getLatestObservationForEvaluation(
+        assetId: String,
+        observationType: String
+    ): Pair<AssetObservation, String>? {
+        val entity = database.assetObservationDao().getLatest(assetId, observationType)
+            ?: return null
+        val source = database.dataSourceDao().getSource(entity.sourceId)
+            ?: return null
+        return AssetObservation(
+            observationId = entity.observationId,
+            assetId = entity.assetId,
+            deploymentId = entity.deploymentId,
+            sourceId = entity.sourceId,
+            observationType = entity.observationType,
+            observedAtEpochMs = entity.observedAtEpochMs,
+            retrievedAtEpochMs = entity.retrievedAtEpochMs,
+            status = entity.status,
+            quality = entity.quality,
+            valueSchemaVersion = entity.valueSchemaVersion,
+            valueJson = entity.valueJson,
+            payloadSha256 = entity.payloadSha256,
+            licenseReference = entity.licenseReference
+        ) to source.permittedUseStatus
+    }
 
     override suspend fun addToWatchlist(assetId: String, note: String?) {
         require(database.assetDao().getAsset(assetId) != null) {
