@@ -45,8 +45,7 @@ class FreshnessEvaluator(
 
         if (retrievedAtEpochMs > evaluatedAtEpochMs ||
             referenceTime > evaluatedAtEpochMs ||
-            (policy.timestampBasis == TimestampBasis.OBSERVED_AT &&
-                referenceTime > retrievedAtEpochMs)
+            (observedAtEpochMs != null && observedAtEpochMs > retrievedAtEpochMs)
         ) {
             return FreshnessEvaluation.NotEvaluated(
                 FreshnessEvaluation.Reason.INVALID_TIME_ORDER
