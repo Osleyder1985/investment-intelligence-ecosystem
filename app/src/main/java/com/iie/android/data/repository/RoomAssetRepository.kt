@@ -2,7 +2,12 @@ package com.iie.android.data.repository
 
 import androidx.room.withTransaction
 import com.iie.android.data.local.IIEDatabase
+import com.iie.android.data.local.entity.AssetObservationEntity
 import com.iie.android.data.local.entity.WatchlistEntryEntity
+import com.iie.android.data.market.CoinPaprikaTickerClient
+import com.iie.android.data.market.CoinPaprikaQuote
+import java.security.MessageDigest
+import java.util.UUID
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetDeploymentSummary
 import com.iie.android.domain.model.AssetObservation
@@ -103,6 +108,73 @@ class RoomAssetRepository(
             payloadSha256 = entity.payloadSha256,
             licenseReference = entity.licenseReference
         ) to source.permittedUseStatus
+    }
+
+
+    /**
+     * Fetches by the registered CoinPaprika identifier (never by ticker symbol),
+     * then appends an immutable market observation to the existing provenance ledger.
+     */
+    suspend fun fetchAndPersistCoinPaprikaQuote(
+        assetId: String,
+        expectedSymbol: String,
+        client: CoinPaprikaTickerClient
+    ): AssetObservationEntity {
+        val sourceId = "source:coinpaprika"
+        val source = database.dataSourceDao().getSource(sourceId)
+            ?: error("CoinPaprika source is not registered")
+        check(source.permittedUseStatus == "PERSONAL_USE_ONLY") {
+            "CoinPaprika source is not enabled for this app's personal-use scope"
+        }
+        val identifier = database.assetIdentifierDao().findForAsset(
+            assetId = assetId,
+            sourceId = sourceId,
+            namespace = "coinpaprika"
+        ) ?: error("No CoinPaprika provider identifier is mapped to this asset")
+        check(identifier.verificationStatus == "PROVIDER_ID_CONFIRMED") {
+            "CoinPaprika provider identifier is not confirmed"
+        }
+
+        val quote = client.fetch(
+            providerId = identifier.identifierValue,
+            expectedSymbol = expectedSymbol
+        )
+        val payload = quote.toObservationJson()
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(payload.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        val observation = AssetObservationEntity(
+            observationId = "observation:coinpaprika:${UUID.randomUUID()}",
+            assetId = assetId,
+            deploymentId = null,
+            sourceId = sourceId,
+            observationType = MARKET_QUOTE_OBSERVATION_TYPE,
+            observedAtEpochMs = quote.providerUpdatedAtEpochMs,
+            retrievedAtEpochMs = quote.retrievedAtEpochMs,
+            status = "ACCEPTED",
+            quality = "PROVIDER_SCHEMA_VALIDATED",
+            valueSchemaVersion = 1,
+            valueJson = payload,
+            payloadSha256 = digest,
+            licenseReference = source.termsUrl
+        )
+        database.assetObservationDao().insertObservation(observation)
+        return observation
+    }
+
+    suspend fun getLatestCoinPaprikaQuote(assetId: String): Pair<AssetObservationEntity, String>? {
+        val observation = database.assetObservationDao().getLatestObservation(
+            assetId, MARKET_QUOTE_OBSERVATION_TYPE
+        ) ?: return null
+        val source = database.dataSourceDao().getSource(observation.sourceId) ?: return null
+        return observation to (source.attributionText ?: source.displayName)
+    }
+
+    private fun CoinPaprikaQuote.toObservationJson(): String =
+        """{"schema":"iie.market-quote.v1","providerId":"$providerId","symbol":"$symbol","quoteCurrency":"USD","price":$priceUsd,"providerUpdatedAtEpochMs":$providerUpdatedAtEpochMs,"retrievedAtEpochMs":$retrievedAtEpochMs}"""
+
+    companion object {
+        const val MARKET_QUOTE_OBSERVATION_TYPE = "MARKET_QUOTE"
     }
 
     override suspend fun addToWatchlist(assetId: String, note: String?) {
