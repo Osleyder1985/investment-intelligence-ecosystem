@@ -103,7 +103,7 @@ Este perfil se limita a cadenas UTXO Bitcoin-like. No se debe aplicar sin adapta
 
 ### 3.2 Activo nativo
 
-El activo nativo se identifica mediante (network_id, NATIVE_ASSET, native_asset_scheme/version). No se identifica por ticker, símbolo de wallet, dirección ni script de recepción.
+El activo nativo UTXO se identifica mediante (network_id, NATIVE_ASSET). La versión del esquema de identificación y del parser se conserva como metadato de procedencia, no como parte de la clave estable. No se identifica por ticker, símbolo de wallet, dirección ni script de recepción.
 
 Registrar como atributos versionados:
 
