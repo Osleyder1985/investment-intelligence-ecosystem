@@ -120,6 +120,16 @@ class RoomAssetRepository(
         expectedSymbol: String,
         client: CoinPaprikaTickerClient
     ): AssetObservationEntity {
+        val cached = database.assetObservationDao().getLatestObservation(
+            assetId, MARKET_QUOTE_OBSERVATION_TYPE
+        )
+        val now = nowEpochMs()
+        if (cached != null && now >= cached.retrievedAtEpochMs &&
+            now - cached.retrievedAtEpochMs < QUOTE_CACHE_TTL_MS
+        ) {
+            return cached
+        }
+
         val sourceId = "source:coinpaprika"
         val source = database.dataSourceDao().getSource(sourceId)
             ?: error("CoinPaprika source is not registered")
@@ -175,6 +185,7 @@ class RoomAssetRepository(
 
     companion object {
         const val MARKET_QUOTE_OBSERVATION_TYPE = "MARKET_QUOTE"
+        const val QUOTE_CACHE_TTL_MS = 10 * 60 * 1000L
     }
 
     override suspend fun addToWatchlist(assetId: String, note: String?) {
