@@ -1,7 +1,7 @@
 # Matriz integrada de escenarios de conformidad
 
 **ID:** IIE-METH-CONFORMANCE-010  
-**Versión:** 0.3.0-draft  
+**Versión:** 0.4.0-draft  
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
 **Hallazgo:** X-09; revisión 0.3.0 incorpora resoluciones propuestas A01-A10 de auditoría 15  
@@ -632,3 +632,60 @@ Este documento complementario contiene:
 - Transiciones prohibidas, métricas y criterios de aceptación.
 
 **Estado:** A09/A10 ADDRESSED_IN_DRAFT. El crosswalk requiere expansión por escenario y validación por Requirement Owners. El inventario revela que varias máquinas (incluidas RiskDomainStatus, ORE, AE, SelectionDecision, Governance y TradeAuthorization) carecen todavía de grafos exhaustivos. No se declara cobertura completa ni aprobación. No se han creado ni ejecutado tests.
+
+
+## 19. A11 — Escenarios de valoración wrapped (v0.4.0-draft)
+
+La especificación detallada está en [17-x09-wrapped-valuation-and-atomic-aggregation.md](17-x09-wrapped-valuation-and-atomic-aggregation.md).
+
+| ID | Input/condición | Expected outcome tipado | Regla |
+|---|---|---|---|
+| S-085 | No se identifica contrato/representación o derechos del holder | ValuationStatus.INSUFFICIENT_EVIDENCE; no emitir estimación | A11 W-01 |
+| S-086 | Derechos identificados; bridge comprometido; redención/paridad material no verificable | ValuationStatus.NOT_ESTIMABLE; VetoDecision separado; bloquear conclusión favorable dependiente | A11 W-02 |
+| S-087 | Solo precio secundario del wrapper, sin modelo defendible del claim | ValuationStatus.NOT_ESTIMABLE; precio queda como market data, no fair value | A11 W-03 |
+| S-088 | Modelo independiente defendible para claim recuperable delimitado, con haircut/escenarios; bridge comprometido | ValuationStatus.ESTIMABLE_WITH_LIMITATIONS; no libera veto ni selección automáticamente | A11 W-04 |
+| S-089 | Derechos, respaldo/redención, fuentes independientes y método aplicable verificados | ValuationStatus.ESTIMABLE; decisión consume veto/riesgo y demás gates | A11 W-05 |
+| S-090 | Valoración no iniciada | ValuationStatus.NOT_RUN; no inferir insuficiencia ni inelegibilidad | A11 W-06 |
+| S-091 | Wrapper comprometido y token nativo independiente con evidencia suficiente | ValuationStatus separado por representation_id; wrapper según evidencia; nativo evaluado independientemente | A11 W-07 |
+
+## 20. A12 — Partición atómica y agregación (v0.4.0-draft)
+
+| ID | Input/condición | Expected outcome por unidad | Agregación/garantía |
+|---|---|---|---|
+| S-092 | Wrapper chain-A con veto; token nativo chain-A independiente | Wrapper DECISION_INELIGIBLE; native DECISION_ELIGIBLE si sus gates están satisfechos | No producir DECISION_ELIGIBLE global; conservar vector por unidad |
+| S-093 | Wrapper chain-A en review; wrapper chain-B independiente y elegible | Chain-A DECISION_REVIEW_REQUIRED; chain-B DECISION_ELIGIBLE | Scope completo no favorable; resultado local de chain-B permanece identificable |
+| S-094 | Dos vetos solapados afectan misma unidad | Outcome por precedencia de X-06; ambas causas y scopes preservados | Resolver un veto no elimina el otro |
+| S-095 | Subconjunto permitido y excluido, con límites identificables y enforcement efectivo | Outcomes por unidad y control de subset | DECISION_ELIGIBLE_WITH_LIMITATIONS solo si policy lo permite y enforcement está garantizado |
+| S-096 | Restricción parcial no puede aislarse ni hacerse cumplir | REVIEW/ABSTAIN/INELIGIBLE según causa demostrada; no favorable global | No usar LIMITATION de palabra |
+| S-097 | Varias rutas heterogéneas; una elegible y otra ineligible | ORE separado por route_id | Matriz por ruta; no ORE global ROUTE_ELIGIBLE |
+| S-098 | Dependencia de settlement cruza unidad aparentemente no afectada | SCOPE_UNRESOLVED / review o bloqueo de unidad dependiente | No asumir independencia; resolver grafo de dependencias |
+| S-099 | Unidades disjuntas, exhaustivas, homogéneas y todas elegibles | DECISION_ELIGIBLE por cada unidad | Agregación favorable solo para requested_scope exactamente cubierto |
+
+### 20.1 Expected outcome ampliado de C-07
+
+Para el portfolio proposal que mezcla representación nativa y wrapped:
+1. Particionar por canonical_asset_id + representation_id + network/bridge cuando sean materiales.
+2. La unidad wrapped afectada por V-04 recibe el resultado de veto y decisión aplicable a ese scope.
+3. La unidad nativa solo se bloquea si existe dependencia causal documentada; de lo contrario se evalúa independientemente.
+4. No se agrega un único score ni un outcome favorable global que oculte la unidad bloqueada.
+5. Mantener todos los VetoDecision y sus scopes.
+
+### 20.2 Expected outcome ampliado de C-14
+
+Para vetos concurrentes con scopes parcialmente solapados:
+1. Crear unidades disjuntas para intersección, región exclusiva del veto A, región exclusiva del veto B y región no afectada, cuando existan.
+2. En la intersección, conservar ambas causas y aplicar la consecuencia más restrictiva según X-06.
+3. En cada región exclusiva, aplicar únicamente el veto cuyo scope coincida.
+4. En región no afectada, no propagar los vetos; siguen siendo necesarias las demás evaluaciones.
+5. Agregar solo unidades compatibles; el summary nunca elimina el desglose ni concede permiso global implícito.
+
+### 20.3 Invariantes adicionales
+
+- **INV-30 Wrapped valuation separation:** ValuationStatus no sustituye VetoDecision ni DecisionOutcome.
+- **INV-31 Representation non-transitivity:** resultado wrapper no se extrapola a native ni viceversa sin dependencia causal.
+- **INV-32 Valuation evidence semantics:** INSUFFICIENT_EVIDENCE, NOT_ESTIMABLE y NOT_RUN conservan semánticas distintas.
+- **INV-33 Atomic partition integrity:** las unidades cubren exactamente requested_scope y son disjuntas.
+- **INV-34 Cause conservation:** ninguna causa se pierde al particionar o agregar; resolver una causa no elimina otras.
+- **INV-35 No heterogeneous global permission:** rutas/unidades heterogéneas conservan resultados separados; el summary no concede elegibilidad global.
+
+**Estado A11/A12:** ADDRESSED_IN_DRAFT; pendiente revisión de Valuation, Risk, Architecture, Operations y Legal/Compliance. Los escenarios S-085..S-099 son especificaciones de prueba futuras, no tests ejecutables ni resultados validados.
