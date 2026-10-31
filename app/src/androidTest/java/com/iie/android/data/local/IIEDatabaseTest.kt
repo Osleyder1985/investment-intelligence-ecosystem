@@ -420,6 +420,42 @@ class IIEDatabaseTest {
         assertEquals("USDT", org.json.JSONObject(usdt.valueJson).getString("symbol"))
     }
 
+    @Test
+    fun recentMarketQuoteIsServedFromLocalCacheWithoutNetworkRefresh() = runBlocking {
+        val retrievedAt = 1_800_000_000_000L
+        DemoAssetSeeder(database) { retrievedAt }.seed()
+        database.assetObservationDao().insertObservation(
+            AssetObservationEntity(
+                observationId = "observation:cached:usdc",
+                assetId = "asset:usd-coin",
+                deploymentId = null,
+                sourceId = "source:coinpaprika",
+                observationType = "MARKET_QUOTE",
+                observedAtEpochMs = retrievedAt,
+                retrievedAtEpochMs = retrievedAt,
+                status = "ACCEPTED",
+                quality = "PROVIDER_SCHEMA_VALIDATED",
+                valueSchemaVersion = 1,
+                valueJson = """{"schema":"iie.market-quote.v1","providerId":"usdc-usd-coin","symbol":"USDC","quoteCurrency":"USD","price":1.0,"providerUpdatedAtEpochMs":1800000000000,"retrievedAtEpochMs":1800000000000}""",
+                payloadSha256 = "cached-fixture",
+                licenseReference = "https://coinpaprika.com/terms-of-use"
+            )
+        )
+        val repository = com.iie.android.data.repository.RoomAssetRepository(database) {
+            retrievedAt + 5 * 60 * 1000L
+        }
+
+        val result = repository.fetchAndPersistCoinPaprikaQuote(
+            assetId = "asset:usd-coin",
+            expectedSymbol = "USDC",
+            client = com.iie.android.data.market.CoinPaprikaTickerClient()
+        )
+
+        assertEquals("observation:cached:usdc", result.observationId)
+        assertEquals(1, database.assetObservationDao()
+            .getLatestObservation("asset:usd-coin", "MARKET_QUOTE")?.let { 1 } ?: 0)
+    }
+
     private fun asset(
         id: String,
         canonicalKey: String,
