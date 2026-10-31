@@ -15,6 +15,8 @@ from identity_resolver import resolve_observations
 ROOT = Path(__file__).resolve().parent
 SCHEMA_PATH = ROOT / "schema" / "identity-fixture.schema.json"
 FIXTURE_DIR = ROOT / "fixtures"
+
+
 class FixtureError(ValueError):
     pass
 
@@ -33,14 +35,6 @@ def validate_fixture(fixture: dict[str, Any], schema: dict[str, Any]) -> None:
             for err in errors
         )
         raise FixtureError(details)
-
-
-def _permission_blocked(fixture: dict[str, Any]) -> bool:
-    if fixture["fixture_kind"] == "SYNTHETIC":
-        return False
-    record = fixture.get("provenance", {}).get("permission_record") or {}
-    allowed = set(record.get("authorized_operations", []))
-    return not {"storage", "retention"}.issubset(allowed)
 
 
 
@@ -119,6 +113,7 @@ def evaluate_fixture(fixture: dict[str, Any], schema: dict[str, Any]) -> dict[st
         "evidence_refs": computed["evidence_refs"],
         "diagnostics": computed["diagnostics"] + comparison_diagnostics,
     }
+
 
 def load_fixtures(directory: Path = FIXTURE_DIR) -> list[dict[str, Any]]:
     return [json.loads(path.read_text(encoding="utf-8"))
