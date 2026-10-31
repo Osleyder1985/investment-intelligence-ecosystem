@@ -29,7 +29,7 @@ import androidx.room.PrimaryKey
     ],
     indices = [
         Index(value = ["assetId", "observationType", "retrievedAtEpochMs"]),
-        Index(value = ["deploymentId"]),
+        Index(value = ["deploymentId", "assetId"]),
         Index(value = ["sourceId"]),
         Index(value = ["retrievedAtEpochMs"])
     ]
