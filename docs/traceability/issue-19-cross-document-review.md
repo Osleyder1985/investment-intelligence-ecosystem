@@ -1,7 +1,7 @@
 # Registro de revisión cruzada fundacional — Issue #19
 
 **Estado:** revisión técnica-documental asistida; no constituye aprobación metodológica independiente.  
-**Fecha de revisión:** 2026-10-30 (UTC)  
+**Fecha de revisión:** 2026-10-31 (UTC)  
 **Rama de trabajo inicial:** `docs/issue-19-cross-document-consistency`  
 **Iteración de cardinalidades:** `docs/issue-19-identity-cardinality-contract`  
 **Base:** `main` en `df32d5e5a9ed584d1f096c8c55e085b8b7e07fb5`  
