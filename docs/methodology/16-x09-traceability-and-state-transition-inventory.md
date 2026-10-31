@@ -1,7 +1,7 @@
 # X-09 — Matriz de trazabilidad y catálogo de transiciones
 
 **ID:** IIE-METH-TRACE-STATE-012  
-**Versión:** 0.1.0-draft  
+**Versión:** 0.2.0-draft  
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
 **Objeto:** resolver documentalmente A09 y A10 de la auditoría `15-x09-cross-document-consistency-audit.md`.  
@@ -203,3 +203,38 @@ A10 solo se cierra cuando SM-01..SM-12 tengan catálogo y owner aprobado (o excl
 | A10 | Inventario SM-01..SM-12, transiciones VetoDecision, lifecycle, ORE gaps y transiciones prohibidas | ADDRESSED_IN_DRAFT |
 
 No se afirma cobertura completa de transiciones, aprobación institucional, implementación ni validación empírica.
+
+
+## 12. Actualización de trazabilidad A11/A12 — X-09 v0.4.0
+
+La ampliación de valoración wrapped y agregación atómica se especifica en [17-x09-wrapped-valuation-and-atomic-aggregation.md](17-x09-wrapped-valuation-and-atomic-aggregation.md).
+
+### 12.1 Nuevos escenarios individuales
+
+| Escenarios | Regla fuente | Dimensión | Requisito IIM candidato | Test futuro | Estado |
+|---|---|---|---|---|---|
+| S-085..S-087 | M-02 valuation; X-05 V-04; X-06 §4,9; valuation catalog | Identidad/derechos, evidencia, método, wrapper | IIM-004,006,011,020; mappings exactos requieren owner | TC-X09-S-085..087 | PARTIAL_DRAFT |
+| S-088..S-091 | X-05 V-04; X-06 §4,9; X-02 CAT-04 | Modelo alternativo, veto independiente, native/wrapped | IIM-004,006,011,016,020 | TC-X09-S-088..091 | PARTIAL_DRAFT |
+| S-092..S-095 | X-06 §3,4,9,10; X-05; M-03 | Partición, scopes, causas múltiples, limitación exigible | IIM-020,022,024; IIM-025,032–035 propuestos | TC-X09-S-092..095 | PARTIAL_DRAFT |
+| S-096..S-099 | X-06 §9–10; X-05; X-04 | Enforcement, ORE heterogéneo, dependencias, exhaustividad | IIM-022,024; IIM-029,032–035 propuestos | TC-X09-S-096..099 | PARTIAL_DRAFT |
+
+### 12.2 Nuevas invariantes
+
+| Invariante | Escenarios mínimos | Regla fuente | Test futuro | Estado |
+|---|---|---|---|---|
+| INV-30 Wrapped valuation separation | S-086..S-091 | X-05 V-04; X-06 §4,9 | TC-X09-INV-30 | PARTIAL_DRAFT |
+| INV-31 Representation non-transitivity | S-091, S-092, C-07 | X-05 V-04; X-06 §3,10 | TC-X09-INV-31 | PARTIAL_DRAFT |
+| INV-32 Valuation evidence semantics | S-085..S-090 | X-06 §4,9; valuation catalog | TC-X09-INV-32 | PARTIAL_DRAFT |
+| INV-33 Atomic partition integrity | S-092..S-099 | X-06 §3,4,10 | TC-X09-INV-33 | PARTIAL_DRAFT |
+| INV-34 Cause conservation | S-094, S-098; C-14 | X-06 §6,10 | TC-X09-INV-34 | PARTIAL_DRAFT |
+| INV-35 No heterogeneous global permission | S-092, S-093, S-097; C-07 | X-06 §10; X-04 | TC-X09-INV-35 | PARTIAL_DRAFT |
+
+### 12.3 Requisitos de aceptación adicionales
+
+- Los Requirement Owners deben validar la relación de IIM; no se asigna cumplimiento por escenario.
+- Valuation/Risk/Legal deben aprobar W-01..W-07, incluida la distinción INSUFFICIENT_EVIDENCE vs NOT_ESTIMABLE.
+- Architecture/Operations deben aprobar el algoritmo de partición, scope algebra, dependencias y enforcement.
+- La precedencia agregada cuando coexisten outcomes INELIGIBLE, REVIEW y ABSTAIN requiere decisión de owners. Hasta entonces, conservar vector por unidad y ValidationEnvelope.REVIEW_REQUIRED para la agregación ambigua.
+- Los escenarios no son tests ejecutables y no han sido ejecutados.
+
+**Estado A11/A12: ADDRESSED_IN_DRAFT / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED.**
