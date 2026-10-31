@@ -199,3 +199,10 @@ La resolución debe poder terminar en RESOLVED, RESOLVED_WITH_LIMITATIONS, AMBIG
 ### 11.6 Límite del contrato
 
 Este modelo no determina todavía un esquema físico, tipos SQL, formato de serialización, algoritmo universal de matching ni cardinalidades empíricas para cada protocolo. Esos elementos requieren adaptadores y pruebas por familia de red/venue. IIM-001 e IIM-019 permanecen en revisión hasta completar esos perfiles y obtener aprobación registrada.
+
+
+## 12. Perfiles específicos de red
+
+Las reglas genéricas de la sección 10.2 se concretan, para EVM y Solana, en [network-identity-profiles-evm-solana](network-identity-profiles-evm-solana.md). Ese documento distingue identidad de red, identidad de representación, activo nativo, atributos de comportamiento y evidencia temporal. Sus perfiles son borradores; no equivalen a adaptadores implementados ni validación.
+
+La aplicación de un perfil debe declarar su versión, red resuelta, método de normalización, endpoint/fuente, bloque o slot y nivel de finalización. Si la instancia de red no se puede distinguir o la cuenta/contrato no cumple las condiciones del perfil, el resultado debe permanecer AMBIGUOUS, UNVERIFIED o CONFLICTED según la evidencia. No degradar silenciosamente a una coincidencia por ticker.
