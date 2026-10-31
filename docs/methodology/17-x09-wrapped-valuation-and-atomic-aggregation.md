@@ -4,7 +4,7 @@
 **Versión:** 0.2.0-draft  
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
-**Fuentes:** X-05, X-06, M-02, catálogo de valoración, matriz de aplicabilidad y X-09 v0.3.0.
+**Fuentes:** X-05, X-06, M-02, catálogo de valoración, matriz de aplicabilidad y X-09 v0.5.0-draft.
 
 ## 1. Dictamen
 
