@@ -1,6 +1,6 @@
 # Resolución de identidad de criptoactivos
 
-**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.1.0
+**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.0
 
 ## 1. Principio
 
@@ -76,7 +76,18 @@ No sobrescribir ticker, contrato o proveedor histórico. Cada cambio genera even
 
 ## 9. Salida
 
-La resolución produce canonical_asset_id, representation_id cuando corresponda, identidad de red/contrato, relación económica, estado, evidencia, fuentes consultadas, timestamp UTC, conflictos y limitaciones. Cada evaluación referencia esos IDs, nunca solo el ticker.
+La salida debe usar identificadores tipados y no ambiguos:
+
+- `economic_asset_id`, si existe una unidad económica subyacente identificable;
+- `network_id` para la red concreta;
+- `representation_id` para el activo nativo o token desplegado;
+- `instrument_id` para el instrumento negociable;
+- `listing_id` para la admisión/versionado en un venue;
+- `project_id` y emisor/administrador como relaciones, no como sustitutos de identidad.
+
+El campo genérico `canonical_asset_id` no debe utilizarse como sustituto intercambiable de esos IDs. Si se conserva por compatibilidad, debe declararse qué tipo de entidad identifica en cada registro y proporcionar una migración inequívoca a la clave tipada. Cada evaluación declara su objeto: exposición económica, representación concreta o instrumento/mercado. No resolver esa elección implícitamente a partir del ticker.
+
+La salida incluye relaciones tipadas y versionadas, estado, evidencia, fuentes, timestamps de conocimiento/vigencia, conflictos y limitaciones.
 
 
 ## 10. Modelo de entidades, claves y relaciones (aclaración v0.2.0)
