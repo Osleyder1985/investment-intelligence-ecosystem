@@ -16,8 +16,8 @@ import androidx.room.PrimaryKey
         ),
         ForeignKey(
             entity = AssetDeploymentEntity::class,
-            parentColumns = ["deploymentId"],
-            childColumns = ["deploymentId"],
+            parentColumns = ["deploymentId", "assetId"],
+            childColumns = ["deploymentId", "assetId"],
             onDelete = ForeignKey.RESTRICT
         ),
         ForeignKey(
