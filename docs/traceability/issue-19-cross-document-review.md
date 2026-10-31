@@ -131,3 +131,27 @@ Los perfiles son borradores de especificación, no software ejecutable. AS-033 a
 ### No-conclusiones
 
 Los perfiles son borradores acotados, no implementaciones. AS-043 a AS-050 no se han automatizado ni ejecutado. No se consultaron nodos ni se validaron denom traces, módulos, outpoints o protocolos de activos. No se afirma cobertura completa de Cosmos o UTXO.
+
+
+## 10. Perfil Cardano/eUTXO — borrador v0.1.0
+
+**Artefacto:** [network-identity-profile-cardano-eutxo](../asset-selection/network-identity-profile-cardano-eutxo.md).  
+**Casos añadidos:** AS-051 a AS-057.
+
+| ID | Regla documentada | Límite pendiente |
+|---|---|---|
+| XCR-21 | ADA se modela como activo nativo; native tokens se identifican por network_id + policy_id + asset_name bytes. | Fixtures de genesis/entornos, asset names vacíos/binarios y múltiples políticas. |
+| XCR-22 | UTXO puede contener ADA y múltiples native tokens; outpoints y direcciones son evidencia, no Asset IDs. | Reconstrucción de canonicalidad y rollback por era/ledger version. |
+| XCR-23 | CIP-25, CIP-26, CIP-67 y CIP-68 son fuentes/convenciones de metadata separadas de identidad. | Fixtures de metadata conflictiva, labels y datum versionado CIP-68. |
+| XCR-24 | Minting policy y scripts/validators tienen funciones diferentes; no inferir control de transferencia desde policy ID. | Validación de scripts, políticas temporales y derechos para casos concretos. |
+
+### Decisión por requisito
+
+- **IIM-001: REVISION_REQUIRED.** Se añade un perfil Cardano específico; faltan fixtures, validación de eras/ledger y revisión independiente.
+- **IIM-019: REVISION_REQUIRED.** CIP-68 y relaciones de metadata requieren validar referencias, temporalidad y derechos sin fusionar Asset IDs.
+- **IIM-020 e IIM-018: REVISION_REQUIRED.** Esta iteración no valida cobertura histórica ni controles point-in-time.
+- **IIM-002: BLOCKED para aprobar fuentes concretas.** Las referencias técnicas no equivalen a permisos de captura/retención.
+
+### No-conclusiones
+
+El perfil es un borrador, no un indexador ni parser implementado. AS-051 a AS-057 no se han automatizado ni ejecutado. No se consultaron nodos, policy scripts, UTXOs ni datums; no se realizó revisión independiente ni validación empírica.

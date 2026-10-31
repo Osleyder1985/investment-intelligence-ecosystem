@@ -261,3 +261,39 @@ Comprobar identidad, snapshot, finalidad, estado, evidencia, variables, licencia
 - Entrada: transacción que parece emitir un colored/overlay asset sin adaptador/validador del protocolo.
 - Esperado: registrar transacción/outpoint y protocolo candidato, pero mantener identidad económica y supply como UNVERIFIED.
 - Fallo: atribuir ticker, supply o derechos por inclusión en la cadena base solamente.
+
+
+## AS-051 — Cardano: mismo asset name bajo policy IDs distintos
+- Entrada: dos native tokens con igual asset_name bytes y policy_id diferentes.
+- Esperado: Asset IDs distintos; conservar ambos bytes completos.
+- Fallo: fusionar por nombre legible, ticker o asset name.
+
+## AS-052 — Cardano: una policy ID con múltiples asset names
+- Entrada: una minting policy emite varios asset names.
+- Esperado: una representación por combinación policy_id + asset_name; registrar la política como evidencia/relación común, no como clave de token única.
+- Fallo: fusionar todos los tokens bajo policy ID.
+
+## AS-053 — Cardano: ADA frente a native token
+- Entrada: ADA y un token cuyo metadata lo presenta como ADA/ADA-like.
+- Esperado: ADA usa discriminador NATIVE_ASSET; native token usa policy_id + asset_name.
+- Fallo: representar ADA mediante policy/asset name ficticios o fusionar por ticker.
+
+## AS-054 — Cardano: CIP-25 frente a metadata registry
+- Entrada: metadata on-chain CIP-25 y registro off-chain CIP-26 presentan campos diferentes.
+- Esperado: conservar cada afirmación con estándar, fuente, versión y timestamp; registrar conflicto y no cambiar Asset ID.
+- Fallo: preferir silenciosamente el ticker del registry o tratar metadata como prueba de derechos.
+
+## AS-055 — Cardano: relación CIP-68 reference NFT/user token
+- Entrada: user token y reference NFT candidatos con misma policy ID y labels/nombres que parecen relacionados.
+- Esperado: validar patrón, correspondencia, UTXO de referencia, datum y versión antes de crear relación; mantener Asset IDs separados.
+- Fallo: fusionar ambos tokens o confiar solo en la etiqueta CIP-67.
+
+## AS-056 — Cardano: asset name binario y label CIP-67
+- Entrada: asset_name contiene bytes no UTF-8 o prefijo CIP-67 desconocido/malformado.
+- Esperado: conservar bytes íntegros; label UNKNOWN si no pasa validación; no truncar ni reinterpretar heurísticamente.
+- Fallo: normalizar por texto o eliminar prefijo sin registrar transformación.
+
+## AS-057 — Cardano: minting policy temporal y supply
+- Entrada: política con límite temporal/slot y eventos mint/burn antes/después de su ventana.
+- Esperado: reconstruir supply y capacidad de emisión con policy script, slot y canonicalidad; distinguir emisión permitida de transferencias.
+- Fallo: inferir supply máximo o inmutabilidad por metadata/ticker o por una observación aislada.
