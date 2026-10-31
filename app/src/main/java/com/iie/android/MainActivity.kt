@@ -24,110 +24,123 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-
-private data class Asset(
-    val id: String,
-    val name: String,
-    val symbol: String,
-    val network: String,
-    val description: String
-)
-
-private val demoAssets = listOf(
-    Asset("bitcoin", "Bitcoin", "BTC", "Bitcoin", "Activo nativo de la red Bitcoin."),
-    Asset("ethereum", "Ethereum", "ETH", "Ethereum", "Activo nativo de Ethereum."),
-    Asset("solana", "Solana", "SOL", "Solana", "Activo nativo de la red Solana."),
-    Asset("usd-coin", "USD Coin", "USDC", "Multi-red", "Stablecoin; sus representaciones dependen de la red.")
-)
+import androidx.lifecycle.ViewModelProvider
+import com.iie.android.domain.model.Asset
+import com.iie.android.presentation.AssetExplorerViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val explorerViewModel = ViewModelProvider(
+            this, AssetExplorerViewModel.Factory(application)
+        )[AssetExplorerViewModel::class.java]
+
         setContent {
-            MaterialTheme {
-                AssetExplorerScreen()
-            }
+            MaterialTheme { AssetExplorerScreen(explorerViewModel) }
         }
     }
 }
 
 @Composable
-private fun AssetExplorerScreen() {
-    var query by remember { mutableStateOf("") }
+private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
+    val query by viewModel.searchQuery.collectAsState()
+    val assets by viewModel.assets.collectAsState()
+    val watchlist by viewModel.watchlist.collectAsState()
+    val catalogStatus by viewModel.catalogStatus.collectAsState()
     var selectedAsset by remember { mutableStateOf<Asset?>(null) }
-    val filteredAssets = demoAssets.filter {
-        it.name.contains(query, ignoreCase = true) ||
-            it.symbol.contains(query, ignoreCase = true)
-    }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp)
-        ) {
+        Column(Modifier.fillMaxSize().padding(20.dp)) {
             Text(
-                text = "Investment Intelligence Ecosystem",
+                "Investment Intelligence Ecosystem",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(Modifier.height(6.dp))
             Text("Explorador de criptoactivos", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                ),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = "MODO DEMOSTRACIÓN · Datos estáticos de ejemplo; no son precios ni datos de mercado en tiempo real.",
-                    modifier = Modifier.padding(12.dp),
+                    "MODO DEMOSTRACIÓN · Datos locales de ejemplo; no son datos de mercado ni recomendaciones.",
+                    Modifier.padding(12.dp),
                     style = MaterialTheme.typography.bodySmall
                 )
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
+            Text(catalogStatus, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 value = query,
-                onValueChange = { query = it },
+                onValueChange = viewModel::updateSearchQuery,
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Buscar por nombre o símbolo") },
                 singleLine = true
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
             Text(
-                text = "${filteredAssets.size} activos de demostración",
+                "${assets.size} activos · ${watchlist.size} en seguimiento",
                 style = MaterialTheme.typography.labelLarge
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(filteredAssets, key = { it.id }) { asset ->
-                    AssetRow(asset = asset, onClick = { selectedAsset = asset })
+            Spacer(Modifier.height(8.dp))
+            if (assets.isEmpty()) {
+                Text("No hay activos que coincidan con la búsqueda.")
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(assets, key = { it.assetId }) { asset ->
+                        AssetRow(
+                            asset = asset,
+                            isWatched = asset.assetId in watchlist,
+                            onClick = { selectedAsset = asset },
+                            onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
+                        )
+                    }
                 }
             }
         }
     }
 
     selectedAsset?.let { asset ->
+        val isWatched = asset.assetId in watchlist
         AlertDialog(
             onDismissRequest = { selectedAsset = null },
             title = { Text("${asset.name} (${asset.symbol})") },
             text = {
                 Column {
-                    Text("Identificador: ${asset.id}")
-                    Text("Red: ${asset.network}")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(asset.description)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Estado de datos: DEMO — sin fuente externa conectada.")
+                    Text("ID local: ${asset.assetId}")
+                    Text("Clave canónica de demostración: ${asset.canonicalKey}")
+                    Text("Estado de identidad: ${asset.identityStatus}")
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        if (asset.symbol == "USDC") {
+                            "Red y contrato: no especificados. USDC tiene múltiples despliegues."
+                        } else {
+                            "La red y el despliegue se almacenan como entidades separadas."
+                        }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text("Procedencia: fixture local IIE; no verificado como fuente de producción.")
                 }
             },
             confirmButton = {
+                TextButton(onClick = { viewModel.toggleWatchlist(asset.assetId) }) {
+                    Text(if (isWatched) "Quitar de seguimiento" else "Añadir a seguimiento")
+                }
+            },
+            dismissButton = {
                 TextButton(onClick = { selectedAsset = null }) { Text("Cerrar") }
             }
         )
@@ -135,24 +148,29 @@ private fun AssetExplorerScreen() {
 }
 
 @Composable
-private fun AssetRow(asset: Asset, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+private fun AssetRow(
+    asset: Asset,
+    isWatched: Boolean,
+    onClick: () -> Unit,
+    onToggleWatchlist: () -> Unit
+) {
+    Card(shape = RoundedCornerShape(12.dp)) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            Modifier.fillMaxWidth().padding(14.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
+            Column(
+                Modifier.weight(1f).clickable(onClick = onClick).padding(vertical = 2.dp)
+            ) {
                 Text(asset.name, fontWeight = FontWeight.SemiBold)
-                Text(asset.network, style = MaterialTheme.typography.bodySmall)
+                Text(asset.identityStatus, style = MaterialTheme.typography.bodySmall)
             }
-            Text(asset.symbol, fontWeight = FontWeight.Bold)
+            Column(horizontalAlignment = Alignment.End) {
+                Text(asset.symbol, fontWeight = FontWeight.Bold)
+                TextButton(onClick = onToggleWatchlist) {
+                    Text(if (isWatched) "Siguiendo" else "+ Seguir")
+                }
+            }
         }
     }
 }
