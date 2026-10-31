@@ -50,7 +50,7 @@ class CoinPaprikaHistoricalTickerClient(
         require(maxPoints in 1..500)
     }
 
-    suspend fun fetchDaily(
+    override suspend fun fetchDaily(
         providerId: String,
         start: LocalDate,
         end: LocalDate?,
