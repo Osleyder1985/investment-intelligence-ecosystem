@@ -16,7 +16,7 @@ Este paquete introduce esquemas JSON preliminares para seis contratos prioritari
 5. `PortfolioProposal`
 6. `AuditEvent`
 
-Los archivos se encuentran en `schemas/contracts/`. Son contratos candidatos para discusión técnica, no interfaces aprobadas ni componentes ejecutables. No existe todavía evidencia de validación automática, integración en runtime, pruebas de conformidad o uso en producción.
+Los archivos se encuentran en `schemas/contracts/`. Son contratos candidatos para discusión técnica, no interfaces aprobadas ni componentes ejecutables. Se ha añadido una suite preliminar de conformidad en `tests/contracts/`, pero su ejecución y sus resultados aún no están acreditados. No existe evidencia de integración en runtime ni uso en producción.
 
 ## 2. Convenciones comunes
 
@@ -97,7 +97,7 @@ Los archivos se encuentran en `schemas/contracts/`. Son contratos candidatos par
 5. JSON Schema no sustituye validaciones semánticas, autorización, reglas temporales ni invariantes entre registros.
 6. La validación de `format: date-time` y `format: uri` depende de la configuración del validador; debe habilitarse explícitamente.
 7. Los $id usan el dominio reservado `example.invalid` como identificador documental no resoluble. Debe sustituirse por el namespace oficial del proyecto antes de publicar schemas estables.
-8. Aún no se ha ejecutado un validador JSON Schema ni una suite de casos positivos/negativos sobre estos archivos.
+8. Se ha incorporado `tests/contracts/test_schema_contracts.py` para meta-validación Draft 2020-12 y pruebas sintéticas positivas/negativas. La suite todavía no se ha ejecutado en un entorno verificable; por tanto, no se afirma que los schemas hayan superado la validación.
 
 ## 6. Gates antes de declarar SPECIFIED
 
@@ -111,6 +111,19 @@ Los archivos se encuentran en `schemas/contracts/`. Son contratos candidatos par
 - [ ] Actualizar trazabilidad requisito-schema-componente-test.
 - [ ] Mantener cualquier capacidad de producción deshabilitada hasta completar los gates operativos y de seguridad.
 
-## 7. Estado
+## 7. Suite de conformidad preliminar
 
-**DRAFT — NOT APPROVED — NOT IMPLEMENTED — NOT TESTED.** La publicación de estos schemas solo acredita que existen artefactos documentales versionados. No acredita que sean correctos, completos, compatibles ni seguros para producción.
+La suite ubicada en `tests/contracts/` utiliza `jsonschema` y `Draft202012Validator.check_schema` para comprobar la estructura de los seis schemas, y genera instancias sintéticas mínimas para probar aceptación/rechazo. Incluye comprobaciones de propiedades requeridas, propiedades raíz desconocidas, versión de contrato, formatos date-time y patrón decimal.
+
+Ejecución desde la raíz del repositorio:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m unittest discover -s tests/contracts -p 'test_*.py' -v
+```
+
+La suite no sustituye pruebas con fixtures de negocio revisados, validaciones semánticas cross-field/cross-record, pruebas de compatibilidad, revisión de seguridad ni aprobación independiente. Hasta que se ejecute y revise su resultado, el estado permanece NOT TESTED.
+
+## 8. Estado
+
+**DRAFT — NOT APPROVED — NOT IMPLEMENTED — NOT TESTED.** La incorporación de pruebas no acredita que estas hayan sido ejecutadas ni que los contratos sean correctos, completos, compatibles o seguros para producción.
