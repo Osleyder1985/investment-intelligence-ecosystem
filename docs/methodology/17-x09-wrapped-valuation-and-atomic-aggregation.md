@@ -75,6 +75,8 @@ No convertir automáticamente:
 
 ### 2.3.1 Compatibilidad con el catálogo de valoración existente — GAP
 
+La propuesta específica de crosswalk, versionado y migración se desarrolla en [valuation-status-vocabulary-migration.md](../valuation/valuation-status-vocabulary-migration.md) v0.1.0-draft. Este documento complementa, pero no aprueba ni ejecuta, la migración.
+
 El catálogo `docs/valuation/valuation-method-catalog.md` v0.1.0 todavía publica los estados legacy `VALUATION_SUPPORTED`, `VALUATION_CONDITIONAL`, `INSUFFICIENT_EVIDENCE`, `NO_APPLICABLE_METHOD` y `NOT_VALUABLE_WITH_AVAILABLE_EVIDENCE`. No coinciden uno-a-uno con el catálogo canónico de X-06.
 
 No realizar migración automática. Como propuesta para revisión:
@@ -86,7 +88,7 @@ No realizar migración automática. Como propuesta para revisión:
 
 La matriz `valuation-applicability-matrix.md` usa `CONDITIONAL` como estado de aplicabilidad de una familia de métodos, no como ValuationStatus. Son dimensiones distintas y no deben mezclarse.
 
-**GAP A11:** la matriz X-09 define los outcomes objetivo, pero el catálogo legacy y sus consumidores todavía no han sido armonizados ni migrados. Se requiere actualización versionada, crosswalk aprobado, compatibilidad hacia atrás y revisión de los Requirement Owners antes de considerar A11 cerrado.
+**GAP A11:** el crosswalk semántico y el plan de migración están ahora documentados como propuesta en `docs/valuation/valuation-status-vocabulary-migration.md`. El catálogo legacy, la matriz y sus consumidores todavía no han sido armonizados ni migrados. Se requiere aprobación de owners, inventario de consumidores, compatibilidad probada y actualización versionada antes de considerar A11 cerrado.
 
 ### 2.4 Condiciones para ESTIMABLE_WITH_LIMITATIONS
 
