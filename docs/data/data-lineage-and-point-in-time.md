@@ -67,3 +67,28 @@ Registrar cambio de proveedor, endpoint, schema, método de agregación, contrat
 ## 7. Artefacto de reproducción
 
 Un manifiesto de evaluación debe incluir decision_time, dataset/versiones, source_ids, hashes, rangos temporales, parámetros, commits, transformaciones, licencias y exclusiones. Si algún insumo no puede recuperarse por restricciones legales o técnicas, declarar el nivel de reproducibilidad alcanzable.
+
+
+## 8. Semántica de disponibilidad por modalidad (aclaración v0.2.0)
+
+No usar un único timestamp ambiguo para representar todas las formas de conocimiento. Cuando aplique, conservar:
+
+- `public_availability_time`: primera disponibilidad pública demostrable por una vía identificada;
+- `authorized_availability_time`: primera disponibilidad demostrable para una cuenta/usuario autorizado concreto;
+- `system_ingestion_time`: momento en que el sistema bajo evaluación incorporó el dato;
+- `capture_time`: momento en que se obtuvo una copia o respuesta;
+- `processing_time`: momento en que terminó la validación/transformación.
+
+Cada timestamp debe tener fuente de evidencia, precisión, zona original, método de determinación y estado de confianza. Si la fecha no puede probarse, registrar UNKNOWN, no estimarla desde el timestamp de captura.
+
+En `REPLAY_OPERATIONAL`, exigir que el sistema concreto hubiera ingerido y tenido disponible el dato antes de decision_time. En `RECONSTRUCTION_POINT_IN_TIME`, admitir evidencia publicada/accesible antes del corte aunque se capture después, siempre que el modo retrospectivo y sus límites se declaren. No describir una reconstrucción como replay real del sistema.
+
+## 9. Disponibilidad de datos on-chain y datos derivados
+
+Para datos on-chain separar event/block time, bloque y hash, estado de finalización, reorganización, disponibilidad del nodo/indexador y system_ingestion_time. El timestamp de bloque no prueba cuándo un proveedor terminó de indexar ni cuándo el sistema lo consumió.
+
+Para agregaciones, velas y derivados, documentar cierre de ventana, retrasos, revisiones, backfills y regla de publicación. La disponibilidad del derivado no puede ser anterior a la disponibilidad de sus insumos ni al momento en que el cálculo estuvo terminado y disponible. Conservar valores preliminares y finales como versiones diferentes cuando el proveedor los revise.
+
+## 10. Evidencia y reproducibilidad restringida
+
+El manifiesto debe declarar si conserva payload, hash, referencia externa o solo metadatos, y por qué esa conservación está permitida. Un hash sin el objeto fuente ni evidencia de origen solo permite comprobaciones limitadas. Si los términos impiden conservar el insumo, describir qué parte del resultado puede reproducirse y qué parte depende de una fuente externa no preservada.
