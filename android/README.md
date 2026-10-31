@@ -27,7 +27,7 @@ A first local persistence layer has been added on a development branch:
 - Room DAOs, database declaration/provider, and a Room-backed asset repository;
 - instrumentation-test source for core identity and persistence constraints.
 
-The Room data model, fixture seeder, and explorer integration are on development branches/stacked pull requests. Android compilation, generated Room schema review, and emulator/device test execution are still pending. Test source is not evidence that tests passed.
+The Room data model, fixture seeder, and explorer integration are on development branches/stacked pull requests. The Android CI run for commit `b201899f4c46c64d5e314aed26b0f9e05c0c8aae` successfully built the debug app, compiled Android test sources, and passed unit tests. The API 35 emulator booted and started instrumentation, but the test runner failed to initialize (`Failed to instantiate test runner class androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner`). The Room instrumentation tests therefore remain unvalidated. Test source and successful compilation are not evidence that those tests passed.
 
 ## Toolchain baseline
 
@@ -64,6 +64,6 @@ See:
 - Production canonicalization/identifier normalization rules are not finalized.
 - No analytical engine or external provider is integrated.
 - The demo fixture does not establish production asset identity; USDC is intentionally left without a network deployment because its representation is multi-chain.
-- No generated Room schema JSON has been verified or committed.
-- The first Android CI run successfully assembled the app and compiled the instrumentation tests. A later workflow adds emulator execution and Room schema artifact publication; its latest run is pending. No successful emulator execution or reviewed schema artifact is claimed yet.
+- The Room schema export was generated and published as CI artifact `room-schema-android` (run #27, artifact 13054179613). The exported version-1 JSON was inspected: seven entities, primary keys, indexes, and foreign keys are present, including the composite observation-to-deployment reference `(deploymentId, assetId)`. The schema JSON is not yet committed.
+- Android CI run #27 booted the API 35 emulator and started instrumentation, but failed before executing the test methods because the AndroidJUnit4 test runner could not be instantiated. This is a test infrastructure/runner initialization failure; it is not evidence of a Room assertion failure. The unit-test task and Android compilation passed.
 - The application ID `com.iie.android` is provisional.
