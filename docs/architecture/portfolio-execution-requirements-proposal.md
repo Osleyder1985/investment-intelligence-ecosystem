@@ -93,3 +93,6 @@ Los requisitos propuestos dependen, como mínimo, de:
 - Los identificadores y estados provisionales no se incorporan al registro oficial sin aprobación.
 
 **Decisión solicitada:** revisar, fusionar/dividir o rechazar cada requisito propuesto y registrar decisión, revisor, fecha, versión y evidencia.
+
+
+La revisión técnica preliminar del lote D (IIM-033, IIM-034 e IIM-036) recomienda REVISE y está documentada en [portfolio-execution-lot-d-review.md](portfolio-execution-lot-d-review.md) y [Issue #38](https://github.com/Osleyder1985/investment-intelligence-ecosystem/issues/38). Los estados formales permanecen PENDING_REVIEW; el registro normativo oficial no se modifica.
