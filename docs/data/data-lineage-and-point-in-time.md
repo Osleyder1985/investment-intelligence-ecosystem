@@ -12,12 +12,15 @@ Poder reconstruir qué dato se utilizó, de dónde provino, cómo se transformó
 |---|---|
 | event_time | Momento en que ocurrió el hecho económico/técnico |
 | publication_time | Momento en que el proveedor publicó el dato |
-| availability_time / knowledge_time | Primer momento demostrable en que el dato estuvo disponible públicamente o para el usuario autorizado |
+| public_availability_time | Primera disponibilidad pública demostrable por una vía identificada |
+| authorized_availability_time | Primera disponibilidad demostrable para una cuenta/usuario autorizado concreto |
+| system_ingestion_time | Momento en que el sistema bajo evaluación incorporó el dato |
+| knowledge_time | Momento en que una evidencia pudo conocerse por una población y vía declaradas; no sustituye los timestamps específicos anteriores |
 | capture_time | Momento en que el sistema lo capturó |
 | processing_time | Momento en que se validó/transformó |
 | decision_time | Momento de corte de la evaluación |
 
-Todos los tiempos deben normalizarse a UTC y conservar el valor/origen original cuando sea necesario. Si publication_time o availability_time no se conocen, registrar DESCONOCIDO; no inferirlos a partir de capture_time. Para evaluar qué conocía el sistema concreto, registrar además su momento real de ingestión/captura y disponibilidad interna.
+Todos los tiempos deben normalizarse a UTC y conservar el valor/origen original cuando sea necesario. Si `publication_time`, `public_availability_time` o `authorized_availability_time` no se conocen, registrar UNKNOWN; no inferirlos a partir de `capture_time`. Para evaluar qué conocía el sistema concreto, exigir `system_ingestion_time` y disponibilidad interna demostrables. `availability_time` solo puede usarse como alias derivado si identifica expresamente la modalidad (pública o autorizada) y no se confunde con ingestión.
 
 Para datos on-chain, conservar block height, block timestamp, hash de bloque/transacción, red y semántica de finalización. Un timestamp de bloque no demuestra por sí solo cuándo el dato estuvo indexado o disponible para un observador.
 
@@ -46,8 +49,8 @@ Para una evaluación con decision_time = t, distinguir dos modalidades:
 - RECONSTRUCTION_POINT_IN_TIME: puede utilizarse información publicada y demostrablemente accesible antes de t aunque se capture después, pero debe identificarse como reconstrucción retrospectiva y no como reproducción de lo que el sistema realmente procesó entonces.
 
 En ambas modalidades:
-- admitir solo información con availability_time ≤ t;
-- si availability_time es desconocido y la variable puede introducir look-ahead, excluirla o marcar evaluación no reproducible;
+- admitir solo información cuya disponibilidad pública o autorizada pertinente esté demostrada en o antes de t; en `REPLAY_OPERATIONAL`, exigir además `system_ingestion_time` y disponibilidad interna anteriores a t;
+- si la disponibilidad pertinente es UNKNOWN y la variable puede introducir look-ahead, excluirla o marcar evaluación no reproducible;
 - no usar revisiones posteriores como si fueran valores originales;
 - preservar versiones y fechas de revisión del proveedor;
 - distinguir fecha del evento de fecha en que se conoció;
