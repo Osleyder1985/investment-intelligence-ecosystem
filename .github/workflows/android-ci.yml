@@ -97,18 +97,53 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      # Emulator startup is bounded; there is no unbounded ADB boot polling.
-      - name: Run Room instrumentation tests on API 35 emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          profile: pixel_2
-          emulator-options: -no-window -no-audio -no-boot-anim -camera-back none
-          disable-animations: true
-          emulator-boot-timeout: 600
-          script: gradle :app:connectedDebugAndroidTest
+      - name: Install API 35 emulator image
+        run: |
+          sdkmanager "emulator" "system-images;android-35;google_apis;x86_64"
+          echo "no" | avdmanager create avd --force --name iie-api35 --package "system-images;android-35;google_apis;x86_64" --device "pixel_2"
+
+      - name: Start emulator with bounded boot detection
+        shell: bash
+        run: |
+          set -euo pipefail
+          emulator -avd iie-api35 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -camera-back none > "$RUNNER_TEMP/iie-emulator.log" 2>&1 &
+          EMULATOR_PID=$!
+          echo "$EMULATOR_PID" > "$RUNNER_TEMP/iie-emulator.pid"
+
+          for attempt in $(seq 1 60); do
+            if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
+              echo "Emulator process exited before boot completed."
+              cat "$RUNNER_TEMP/iie-emulator.log"
+              exit 1
+            fi
+
+            BOOT_STATE="$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+            echo "Boot check $attempt/60: sys.boot_completed='${BOOT_STATE}'"
+            if [ "$BOOT_STATE" = "1" ]; then
+              adb -s emulator-5554 shell settings put global window_animation_scale 0
+              adb -s emulator-5554 shell settings put global transition_animation_scale 0
+              adb -s emulator-5554 shell settings put global animator_duration_scale 0
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "Emulator did not finish booting within 300 seconds."
+          adb devices -l || true
+          cat "$RUNNER_TEMP/iie-emulator.log"
+          exit 1
+
+      - name: Run Room instrumentation tests
+        run: gradle :app:connectedDebugAndroidTest
+
+      - name: Stop emulator
+        if: always()
+        shell: bash
+        run: |
+          adb -s emulator-5554 emu kill || true
+          if [ -f "$RUNNER_TEMP/iie-emulator.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/iie-emulator.pid")" 2>/dev/null || true
+          fi
 
       - name: Upload instrumentation test reports
         if: always()
