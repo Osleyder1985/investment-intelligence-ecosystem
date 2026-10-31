@@ -1,7 +1,7 @@
 # X-09 — Resolución A11/A12: valoración wrapped y agregación atómica
 
 **ID:** IIE-METH-X09-AGG-013  
-**Versión:** 0.1.0-draft  
+**Versión:** 0.2.0-draft  
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
 **Fuentes:** X-05, X-06, M-02, catálogo de valoración, matriz de aplicabilidad y X-09 v0.3.0.
@@ -251,3 +251,10 @@ A12:
 - demostrar exhaustividad, disjunción, conservación de causas y determinismo.
 
 **Estado:** A11/A12 ADDRESSED_IN_DRAFT; NOT_APPROVED; NOT_IMPLEMENTED; NOT_VALIDATED. Los futuros escenarios son especificaciones, no pruebas ejecutadas.
+
+
+## 5. Relación con la matriz X-09
+
+Los casos W-01..W-07 se materializan como escenarios S-085..S-091; los casos A-01..A-08 se materializan como S-092..S-099 en X-09 v0.4.0-draft. C-07 y C-14 reciben expected outcomes ampliados por unidad. Las invariantes INV-30..INV-35 se añaden a la matriz maestra de conformidad.
+
+La precedencia de agregación cuando coexisten outcomes atómicos INELIGIBLE, REVIEW y ABSTAIN requiere aprobación explícita de los owners. Mientras no exista, se conservan todos los resultados por unidad y se marca ValidationEnvelope.REVIEW_REQUIRED para la agregación ambigua; no se inventa un nuevo DecisionOutcome.
