@@ -12,7 +12,7 @@ Este documento concreta reglas de identidad para dos familias de red. Define qu�
 2. Conservar el identificador observado sin normalizar, el valor normalizado, el método y la versión del normalizador.
 3. Separar identidad estable de atributos que pueden cambiar: ticker, nombre, metadata, autoridades, código ejecutable, extensiones, supply y estado de negociación.
 4. Una respuesta RPC o un explorador no es por sí solo evidencia suficiente de identidad si no se registra la red consultada, el endpoint, el bloque/slot y el estado de finalización.
-5. Registrar el estado de resolución como CONFIRMED, PARTIALLY_CONFIRMED, DISPUTED o UNVERIFIED. No convertir ausencia de datos en prueba de inexistencia.
+5. Usar los estados canónicos de resolución de la sección 4 de asset-identity-resolution.md: RESOLVED, RESOLVED_WITH_LIMITATIONS, AMBIGUOUS, UNVERIFIED, CONFLICTED y RETIRED_OR_MIGRATED. No crear estados paralelos por perfil ni convertir ausencia de datos en prueba de inexistencia.
 6. Los identificadores de red deben resolverse antes de interpretar identificadores de contrato/mint. Un chain_id o cluster label aislado no basta.
 
 ## 2. Perfil EVM
@@ -47,7 +47,7 @@ Reglas:
 - Una dirección no prueba que exista un contrato ni que sea un token. Confirmar existencia/código en un bloque concreto y validar comportamiento de token según el estándar declarado y observado.
 - No inferir ERC-20 por nombre, ABI de proveedor o metadata solamente. Registrar interfaz/métodos detectados, eventos y límites de la comprobación.
 - Direcciones precompiladas, cuentas sin código, contratos no disponibles en el bloque consultado y direcciones con comportamiento no estándar requieren clasificación específica; no forzar a TOKEN_CONTRACT.
-- Para el activo nativo usar (network_id, NATIVE_ASSET, native_asset_scheme/version); nunca asignarle una dirección de contrato ficticia. En redes EVM donde el activo de gas o la configuración nativa sea modificable, versionar esa configuración en el tiempo.
+- Para el activo nativo usar (network_id, NATIVE_ASSET); nunca asignarle una dirección de contrato ficticia. En redes EVM donde el activo de gas o la configuración nativa sea modificable, versionar esa configuración en el tiempo.
 
 La misma dirección en dos network_id distintos representa dos despliegues diferentes, aunque el bytecode o el ticker coincidan. Una misma dirección en redes que compartieron estado antes de un fork no autoriza a tratar sus estados posteriores como equivalentes.
 
@@ -103,7 +103,7 @@ Reglas:
 
 ### 3.3 SOL nativo frente a Wrapped SOL
 
-SOL nativo no es un mint SPL. Su identidad debe representarse mediante el discriminador tipado NATIVE_ASSET asociado al network_id y al esquema de activo nativo del cluster.
+SOL nativo no es un mint SPL. Su identidad debe representarse mediante (network_id, NATIVE_ASSET). El esquema/versión del perfil usado para resolverlo es metadato de procedencia, no parte de la clave estable.
 
 Wrapped SOL (WSOL) es una representación SPL distinta, identificada por su mint y programa propietario. No fusionar SOL nativo y WSOL como si fueran la misma entidad de representación. Puede existir una relación explícita de representación/conversión con condiciones operativas (cuenta token, sincronización de lamports y cierre), pero la equivalencia económica no elimina las diferencias de custodia, cuenta, transferencia ni disponibilidad.
 
