@@ -57,6 +57,22 @@ interface AssetObservationDao {
     """)
     suspend fun getLatestObservation(assetId: String, observationType: String): AssetObservationEntity?
 
+    @Query(
+        """
+        SELECT * FROM asset_observations
+        WHERE assetId = :assetId
+          AND observationType = :observationType
+          AND sourceId = :sourceId
+        ORDER BY retrievedAtEpochMs DESC, observationId DESC
+        LIMIT 1
+        """
+    )
+    suspend fun getLatestForSource(
+        assetId: String,
+        observationType: String,
+        sourceId: String
+    ): AssetObservationEntity?
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertObservation(observation: AssetObservationEntity)
 
