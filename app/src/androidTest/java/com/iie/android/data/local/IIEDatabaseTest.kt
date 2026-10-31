@@ -77,7 +77,7 @@ class IIEDatabaseTest {
         )
 
         database.assetDeploymentDao().insertDeployment(
-            com.iie.android.data.local.entity.AssetDeploymentEntity(
+            AssetDeploymentEntity(
                 deploymentId = "deployment-btc-mainnet",
                 deploymentKey = "native:network-bitcoin:asset-btc",
                 assetId = "asset-btc",
@@ -93,7 +93,6 @@ class IIEDatabaseTest {
 
         assertNotNull(database.assetDeploymentDao().getDeployment("deployment-btc-mainnet"))
     }
-
 
     @Test
     fun observationCannotReferenceDeploymentOfAnotherAsset() = runBlocking {
@@ -266,6 +265,11 @@ class IIEDatabaseTest {
         assertNotNull(entry)
         assertEquals(150L, entry?.addedAtEpochMs)
         assertEquals("persist me", entry?.note)
+        val provenance = database.assetObservationDao()
+            .getLatest("asset:bitcoin", "IDENTITY_FIXTURE")
+        assertNotNull(provenance)
+        assertEquals(100L, provenance?.retrievedAtEpochMs)
+        assertEquals("DEMO", provenance?.status)
     }
 
     @Test
@@ -279,6 +283,11 @@ class IIEDatabaseTest {
 
         assertEquals(4, database.assetDao().countAssets())
         assertNotNull(database.assetDeploymentDao().getDeployment("deployment:bitcoin-native"))
+        val provenance = database.assetObservationDao()
+            .getLatest("asset:bitcoin", "IDENTITY_FIXTURE")
+        assertNotNull(provenance)
+        assertEquals(100L, provenance?.retrievedAtEpochMs)
+        assertEquals("source:iie-demo-fixture", provenance?.sourceId)
         val entry = database.watchlistDao().getEntry("asset:bitcoin")
         assertNotNull(entry)
         assertEquals(150L, entry?.addedAtEpochMs)
