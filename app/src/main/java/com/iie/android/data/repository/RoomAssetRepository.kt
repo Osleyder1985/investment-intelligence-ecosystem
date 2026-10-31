@@ -5,6 +5,7 @@ import com.iie.android.data.local.IIEDatabase
 import com.iie.android.data.local.entity.WatchlistEntryEntity
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetDeploymentSummary
+import com.iie.android.domain.model.AssetObservationProvenance
 import com.iie.android.domain.repository.AssetRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -56,6 +57,23 @@ class RoomAssetRepository(
                     namespace = row.namespace,
                     reference = row.reference,
                     decimals = row.decimals
+                )
+            }
+        }
+
+    override fun observeProvenance(assetId: String): Flow<List<AssetObservationProvenance>> =
+        database.assetObservationDao().observeProvenanceForAsset(assetId).map { rows ->
+            rows.map { row ->
+                AssetObservationProvenance(
+                    observationId = row.observationId,
+                    sourceName = row.sourceDisplayName,
+                    providerType = row.sourceProviderType,
+                    permittedUseStatus = row.sourcePermittedUseStatus,
+                    observationType = row.observationType,
+                    observedAtEpochMs = row.observedAtEpochMs,
+                    retrievedAtEpochMs = row.retrievedAtEpochMs,
+                    status = row.status,
+                    quality = row.quality
                 )
             }
         }
