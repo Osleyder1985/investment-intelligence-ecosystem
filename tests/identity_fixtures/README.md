@@ -27,13 +27,15 @@ Run only one fixture (other fixtures are explicitly reported as NOT_RUN):
 python tests/identity_fixtures/harness.py --only FX-EVM-CASE-001
 ```
 
-The runner exits non-zero for FAIL or BLOCKED. INCONCLUSIVE is an expected, auditable outcome for fixtures that intentionally lack evidence; it is not a passing identity resolution.
+The runner exits non-zero for FAIL or BLOCKED. INCONCLUSIVE is an expected, auditable outcome for fixtures that intentionally lack evidence or contain unsupported Token-2022 extensions; it is not a passing identity resolution. Unit tests also assert that the same EVM address on different fixture networks yields different composite keys.
 
 ## Initial fixtures
 
 - `FX-EVM-CASE-001`: two capitalization forms of the same synthetic EVM address.
 - `FX-SOL-MINT-001`: a synthetic Solana mint public key with synthetic account initialization evidence.
 - `FX-EVM-INCOMPLETE-001`: missing network checkpoint; expected resolution remains UNVERIFIED and execution is INCONCLUSIVE.
+- `FX-EVM-NO-CODE-001`: valid address without contract code at the checkpoint; do not classify it as a confirmed token contract.
+- `FX-SOL-TOKEN2022-UNSUPPORTED-EXT-001`: mint identity is retained with limitations, while behavioral/transferability conclusions abstain for an unsupported extension.
 
 All fixture payloads are synthetic. No RPC data, provider payload, private key, credential, or real capture is included.
 
