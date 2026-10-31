@@ -224,15 +224,16 @@ private fun AssetDetailDialog(
 
                 Spacer(Modifier.height(12.dp))
                 Text("Evaluación de evidencia", fontWeight = FontWeight.SemiBold)
+                val currentEvidenceState = evidenceState?.takeIf { it.assetId == asset.assetId }
                 when {
-                    evidenceState?.assetId != asset.assetId ->
+                    currentEvidenceState == null ->
                         Text("Preparando evaluación…", style = MaterialTheme.typography.bodySmall)
-                    evidenceState.isLoading ->
+                    currentEvidenceState.isLoading ->
                         Text("Evaluando observación local…", style = MaterialTheme.typography.bodySmall)
-                    evidenceState.message != null ->
-                        Text(evidenceState.message, style = MaterialTheme.typography.bodySmall)
-                    evidenceState.evaluation != null ->
-                        EvidenceEvaluationDetails(evidenceState)
+                    currentEvidenceState.message != null ->
+                        Text(currentEvidenceState.message, style = MaterialTheme.typography.bodySmall)
+                    currentEvidenceState.evaluation != null ->
+                        EvidenceEvaluationDetails(currentEvidenceState)
                     else ->
                         Text("No hay evaluación disponible.", style = MaterialTheme.typography.bodySmall)
                 }
