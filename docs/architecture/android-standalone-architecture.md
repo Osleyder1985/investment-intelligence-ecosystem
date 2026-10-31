@@ -216,7 +216,7 @@ At the time of this draft:
 - the local data model and explorer integration remain pending Android compilation, generated schema review, and instrumentation execution;
 - a transactional demo-fixture seeder and persistent watchlist interaction have been added as implementation work;
 - the analytical engine and external provider integration are not yet implemented;
-- a Gradle Wrapper and Android CI are not yet present;
+- a Gradle Wrapper is not yet present; an Android CI workflow has been added, but no successful run is recorded yet;
 - no Android build, emulator test, performance benchmark, or security assessment is claimed by this document.
 
 This is an architecture proposal and implementation baseline, not evidence of implementation, empirical validation, or ISO certification.
