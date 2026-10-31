@@ -1,5 +1,6 @@
 package com.iie.android.data.repository
 
+import androidx.room.withTransaction
 import com.iie.android.data.local.IIEDatabase
 import com.iie.android.data.local.entity.WatchlistEntryEntity
 import com.iie.android.domain.model.Asset
@@ -71,6 +72,26 @@ class RoomAssetRepository(
             )
         )
     }
+
+    override suspend fun toggleWatchlist(assetId: String): Boolean =
+        database.withTransaction {
+            require(database.assetDao().getAsset(assetId) != null) {
+                "Cannot watchlist an asset that does not exist: $assetId"
+            }
+            if (database.watchlistDao().getEntry(assetId) != null) {
+                database.watchlistDao().remove(assetId)
+                false
+            } else {
+                database.watchlistDao().add(
+                    WatchlistEntryEntity(
+                        assetId = assetId,
+                        addedAtEpochMs = nowEpochMs(),
+                        note = null
+                    )
+                )
+                true
+            }
+        }
 
     override suspend fun removeFromWatchlist(assetId: String) {
         database.watchlistDao().remove(assetId)
