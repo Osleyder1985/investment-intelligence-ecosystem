@@ -75,3 +75,51 @@
 ## Criterio común
 
 Comprobar identidad, snapshot, finalidad, estado, evidencia, variables, licencias, tratamiento histórico, motivo y ausencia de selección retrospectiva. Estos casos verifican consistencia metodológica, no rentabilidad.
+
+
+## Casos adicionales derivados de la revisión fundacional
+
+## AS-015 — Colisión de chain_id entre redes
+- Entrada: dos redes distintas que comparten un identificador numérico de cadena.
+- Esperado: network_id interno namespaced distinto; representaciones separadas.
+- Fallo: usar chain_id como clave global única.
+
+## AS-016 — Red no EVM y activo nativo
+- Entrada: activo nativo identificado mediante reglas propias de una red no EVM.
+- Esperado: identificador tipado por network_id y esquema de red; no inventar contract address.
+- Fallo: forzar formato EVM o colisionar con dirección válida.
+
+## AS-017 — Proxy con cambio de implementación
+- Entrada: proxy estable cuya implementación cambia en bloque/fecha posterior.
+- Esperado: conservar proxy, implementación y evento versionado; evaluar impacto en comportamiento/derechos.
+- Fallo: sobrescribir la implementación histórica o asumir que nada cambió.
+
+## AS-018 — Proyecto y activo distintos
+- Entrada: un protocolo con varios tokens y una entidad que emite un token sin ser propietaria del protocolo.
+- Esperado: project_id, issuer y asset/representation IDs separados.
+- Fallo: inferir propiedad o identidad desde nombre del proyecto.
+
+## AS-019 — Universo de proveedor incompleto
+- Entrada: fuente discovery con cobertura parcial, paginación fallida o límite de API.
+- Esperado: snapshot con cobertura incompleta, fallo de consulta y limitación explícita; no afirmar exhaustividad.
+- Fallo: tratar ausencia de resultado como inexistencia del activo.
+
+## AS-020 — Evento de membresía conocido después
+- Entrada: deslistado efectivo en t1, evidencia publicada/disponible en t2 posterior.
+- Esperado: conservar effective_time=t1 y knowledge/availability_time=t2; no usarlo como conocido en t1.
+- Fallo: backdatear el conocimiento.
+
+## AS-021 — Precio último frente a resultado de salida
+- Entrada: activo desaparecido con última cotización antigua y sin mercado ejecutable posterior.
+- Esperado: distinguir último precio, última liquidez ejecutable y recuperación/redención; incertidumbre residual explícita.
+- Fallo: tratar último precio como valor realizable o asignar cero sin evidencia.
+
+## AS-022 — Reutilización de ticker y migración
+- Entrada: ticker reutilizado por nuevo proyecto después de migración o abandono.
+- Esperado: identidades distintas y relaciones temporales explícitas.
+- Fallo: unir series por ticker.
+
+## AS-023 — Representación multi-colateral
+- Entrada: token respaldado por cesta de activos o dependiente de varias entidades.
+- Esperado: relaciones BACKED_BY múltiples con pesos/condiciones y vigencia si se conocen; UNKNOWN si no.
+- Fallo: forzar un único subyacente sin evidencia.

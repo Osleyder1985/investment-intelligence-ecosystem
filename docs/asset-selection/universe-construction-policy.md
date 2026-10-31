@@ -1,6 +1,6 @@
 # Política de construcción del universo de criptoactivos
 
-**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.1.0
+**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.0
 
 ## 1. Propósito
 
@@ -78,3 +78,37 @@ Registrar fecha de inicio y fin de vigencia; no cambiar el pasado sin nueva vers
 ## 8. Salida y auditoría
 
 Publicar listado de incluidos, limitados, cuarentena, excluidos e históricos, con conteos y razones trazables. Informar cobertura, datos ausentes, licencias pendientes, representaciones agrupadas y limitaciones. No ordenar por precio nominal como proxy de oportunidad.
+
+
+## 9. Cobertura, conocimiento y tiempo de membresía (aclaración v0.2.0)
+
+Un snapshot debe distinguir al menos:
+
+- `decision_time`: instante al que se refiere la decisión;
+- `snapshot_created_at`: momento real de generación del snapshot;
+- `knowledge_cutoff`: límite temporal de información admisible;
+- `valid_from` / `valid_to`: vigencia efectiva de una característica o membresía;
+- `availability_time`: primer momento demostrable en que la evidencia pudo conocerse por la vía definida;
+- `capture_time`: momento de captura por el sistema.
+
+No intercambiar estos campos. Un snapshot reconstruido posteriormente debe identificarse como tal y conservar su fecha real de creación.
+
+### 9.1 Cobertura y completitud
+
+Cada snapshot debe declarar el alcance de descubrimiento: redes, tipos de activos, venues, fuentes, periodos, endpoints, filtros, páginas/rangos consultados y fallos de consulta. Registrar cobertura conocida, fuentes ausentes, límites de paginación/cuotas y activos no resueltos. La ausencia de un activo en un proveedor no demuestra inexistencia, deslistado ni inelegibilidad.
+
+No etiquetar el universo como exhaustivo salvo que exista método de enumeración y evidencia de cobertura suficientes para ese alcance. Cuando no pueda demostrarse, usar `COVERAGE_INCOMPLETE` o una limitación equivalente y describir el sesgo residual.
+
+### 9.2 Eventos de membresía
+
+Cada transición debe ser un evento inmutable con event_id, universe_id, entity IDs, estado anterior/nuevo, motivo, effective_time, knowledge_time, source/evidence refs, protocolo y versión. Eventos posibles incluyen DISCOVERED, INCLUDED, INCLUDED_WITH_LIMITATIONS, QUARANTINED, EXCLUDED, DELISTED, MIGRATED, RETIRED y UNRESOLVED. No inferir DELISTED solo por ausencia en un proveedor.
+
+### 9.3 Reconstrucción histórica
+
+La membresía en fecha t solo puede utilizar evidencia admisible en t según el modo point-in-time definido. La fecha efectiva de un hecho puede ser anterior a su fecha de conocimiento. Conservar ambas. Si la fecha de conocimiento no puede demostrarse, marcarla UNKNOWN y no usarla para afirmar que el sistema o el mercado la conocían entonces.
+
+Los activos desaparecidos deben conservarse cuando exista evidencia histórica. Distinguir último precio observado, última cotización ejecutable, redención/recuperación y resultado final; ninguno equivale automáticamente a cero. Si la historia de deslistados/fallos es incompleta, declarar el límite en resultados y validaciones.
+
+### 9.4 Versionado y comparabilidad
+
+Cambios en fuentes, filtros, cobertura, reglas de identidad o criterios de elegibilidad crean una nueva versión de protocolo/snapshot. No reescribir la membresía pasada. Comparaciones longitudinales deben separar cambios reales del universo de cambios en cobertura o metodología.

@@ -80,3 +80,41 @@
 ## Criterio común
 
 Verificar estado de admisibilidad, fuente, licencia, timestamps, unidades, transformaciones, evidencia, motivo, impacto en evaluación y posibilidad de reproducir el resultado. Estos casos prueban consistencia de controles, no calidad perfecta.
+
+
+## Casos adicionales derivados de la revisión fundacional
+
+## DQ-016 — Disponibilidad pública frente a ingestión interna
+- Entrada: dato publicado antes de t, pero ingerido por el sistema después de t.
+- Esperado: admisible solo para RECONSTRUCTION_POINT_IN_TIME si la disponibilidad pública está demostrada; no admisible para REPLAY_OPERATIONAL.
+- Fallo: confundir ambos modos.
+
+## DQ-017 — Timestamp de disponibilidad sin evidencia
+- Entrada: availability_time inferido únicamente desde capture_time.
+- Esperado: UNKNOWN; bloquear afirmaciones históricas dependientes.
+- Fallo: convertir la hora de captura en disponibilidad pública.
+
+## DQ-018 — Hash sin procedencia
+- Entrada: payload con hash pero sin fuente, fecha, endpoint ni evidencia de origen.
+- Esperado: hash solo acredita comparación de integridad del objeto disponible; procedencia y disponibilidad UNKNOWN.
+- Fallo: tratar hash como prueba de autenticidad.
+
+## DQ-019 — Términos por operación
+- Entrada: términos permiten consulta y análisis, pero no retención o redistribución.
+- Esperado: decisión separada por operación; bloquear solo usos no autorizados y no persistir payload restringido.
+- Fallo: aprobación global de proveedor.
+
+## DQ-020 — Indexador con retraso
+- Entrada: evento on-chain en bloque t1, indexado en t2 e ingerido en t3.
+- Esperado: conservar los tres tiempos y la finalidad de cada uno; replay exige ingestión antes del corte.
+- Fallo: asignar disponibilidad del indexador al timestamp de bloque.
+
+## DQ-021 — Dato derivado con insumo tardío
+- Entrada: indicador calculado con un insumo que estuvo disponible después de los demás.
+- Esperado: availability del derivado no anterior al insumo más tardío ni al cálculo terminado.
+- Fallo: fechar el derivado con el primer insumo.
+
+## DQ-022 — Fuente con cobertura parcial
+- Entrada: endpoint no devuelve todas las páginas o redes esperadas.
+- Esperado: cobertura incompleta y consulta fallida/parcial explícita; no afirmar exhaustividad.
+- Fallo: interpretar ausencia de filas como ausencia de activos.

@@ -1,6 +1,6 @@
 # Política de calidad y admisibilidad de datos
 
-**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.1.0
+**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.0
 
 ## 1. Principio
 
@@ -77,3 +77,33 @@ La admisibilidad técnica y la legal son controles separados. Un dato técnicame
 ## 9. Efecto sobre conclusiones
 
 Un dato crítico UNKNOWN, QUARANTINED o REJECTED impide conclusiones que dependan de él. La salida debe identificar campos faltantes, fuentes en conflicto, cobertura y efecto sobre incertidumbre. Nunca convertir falta de evidencia en evidencia favorable.
+
+
+## 10. Contrato de control por variable y finalidad (aclaración v0.2.0)
+
+La decisión de admisibilidad debe emitirse para una unidad de evaluación definida: source_id/producto, campo/variable, activo o instrumento, red/venue, periodo, frecuencia, finalidad, decision_time y modalidad point-in-time.
+
+Para cada control registrar:
+
+- control_id y dimensión de calidad;
+- aplicabilidad y razón;
+- método/consulta/versión utilizada;
+- resultado observado y unidad;
+- evidencia y timestamp;
+- estado (PASS, FAIL, UNKNOWN, NOT_APPLICABLE) con justificación;
+- efecto sobre el dato y las conclusiones dependientes;
+- revisor y versión del protocolo.
+
+La decisión agregada ACCEPTED, ACCEPTED_WITH_LIMITATIONS, QUARANTINED, REJECTED o UNKNOWN debe derivarse de controles requeridos para ese uso y conservar el detalle. No convertir UNKNOWN en PASS. No crear límites universales de latencia, discrepancia, completitud o desviación sin fundamento y validación por finalidad.
+
+### 10.1 Disponibilidad y tiempo
+
+Para cada dato histórico identificar si la disponibilidad se refiere a acceso público demostrable, acceso bajo cuenta/permiso concreto o ingestión efectiva por el sistema. Registrar por separado availability_time y capture_time. Si no puede probarse la disponibilidad relevante para la afirmación, marcar UNKNOWN y bloquear la conclusión temporal que dependa de ella.
+
+### 10.2 Dependencias y datos derivados
+
+La admisibilidad de un derivado depende de sus insumos, transformaciones y tiempos. Registrar el insumo con disponibilidad más tardía, processing_time, cierre de ventana y reglas de revisión/backfill. Un insumo UNKNOWN o inadmisible propaga la limitación a los derivados que dependan materialmente de él.
+
+### 10.3 Hashes y procedencia
+
+Un hash puede ayudar a detectar cambios del objeto comparado, pero no prueba por sí solo autoría, veracidad, timestamp de publicación, disponibilidad ni permiso de uso. Esos atributos requieren evidencia independiente.
