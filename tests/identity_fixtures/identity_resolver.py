@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
 RESOLVER_VERSION = "0.1.0"
@@ -88,7 +88,7 @@ def decode_base58(value: str) -> bytes:
         number = number * 58 + digit
     body = number.to_bytes((number.bit_length() + 7) // 8, "big") if number else b""
     leading_zeroes = len(value) - len(value.lstrip("1"))
-    return (b"\\x00" * leading_zeroes) + body
+    return (b"\x00" * leading_zeroes) + body
 
 
 def encode_base58(value: bytes) -> str:
@@ -97,7 +97,7 @@ def encode_base58(value: bytes) -> str:
     while number:
         number, remainder = divmod(number, 58)
         encoded = _BASE58[remainder] + encoded
-    leading_zeroes = len(value) - len(value.lstrip(b"\\x00"))
+    leading_zeroes = len(value) - len(value.lstrip(b"\x00"))
     return ("1" * leading_zeroes) + encoded
 
 
@@ -120,7 +120,10 @@ def _result(status: str, family: str, diagnostics: Sequence[str], *,
     return {
         "resolver_version": RESOLVER_VERSION,
         "registry_version": REGISTRY_VERSION,
-        "profile_version": EVM_PROFILE_VERSION if family == "EVM" else SOLANA_PROFILE_VERSION,
+        "profile_version": {
+            "EVM": EVM_PROFILE_VERSION,
+            "SOLANA": SOLANA_PROFILE_VERSION,
+        }.get(family, "unsupported"),
         "family": family,
         "resolution_status": status,
         "identity_key": identity_key,
@@ -136,42 +139,46 @@ def resolve_observations(
     registry: NetworkIdentityRegistry = SYNTHETIC_REGISTRY,
 ) -> dict[str, Any]:
     """Resolve representation identity from observations, never expected fixture output."""
+    def finish(status: str, selected_family: str, diagnostics: Sequence[str], **kwargs: Any) -> dict[str, Any]:
+        result = finish(status, selected_family, diagnostics, **kwargs)
+        result["registry_version"] = registry.version
+        return result
     if family not in {"EVM", "SOLANA"}:
-        return _result("UNRESOLVED", str(family), ["unsupported_profile"])
+        return finish("UNRESOLVED", str(family), ["unsupported_profile"])
     if not isinstance(network_context, Mapping) or not isinstance(observations, Sequence) or not observations:
-        return _result("UNRESOLVED", family, ["missing_network_context_or_observations"])
+        return finish("UNRESOLVED", family, ["missing_network_context_or_observations"])
     if network_context.get("family") != family:
-        return _result("CONFLICTED", family, ["network_family_mismatch"])
+        return finish("CONFLICTED", family, ["network_family_mismatch"])
     if not _network_checkpoint_present(network_context):
-        return _result("UNRESOLVED", family, ["missing_network_checkpoint"])
+        return finish("UNRESOLVED", family, ["missing_network_checkpoint"])
 
     matches = registry.match(family, network_context)
     if not matches:
-        return _result("UNRESOLVED", family, ["network_not_in_versioned_registry"])
+        return finish("UNRESOLVED", family, ["network_not_in_versioned_registry"])
     if len(matches) != 1:
-        return _result("CONFLICTED", family, ["ambiguous_network_registry_match"])
+        return finish("CONFLICTED", family, ["ambiguous_network_registry_match"])
     network = matches[0]
 
     identifiers: list[str] = []
     refs: list[str] = []
     for observation in observations:
         if not isinstance(observation, Mapping):
-            return _result("UNRESOLVED", family, ["malformed_observation"])
+            return finish("UNRESOLVED", family, ["malformed_observation"])
         raw = observation.get("raw_identifier")
         ref = observation.get("observation_ref")
         if isinstance(ref, str) and ref:
             refs.append(ref)
         if family == "EVM":
             if not isinstance(raw, str) or not _EVM_ADDRESS.fullmatch(raw):
-                return _result("UNRESOLVED", family, ["invalid_evm_address"])
+                return finish("UNRESOLVED", family, ["invalid_evm_address"])
             canonical = "0x" + raw[2:].lower()
             state = observation.get("contract_state")
             if not isinstance(state, Mapping) or state.get("code_present") is not True:
-                return _result("UNRESOLVED", family, ["contract_code_presence_unproven"],
+                return finish("UNRESOLVED", family, ["contract_code_presence_unproven"],
                                network_key=network.network_key, evidence_refs=refs)
             code_hash = state.get("code_hash")
             if not isinstance(code_hash, str) or not _EVM_HASH.fullmatch(code_hash):
-                return _result("UNRESOLVED", family, ["contract_code_hash_format_unproven"],
+                return finish("UNRESOLVED", family, ["contract_code_hash_format_unproven"],
                                network_key=network.network_key, evidence_refs=refs)
             # Hash syntax is checked only; no bytecode is available to recompute it.
             identifiers.append(canonical)
@@ -179,38 +186,38 @@ def resolve_observations(
             try:
                 decoded = decode_base58(raw)
             except (ValueError, TypeError):
-                return _result("UNRESOLVED", family, ["invalid_solana_public_key"],
+                return finish("UNRESOLVED", family, ["invalid_solana_public_key"],
                                network_key=network.network_key, evidence_refs=refs)
             if len(decoded) != 32 or encode_base58(decoded) != raw:
-                return _result("UNRESOLVED", family, ["solana_public_key_not_canonical_32_bytes"],
+                return finish("UNRESOLVED", family, ["solana_public_key_not_canonical_32_bytes"],
                                network_key=network.network_key, evidence_refs=refs)
             mint = observation.get("mint_account")
             if not isinstance(mint, Mapping) or mint.get("exists") is not True or mint.get("initialized") is not True:
-                return _result("UNRESOLVED", family, ["mint_account_not_proven_initialized"],
+                return finish("UNRESOLVED", family, ["mint_account_not_proven_initialized"],
                                network_key=network.network_key, evidence_refs=refs)
             owner = mint.get("owner_program_id")
             if not isinstance(owner, str):
-                return _result("UNRESOLVED", family, ["mint_owner_program_unproven"],
+                return finish("UNRESOLVED", family, ["mint_owner_program_unproven"],
                                network_key=network.network_key, evidence_refs=refs)
             try:
                 owner_bytes = decode_base58(owner)
             except ValueError:
-                return _result("UNRESOLVED", family, ["invalid_mint_owner_program_id"],
+                return finish("UNRESOLVED", family, ["invalid_mint_owner_program_id"],
                                network_key=network.network_key, evidence_refs=refs)
             if len(owner_bytes) != 32 or encode_base58(owner_bytes) != owner:
-                return _result("UNRESOLVED", family, ["invalid_mint_owner_program_id"],
+                return finish("UNRESOLVED", family, ["invalid_mint_owner_program_id"],
                                network_key=network.network_key, evidence_refs=refs)
             allowed_owners = dict(network.owner_programs)
             if owner not in allowed_owners:
-                return _result("UNRESOLVED", family, ["mint_owner_program_not_in_registry"],
+                return finish("UNRESOLVED", family, ["mint_owner_program_not_in_registry"],
                                network_key=network.network_key, evidence_refs=refs)
             # Deliberately ignore the fixture's free-text token_program label.
             identifiers.append(raw)
 
     if len(set(identifiers)) != 1:
-        return _result("CONFLICTED", family, ["observations_identify_different_representations"],
+        return finish("CONFLICTED", family, ["observations_identify_different_representations"],
                        network_key=network.network_key, evidence_refs=refs)
-    return _result("RESOLVED", family, ["representation_key_derived_from_observations"],
+    return finish("RESOLVED", family, ["representation_key_derived_from_observations"],
                    network_key=network.network_key, canonical_identifier=identifiers[0],
                    evidence_refs=refs)
 
