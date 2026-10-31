@@ -693,8 +693,8 @@ Para vetos concurrentes con scopes parcialmente solapados:
 
 ### 21. GAP de armonización de ValuationStatus legacy
 
-La resolución A11 define los outcomes objetivo de X-06, pero el catálogo existente `docs/valuation/valuation-method-catalog.md` v0.1.0 aún utiliza `VALUATION_SUPPORTED`, `VALUATION_CONDITIONAL`, `NO_APPLICABLE_METHOD` y `NOT_VALUABLE_WITH_AVAILABLE_EVIDENCE`. No existe mapping aprobado uno-a-uno. La matriz de aplicabilidad usa `CONDITIONAL` como estado de aplicabilidad del método, no como ValuationStatus.
+La resolución A11 define los outcomes objetivo de X-06, pero el catálogo existente `docs/valuation/valuation-method-catalog.md` v0.1.0 aún utiliza `VALUATION_SUPPORTED`, `VALUATION_CONDITIONAL`, `NO_APPLICABLE_METHOD` y `NOT_VALUABLE_WITH_AVAILABLE_EVIDENCE`. No existe mapping aprobado uno-a-uno. La matriz de aplicabilidad usa `CONDITIONAL` como estado de aplicabilidad del método, no como ValuationStatus. La propuesta de crosswalk semántico, compatibilidad y migración está documentada en [valuation-status-vocabulary-migration.md](../valuation/valuation-status-vocabulary-migration.md) v0.1.0-draft; su publicación no equivale a aprobación ni migración.
 
-El crosswalk y la migración están pendientes. No se deben consumir ni transformar automáticamente los enums legacy como si fueran los estados canónicos. Ver [documento 17, §2.3.1](17-x09-wrapped-valuation-and-atomic-aggregation.md).
+El crosswalk y el plan de migración están propuestos, pero pendientes de aprobación e implementación. No se deben consumir ni transformar automáticamente los enums legacy como si fueran los estados canónicos. Ver [documento 17, §2.3.1](17-x09-wrapped-valuation-and-atomic-aggregation.md) y la propuesta de migración.
 
 **A11 permanece ADDRESSED_IN_DRAFT con GAP de armonización legacy; no cerrado formalmente.**
