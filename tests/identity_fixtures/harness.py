@@ -91,6 +91,8 @@ def _evaluate_evm(fixture: dict[str, Any]) -> tuple[str, list[str]]:
         if obs["normalized_identifier"] != canonical:
             return "FAIL", ["evm_normalization_mismatch"]
         state = obs.get("contract_state", {})
+        if state.get("code_present") is False:
+            return "INCONCLUSIVE", ["contract_code_absent_at_checkpoint"]
         if state.get("code_present") is not True:
             return "INCONCLUSIVE", ["contract_code_presence_not_proven"]
         code_hash = state.get("code_hash", "")
