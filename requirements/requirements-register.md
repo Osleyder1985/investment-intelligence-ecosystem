@@ -23,5 +23,6 @@
 | IIM-019 | Resolver identidad canónica de activos, redes, contratos y representaciones sin depender del ticker | Crítica | Propuesto | Casos de colisión, wrapper, migración, fork y activo nativo resueltos con evidencia |
 | IIM-020 | Construir universos versionados y screening por finalidad sin sesgo de supervivencia ni precio nominal | Crítica | Propuesto | Snapshots históricos, criterios trazables y pruebas de activos desaparecidos y supply desconocido |
 | IIM-021 | Especificar modelos de valoración reproducibles con atribución demostrada, escenarios, sensibilidad y abstención | Crítica | Propuesto | Contratos de modelo, especificaciones por tipología y pruebas de doble conteo y aplicabilidad |
-
+| IIM-022 | Emitir decisiones informativas y rankings parciales reproducibles por horizonte, con gates no compensables, dominancia y abstención | Crítica | Propuesto | Árbol de gates, vetos bloqueantes, comparabilidad por dimensión, casos de dominancia/no comparabilidad y reconstrucción de ranking |
+ 
 Los requisitos no se consideran aprobados hasta su análisis, trazabilidad y aceptación formal.
