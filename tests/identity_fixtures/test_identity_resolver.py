@@ -33,6 +33,15 @@ class IndependentIdentityResolverTests(unittest.TestCase):
             "NET-EVM-SYNTH-01", "0x52908400098527886e0f7030069857d2e4169ee7"
         ])
         self.assertEqual(len(result["evidence_refs"]), 2)
+        self.assertEqual(len(result["observation_trace"]), 2)
+        self.assertEqual(
+            result["observation_trace"][0]["raw_identifier"],
+            fixture["input"]["observations"][0]["raw_identifier"],
+        )
+        self.assertEqual(
+            result["observation_trace"][0]["normalization_method_claim"],
+            "EVM_ADDRESS_20_BYTES_CASE_INSENSITIVE_v1",
+        )
 
     def test_same_evm_address_on_distinct_registered_networks_does_not_collide(self):
         fixture = copy.deepcopy(self.fixtures["FX-EVM-CASE-001"])
