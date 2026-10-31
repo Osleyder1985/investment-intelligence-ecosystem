@@ -29,7 +29,7 @@ La arquitectura estratégica aprobada organiza el ecosistema en cuatro capas: **
 
 ## Estructura documental
 
-- `docs/architecture/`: arquitectura estratégica y especificaciones de arquitectura.
+- `docs/architecture/`: arquitectura estratégica, asignación de requisitos IIM e interfaces entre capas.
 - `docs/methodology/`: carta y capítulos de la metodología.
 - `docs/standards/`: registro de normas y estado de verificación.
 - `docs/governance/`: políticas de evidencia y control.
