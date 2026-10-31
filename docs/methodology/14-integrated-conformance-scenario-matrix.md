@@ -1,7 +1,7 @@
 # Matriz integrada de escenarios de conformidad
 
 **ID:** IIE-METH-CONFORMANCE-010  
-**Versión:** 0.5.0-draft  
+**Versión:** 0.6.0-draft  
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
 **Hallazgo:** X-09; revisión 0.3.0 incorpora resoluciones propuestas A01-A10 de auditoría 15  
@@ -714,7 +714,45 @@ Para vetos concurrentes con scopes parcialmente solapados:
 **Estado A11/A12:** ADDRESSED_IN_DRAFT; pendiente revisión de Valuation, Risk, Architecture, Operations, Security, Governance y Legal/Compliance. Los escenarios S-085..S-114 son especificaciones de prueba futuras, no tests ejecutables ni resultados validados. La precedencia agregada se propone en [documento 18](18-x09-atomic-aggregation-precedence.md) y no está aprobada.
 
 
-### 21. GAP de armonización de ValuationStatus legacy
+## 21. X-09 — Scope Algebra y partición exacta (v0.6.0-draft)
+
+La propuesta formal está en [19-x09-scope-algebra-and-atomic-partition.md](19-x09-scope-algebra-and-atomic-partition.md) v0.1.0-draft. Estos escenarios amplían X-09 sin declarar implementada la álgebra.
+
+| ID | Input | Resultado esperado |
+|---|---|---|
+| S-115 | Dos scopes idénticos, misma versión/contexto | EQUAL |
+| S-116 | Alias de activo ambiguo o address sin chain_id | UNRESOLVED/INVALID; no conclusión favorable |
+| S-117 | Dimensión omitida o null | No interpretar como ALL; envelope no VALID |
+| S-118 | Dos scopes de red con IDs distintos y universo compatible | DISJOINT solo si se demuestra |
+| S-119 | Intersección de intervalos con misma unidad e inclusividad | Región exacta reproducible |
+| S-120 | Unidades/monedas incompatibles sin conversión snapshot | UNRESOLVED/INVALID |
+| S-121 | Intervalos temporales half-open adyacentes | DISJOINT si timezone/precision compatible |
+| S-122 | Dos vetos solapados en universo cerrado | Partición intersección, exclusivas y residual |
+| S-123 | Universo abierto/desconocido impide residual exhaustivo | INCOMPLETE/REVIEW_REQUIRED |
+| S-124 | Dependencia explícita afecta settlement en región concreta | Propagar solo a región causal |
+| S-125 | Falta edge de dependencia | No asumir independencia; SCOPE_UNRESOLVED |
+| S-126 | Derived scope excede parent | INVALID; rechazar |
+| S-127 | Átomos con mismo outcome pero inputs/dependencias distintos | No fusionar |
+| S-128 | Partición no demuestra disjunción o cobertura exacta | Envelope no VALID; no outcome agregado |
+
+### 21.1 Invariantes de scope
+
+- **INV-44 No implicit wildcard:** dimensión omitida/null/empty no significa ALL.
+- **INV-45 Unknown is not empty:** UNRESOLVED no se convierte en EMPTY ni DISJOINT.
+- **INV-46 Canonical subject identity:** comparación requiere IDs canónicos y namespaces.
+- **INV-47 Typed scope operations:** operaciones requieren dimensiones, unidades y versiones compatibles.
+- **INV-48 Exact partition coverage:** unión de átomos equivale exactamente a requested_scope.
+- **INV-49 Pairwise disjointness:** intersección entre átomos distintos es EMPTY demostrada.
+- **INV-50 Residual conservation:** ninguna región queda sin átomo o residual explícito.
+- **INV-51 Dependency provenance:** propagación requiere edge causal versionado y evidencia.
+- **INV-52 No implicit transitivity:** conectividad no implica transitividad.
+- **INV-53 Derived scope isolation:** subset requiere nueva decisión y conserva outcome del parent.
+- **INV-54 Scope context homogeneity:** purpose/activity, decision_type y policy context incompatibles no se agregan.
+- **INV-55 Scope deterministic normalization:** mismas entradas/versiones producen mismo resultado/digest.
+
+**Estado:** ADDRESSED_IN_DRAFT / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED. S-115..S-128 e INV-44..INV-55 son especificaciones futuras; no son fixtures ni pruebas ejecutadas.
+
+### 22. GAP de armonización de ValuationStatus legacy
 
 La resolución A11 define los outcomes objetivo de X-06, pero el catálogo existente `docs/valuation/valuation-method-catalog.md` v0.1.0 aún utiliza `VALUATION_SUPPORTED`, `VALUATION_CONDITIONAL`, `NO_APPLICABLE_METHOD` y `NOT_VALUABLE_WITH_AVAILABLE_EVIDENCE`. No existe mapping aprobado uno-a-uno. La matriz de aplicabilidad usa `CONDITIONAL` como estado de aplicabilidad del método, no como ValuationStatus. La propuesta de crosswalk semántico, compatibilidad y migración está documentada en [valuation-status-vocabulary-migration.md](../valuation/valuation-status-vocabulary-migration.md) v0.1.0-draft; su publicación no equivale a aprobación ni migración.
 
