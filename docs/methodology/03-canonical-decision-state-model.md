@@ -108,12 +108,14 @@ Por cada dominio de riesgo y scope:
 
 | Estado | Significado |
 |---|---|
+| NOT_ASSESSED | No se inició evaluación suficiente |
+| ASSESSMENT_IN_PROGRESS | Evaluación del dominio en curso |
 | ASSESSED_WITH_FINDINGS | Evaluado; existen hallazgos que deben conservarse |
 | ASSESSED_NO_MATERIAL_FINDING | Evaluado con evidencia suficiente; no se identificó hallazgo material dentro del alcance |
-| UNKNOWN | Evidencia insuficiente |
-| NOT_ASSESSED | No evaluado |
+| UNKNOWN | Evidencia insuficiente para concluir |
 | STALE | Evaluación fuera de vigencia |
-| CONFLICTED | Evidencia material contradictoria |
+| CONFLICTED | Evidencia material contradictoria no resuelta |
+| INVALID | Assessment inválido por error de método, datos o integridad |
 
 `ASSESSED_NO_MATERIAL_FINDING` no significa riesgo cero. `NOT_ASSESSED`, `UNKNOWN`, `STALE` y `CONFLICTED` nunca se convierten en ausencia de hallazgos. La aplicabilidad del dominio se registra aparte; no usar `NOT_ASSESSED` para representar no aplicabilidad.
 
