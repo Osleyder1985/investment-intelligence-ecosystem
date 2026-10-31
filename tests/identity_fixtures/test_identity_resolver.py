@@ -146,6 +146,73 @@ class IndependentIdentityResolverTests(unittest.TestCase):
         result = self.resolve_fixture(fixture, registry)
         self.assertEqual(result["resolution_status"], "CONFLICTED")
 
+    def test_conflicting_evm_code_hash_observations_are_conflicted(self):
+        fixture = copy.deepcopy(self.fixtures["FX-EVM-CASE-001"])
+        fixture["input"]["observations"][1]["contract_state"]["code_hash"] = "0x" + "d" * 64
+        result = self.resolve_fixture(fixture)
+        self.assertEqual(result["resolution_status"], "CONFLICTED")
+        self.assertIn("observations_have_conflicting_contract_code_hashes", result["diagnostics"])
+
+    def test_conflicting_solana_owner_program_observations_are_conflicted(self):
+        fixture = copy.deepcopy(self.fixtures["FX-SOL-MINT-001"])
+        second_owner = "11111111111111111111111111111111"
+        fixture["input"]["observations"][1]["mint_account"]["owner_program_id"] = second_owner
+        networks = []
+        for network in SYNTHETIC_REGISTRY.networks:
+            if network.family == "SOLANA":
+                owners = network.owner_programs + ((second_owner, "SYNTHETIC_SECOND_PROGRAM"),)
+                network = NetworkDefinition(
+                    network_key=network.network_key, family=network.family,
+                    chain_id=network.chain_id, genesis_hash=network.genesis_hash,
+                    owner_programs=owners,
+                )
+            networks.append(network)
+        registry = NetworkIdentityRegistry("solana-two-owner-test", tuple(networks))
+        result = self.resolve_fixture(fixture, registry)
+        self.assertEqual(result["resolution_status"], "CONFLICTED")
+        self.assertIn("observations_have_conflicting_mint_owner_programs", result["diagnostics"])
+
+    def test_non_representation_observation_is_not_resolved_as_asset(self):
+        fixture = copy.deepcopy(self.fixtures["FX-EVM-CASE-001"])
+        fixture["input"]["observations"][0]["entity_type"] = "network"
+        result = self.resolve_fixture(fixture)
+        self.assertEqual(result["resolution_status"], "UNRESOLVED")
+        self.assertIn("observation_entity_type_not_asset_representation", result["diagnostics"])
+
+    def test_missing_observation_reference_is_unresolved(self):
+        fixture = copy.deepcopy(self.fixtures["FX-EVM-CASE-001"])
+        fixture["input"]["observations"][0]["observation_ref"] = ""
+        result = self.resolve_fixture(fixture)
+        self.assertEqual(result["resolution_status"], "UNRESOLVED")
+        self.assertIn("observation_reference_missing", result["diagnostics"])
+
+    def test_declared_normalization_mismatch_is_unresolved(self):
+        fixture = copy.deepcopy(self.fixtures["FX-EVM-CASE-001"])
+        fixture["input"]["observations"][0]["normalized_identifier"] = "0x" + "0" * 40
+        result = self.resolve_fixture(fixture)
+        self.assertEqual(result["resolution_status"], "UNRESOLVED")
+        self.assertIn("declared_normalization_mismatch", result["diagnostics"])
+
+    def test_boolean_checkpoint_height_is_rejected(self):
+        fixture = copy.deepcopy(self.fixtures["FX-EVM-CASE-001"])
+        fixture["input"]["network_context"]["checkpoint"]["height_or_slot"] = True
+        result = self.resolve_fixture(fixture)
+        self.assertEqual(result["resolution_status"], "UNRESOLVED")
+        self.assertIn("missing_network_checkpoint", result["diagnostics"])
+
+    def test_registry_network_key_collision_is_conflicted(self):
+        fixture = self.fixtures["FX-EVM-CASE-001"]
+        duplicate = NetworkDefinition(
+            network_key="NET-EVM-SYNTH-01", family="EVM", chain_id="999002",
+            genesis_hash="0x" + "d" * 64,
+        )
+        registry = NetworkIdentityRegistry(
+            "colliding-network-keys", SYNTHETIC_REGISTRY.networks + (duplicate,)
+        )
+        result = self.resolve_fixture(fixture, registry)
+        self.assertEqual(result["resolution_status"], "CONFLICTED")
+        self.assertIn("registry_network_key_collision", result["diagnostics"])
+
     def test_identical_input_replays_to_identical_canonical_bytes(self):
         fixture = self.fixtures["FX-EVM-CASE-001"]
         first = self.resolve_fixture(fixture)
