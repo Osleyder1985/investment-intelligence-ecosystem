@@ -139,9 +139,12 @@ def resolve_observations(
     registry: NetworkIdentityRegistry = SYNTHETIC_REGISTRY,
 ) -> dict[str, Any]:
     """Resolve representation identity from observations, never expected fixture output."""
+    observation_trace: list[dict[str, Any]] = []
+
     def finish(status: str, selected_family: str, diagnostics: Sequence[str], **kwargs: Any) -> dict[str, Any]:
         result = _result(status, selected_family, diagnostics, **kwargs)
         result["registry_version"] = registry.version
+        result["observation_trace"] = list(observation_trace)
         return result
     if family not in {"EVM", "SOLANA"}:
         return finish("UNRESOLVED", str(family), ["unsupported_profile"])
@@ -168,6 +171,13 @@ def resolve_observations(
         ref = observation.get("observation_ref")
         if isinstance(ref, str) and ref:
             refs.append(ref)
+        observation_trace.append({
+            "observation_ref": ref if isinstance(ref, str) else None,
+            "raw_identifier": raw,
+            "encoding": observation.get("encoding"),
+            "normalized_identifier_claim": observation.get("normalized_identifier"),
+            "normalization_method_claim": observation.get("normalization_method"),
+        })
         if family == "EVM":
             if not isinstance(raw, str) or not _EVM_ADDRESS.fullmatch(raw):
                 return finish("UNRESOLVED", family, ["invalid_evm_address"])
