@@ -297,3 +297,29 @@ Comprobar identidad, snapshot, finalidad, estado, evidencia, variables, licencia
 - Entrada: política con límite temporal/slot y eventos mint/burn antes/después de su ventana.
 - Esperado: reconstruir supply y capacidad de emisión con policy script, slot y canonicalidad; distinguir emisión permitida de transferencias.
 - Fallo: inferir supply máximo o inmutabilidad por metadata/ticker o por una observación aislada.
+
+
+## AS-058 — Versión de parser no altera identidad
+- Entrada: el mismo activo se resuelve con dos versiones de adaptador/parser que aplican la misma regla de identidad.
+- Esperado: conservar el mismo ID interno; versionar las observaciones y el método de resolución.
+- Fallo: generar un activo nuevo por actualizar el parser.
+
+## AS-059 — Estados de resolución entre perfiles
+- Entrada: un perfil declara una afirmación DISPUTED y el resultado global del activo se consume en la selección.
+- Esperado: mapear el estado al vocabulario canónico (CONFLICTED) y bloquear solo los usos dependientes de resolver la contradicción.
+- Fallo: tratar DISPUTED como estado global no reconocido o degradarlo a RESOLVED.
+
+## AS-060 — Versión del estándar frente a namespace de identidad
+- Entrada: nueva versión del parser/estándar conserva la misma semántica de asset ID.
+- Esperado: mantener el ID; registrar versión como procedencia. Crear namespace distinto solo si el protocolo define IDs incompatibles.
+- Fallo: incorporar siempre la versión del decoder a la clave.
+
+## AS-061 — Activo nativo con identificador propio
+- Entrada: activo nativo de una cadena identificado por denom/asset identifier protocolario (p. ej. Cosmos bank denom).
+- Esperado: conservar el identificador local exacto y clasificar el rol nativo por separado, sin forzar un sentinel que borre el denom.
+- Fallo: perder la clave protocolaria al convertir todo activo nativo a NATIVE_ASSET.
+
+## AS-062 — Activo nativo sin identificador local separado
+- Entrada: activo nativo de red cuyo protocolo no expone contract/mint/denom asset ID (p. ej. gas coin EVM o ADA).
+- Esperado: (network_id, NATIVE_ASSET); perfil/normalizador versionado solo como procedencia.
+- Fallo: añadir versión del parser o una dirección ficticia a la clave.

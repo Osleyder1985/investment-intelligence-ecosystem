@@ -155,3 +155,27 @@ Los perfiles son borradores acotados, no implementaciones. AS-043 a AS-050 no se
 ### No-conclusiones
 
 El perfil es un borrador, no un indexador ni parser implementado. AS-051 a AS-057 no se han automatizado ni ejecutado. No se consultaron nodos, policy scripts, UTXOs ni datums; no se realizó revisión independiente ni validación empírica.
+
+
+## 11. Auditoría transversal de perfiles y claves estables — borrador v0.1.0
+
+**Alcance:** se armonizan reglas genéricas y perfiles EVM/Solana, Cosmos SDK/IBC, UTXO Bitcoin-like y Cardano/eUTXO.
+
+| Hallazgo | Decisión de armonización | Evidencia/corrección |
+|---|---|---|
+| XCR-25 | La versión de parser/adaptador no forma parte de la clave estable. | Se separan clave de identidad y metadatos de método/versión en sección 15. |
+| XCR-26 | Los estados globales se unifican con la sección 4; estados de evidencia se mapean al vocabulario canónico. | Se define mapping CONFIRMED/PARTIALLY_CONFIRMED/DISPUTED/UNVERIFIED. |
+| XCR-27 | Cosmos bank denom conserva denom exacto aun cuando el activo tenga rol nativo. | Se distingue clave de representación y clasificación de rol nativo. |
+| XCR-28 | Native assets sin identificador protocolario separado usan network_id + NATIVE_ASSET. | Se elimina scheme/parser version de la clave de ADA y activo nativo EVM/Solana. |
+| XCR-29 | Versión del estándar/decoder solo afecta namespace cuando el protocolo define espacios de IDs incompatibles. | Se separan protocol namespace, asset ID y parser version. |
+
+### Decisión por requisito
+
+- **IIM-001: REVISION_REQUIRED.** Se corrigen inconsistencias documentales, pero no se validan adaptadores ni fixtures.
+- **IIM-019: REVISION_REQUIRED.** Se armoniza el vocabulario de estados y las claves; falta validar interoperabilidad y relaciones complejas.
+- **IIM-020 e IIM-018: REVISION_REQUIRED.** No se resuelven cobertura histórica ni controles point-in-time.
+- **IIM-002: BLOCKED para aprobar fuentes concretas.** La auditoría no revisa expedientes de permisos.
+
+### No-conclusiones
+
+No se ejecutaron AS-058 a AS-062 ni suites automatizadas. No se implementaron migraciones de IDs, adaptadores ni parsers. No se realizó revisión independiente ni validación empírica. Los perfiles siguen siendo borradores.
