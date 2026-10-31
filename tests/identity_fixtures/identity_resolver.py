@@ -106,6 +106,7 @@ def _network_checkpoint_present(context: Mapping[str, Any]) -> bool:
     return (
         isinstance(checkpoint, Mapping)
         and isinstance(checkpoint.get("height_or_slot"), int)
+        and not isinstance(checkpoint.get("height_or_slot"), bool)
         and checkpoint.get("height_or_slot") >= 0
         and isinstance(checkpoint.get("block_or_state_hash"), str)
         and bool(checkpoint.get("block_or_state_hash"))
@@ -154,6 +155,11 @@ def resolve_observations(
         return finish("CONFLICTED", family, ["network_family_mismatch"])
     if not _network_checkpoint_present(network_context):
         return finish("UNRESOLVED", family, ["missing_network_checkpoint"])
+    if not isinstance(registry.version, str) or not registry.version.strip():
+        return finish("UNRESOLVED", family, ["registry_version_missing"])
+    network_keys = [item.network_key for item in registry.networks]
+    if len(network_keys) != len(set(network_keys)):
+        return finish("CONFLICTED", family, ["registry_network_key_collision"])
 
     matches = registry.match(family, network_context)
     if not matches:
@@ -164,11 +170,17 @@ def resolve_observations(
 
     identifiers: list[str] = []
     refs: list[str] = []
+    evm_code_hashes: list[str] = []
+    solana_owner_programs: list[str] = []
     for observation in observations:
         if not isinstance(observation, Mapping):
             return finish("UNRESOLVED", family, ["malformed_observation"])
+        if observation.get("entity_type") != "asset_representation":
+            return finish("UNRESOLVED", family, ["observation_entity_type_not_asset_representation"])
         raw = observation.get("raw_identifier")
         ref = observation.get("observation_ref")
+        if not isinstance(ref, str) or not ref:
+            return finish("UNRESOLVED", family, ["observation_reference_missing"])
         if isinstance(ref, str) and ref:
             refs.append(ref)
         observation_trace.append({
@@ -191,6 +203,10 @@ def resolve_observations(
                 return finish("UNRESOLVED", family, ["contract_code_hash_format_unproven"],
                                network_key=network.network_key, evidence_refs=refs)
             # Hash syntax is checked only; no bytecode is available to recompute it.
+            evm_code_hashes.append(code_hash.lower())
+            if observation.get("normalized_identifier") != canonical:
+                return finish("UNRESOLVED", family, ["declared_normalization_mismatch"],
+                               network_key=network.network_key, evidence_refs=refs)
             identifiers.append(canonical)
         else:
             try:
@@ -222,8 +238,18 @@ def resolve_observations(
                 return finish("UNRESOLVED", family, ["mint_owner_program_not_in_registry"],
                                network_key=network.network_key, evidence_refs=refs)
             # Deliberately ignore the fixture's free-text token_program label.
+            if observation.get("normalized_identifier") != raw:
+                return finish("UNRESOLVED", family, ["declared_normalization_mismatch"],
+                               network_key=network.network_key, evidence_refs=refs)
+            solana_owner_programs.append(owner)
             identifiers.append(raw)
 
+    if len(set(evm_code_hashes)) > 1:
+        return finish("CONFLICTED", family, ["observations_have_conflicting_contract_code_hashes"],
+                       network_key=network.network_key, evidence_refs=refs)
+    if len(set(solana_owner_programs)) > 1:
+        return finish("CONFLICTED", family, ["observations_have_conflicting_mint_owner_programs"],
+                       network_key=network.network_key, evidence_refs=refs)
     if len(set(identifiers)) != 1:
         return finish("CONFLICTED", family, ["observations_identify_different_representations"],
                        network_key=network.network_key, evidence_refs=refs)
