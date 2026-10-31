@@ -266,6 +266,8 @@ Este desempate solo selecciona la causa principal que se muestra primero; nunca 
 
 ## 10. Composición de scopes parciales y múltiples causas
 
+La formalización propuesta del modelo, las operaciones algebraicas, las dependencias y la prueba de partición está en [19-x09-scope-algebra-and-atomic-partition.md](19-x09-scope-algebra-and-atomic-partition.md) v0.1.0-draft. Hasta aprobación, los conceptos de exact_partition y homogeneous_decision_context siguen siendo precondiciones no implementadas. UNRESOLVED no equivale a EMPTY/DISJOINT; scope omitido no equivale a ALL. La propuesta no crea contratos ni modifica la semántica institucional vigente.
+
 ### 10.1 Regla de agregación
 
 La propuesta específica de precedencia agregada A12 se desarrolla en [18-x09-atomic-aggregation-precedence.md](18-x09-atomic-aggregation-precedence.md) v0.1.0-draft. Hasta aprobación, se considera una regla propuesta y no una política institucional vigente.
