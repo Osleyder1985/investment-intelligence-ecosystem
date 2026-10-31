@@ -61,11 +61,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
 
     fun toggleWatchlist(assetId: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            if (assetId in watchlist.value) {
-                repository.removeFromWatchlist(assetId)
-            } else {
-                repository.addToWatchlist(assetId)
-            }
+            repository.toggleWatchlist(assetId)
         }
     }
 
