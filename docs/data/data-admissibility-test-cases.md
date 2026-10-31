@@ -9,7 +9,7 @@
 
 ## DQ-002 — Captura posterior con publicación anterior
 - Entrada: publicación verificable antes de t, captura después de t.
-- Esperado: admisible point-in-time si se demuestra que estaba disponible antes de t y el sistema reconstruye la fuente original.
+- Esperado: admisible en RECONSTRUCTION_POINT_IN_TIME si se demuestra disponibilidad pública antes de t y se etiqueta como reconstrucción retrospectiva; no admisible en REPLAY_OPERATIONAL si el sistema aún no la había ingerido.
 - Fallo: confundir capture_time con availability_time o asumir disponibilidad sin evidencia.
 
 ## DQ-003 — Timestamp desconocido
