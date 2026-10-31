@@ -126,12 +126,12 @@ Estados por dominio y alcance:
 | VETO_ACTIVE | Condición crítica verificada y vigente |
 | VETO_REVIEW_REQUIRED | Alerta creíble, contradicción o remediación pendiente de validar |
 | NO_VETO_IDENTIFIED | No se identificó veto con evidencia suficiente en el alcance revisado |
-| RISK_UNKNOWN | No puede determinarse si existe veto por falta de evidencia suficiente |
+| VETO_NOT_ASSESSED | La política de veto no fue evaluada para el scope declarado |
 
 Precedencia agregada, de mayor a menor restricción:
 1. `VETO_ACTIVE`
 2. `VETO_REVIEW_REQUIRED`
-3. `RISK_UNKNOWN`
+3. `VETO_NOT_ASSESSED`
 4. `NO_VETO_IDENTIFIED`
 
 Solo se agrega `NO_VETO_IDENTIFIED` cuando todos los dominios materiales aplicables están suficientemente evaluados y no hay veto ni revisión pendiente. Dominios no aplicables requieren justificación registrada. No se permite inferir ausencia de veto a partir de dominios no evaluados.
