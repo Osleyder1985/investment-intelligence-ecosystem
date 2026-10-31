@@ -318,7 +318,7 @@ class IIEDatabaseTest {
 
         DemoAssetSeeder(database) { 200L }.seed()
 
-        assertEquals(4, database.assetDao().countAssets())
+        assertEquals(5, database.assetDao().countAssets())
         assertNotNull(database.assetDeploymentDao().getDeployment("deployment:bitcoin-native"))
         val provenance = database.assetObservationDao()
             .getLatest("asset:bitcoin", "IDENTITY_FIXTURE")
@@ -329,6 +329,30 @@ class IIEDatabaseTest {
         assertNotNull(entry)
         assertEquals(150L, entry?.addedAtEpochMs)
         assertEquals("user note", entry?.note)
+    }
+
+    @Test
+    fun usdcAndUsdtHaveIndependentDemoIdentitiesAndNoAssumedDeployments() = runBlocking {
+        DemoAssetSeeder(database) { 250L }.seed()
+        val usdc = database.assetDao().getAsset("asset:usd-coin")
+        val usdt = database.assetDao().getAsset("asset:tether")
+        assertNotNull(usdc)
+        assertNotNull(usdt)
+        assertEquals("USDC", usdc?.symbol)
+        assertEquals("USDT", usdt?.symbol)
+        assertEquals("USD Coin", usdc?.name)
+        assertEquals("Tether", usdt?.name)
+        org.junit.Assert.assertNotEquals(usdc?.assetId, usdt?.assetId)
+        org.junit.Assert.assertNotEquals(usdc?.canonicalKey, usdt?.canonicalKey)
+        assertEquals(0, database.assetDeploymentDao().observeSummariesForAsset("asset:usd-coin").first().size)
+        assertEquals(0, database.assetDeploymentDao().observeSummariesForAsset("asset:tether").first().size)
+        val usdcIdentifier = database.assetIdentifierDao().findIdentifier("source:iie-demo-fixture", "iie-demo-fixture", "usd-coin")
+        val usdtIdentifier = database.assetIdentifierDao().findIdentifier("source:iie-demo-fixture", "iie-demo-fixture", "tether")
+        assertNotNull(usdcIdentifier)
+        assertNotNull(usdtIdentifier)
+        assertEquals("asset:usd-coin", usdcIdentifier?.assetId)
+        assertEquals("asset:tether", usdtIdentifier?.assetId)
+        org.junit.Assert.assertNotEquals(usdcIdentifier?.identifierValue, usdtIdentifier?.identifierValue)
     }
 
     private fun asset(
