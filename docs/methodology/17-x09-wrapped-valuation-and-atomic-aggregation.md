@@ -198,17 +198,13 @@ Aplicar la precedencia canónica de X-06 §9 en cada unidad. No redefinirla aqu�
 - Analytical: invalid input → review conflict → ineligible por incumplimiento demostrado/veto → review → abstain → in progress/not assessed → eligible with limitations → eligible.
 - Operational route: invalid input → conflict → route ineligible por veto/control fallido → route review → invalid/stale → insufficient information/not assessed → in progress → eligible with limitations → eligible.
 
-Para el scope agregado:
-1. Todas las unidades analíticas DECISION_ELIGIBLE → DECISION_ELIGIBLE.
-2. Todas elegibles o limitadas, con al menos una limitada → DECISION_ELIGIBLE_WITH_LIMITATIONS.
-3. Cualquier unidad DECISION_REVIEW_REQUIRED impide resultado plenamente favorable → DECISION_REVIEW_REQUIRED.
-4. Cualquier unidad DECISION_ABSTAIN impide conclusión favorable para el scope completo → DECISION_ABSTAIN.
-5. Una o más unidades DECISION_INELIGIBLE impiden resultado favorable; se reporta DECISION_INELIGIBLE con desglose, salvo que exista review/abstain de mayor precedencia conforme a X-06 §9 y §10. Conservar todos los outcomes por unidad.
-6. Si una unidad es ineligible y otra review/abstain, el resumen aplica la precedencia exacta aprobada para el tipo de decisión; no ocultar ninguna condición en el detalle. La matriz debe conservar vector completo, aunque el summary elija un outcome.
-7. ORE nunca se reduce a una autorización global: mantener una fila por ruta. Si el consumidor solicita varias rutas, presentar matriz por ruta y resumen restrictivo sin permiso implícito.
-8. DECISION_ELIGIBLE_WITH_LIMITATIONS/ROUTE_ELIGIBLE_WITH_LIMITATIONS solo si el subset permitido está identificado y su enforcement es efectivo. Si no, REVIEW/ABSTAIN/INELIGIBLE según causa.
+La regla propuesta de agregación analítica se desarrolla en [18-x09-atomic-aggregation-precedence.md](18-x09-atomic-aggregation-precedence.md) v0.1.0-draft. Una vez `ValidationEnvelope=VALID` y la partición sea exacta, exhaustiva, disjunta y homogénea, el resumen del requested_scope aplica: `DECISION_INELIGIBLE > DECISION_REVIEW_REQUIRED > DECISION_ABSTAIN > DECISION_IN_PROGRESS > DECISION_NOT_ASSESSED > DECISION_ELIGIBLE_WITH_LIMITATIONS > DECISION_ELIGIBLE`. El orden no es score y no elimina resultados ni causas atómicos.
 
-**Nota de precedencia:** para evitar ambigüedad de agregación cuando coexisten INELIGIBLE, REVIEW y ABSTAIN, la salida agregada deberá seguir el orden de severidad explícito que aprueben los owners; hasta entonces, conservar siempre el vector por unidad y marcar `ValidationEnvelope.REVIEW_REQUIRED` por ambigüedad de agregación, sin inventar un nuevo DecisionOutcome. Este envelope es una condición de composición, no sustituye los outcomes atómicos.
+Si `ValidationEnvelope` es `REJECTED_INVALID_INPUT`, `REVIEW_REQUIRED` o `INCOMPLETE`, no se emite DecisionOutcome agregado. Se conservan resultados locales válidos y se resuelve la integridad/partición antes de concluir sobre el requested_scope completo.
+
+Un subset permitido requiere un scope derivado y decisión independiente; nunca sustituye el resultado del requested_scope original. ORE conserva una fila por route_id y no se convierte en autorización global. Las limitaciones requieren enforcement verificable.
+
+Esta precedencia es una propuesta documental pendiente de aprobación de owners; no debe tratarse como política institucional vigente.
 
 ### 3.6 Escenarios de agregación obligatorios
 
@@ -222,6 +218,10 @@ Para el scope agregado:
 | A-06 | Varias rutas de venues/cuentas diferentes | Una ROUTE_ELIGIBLE, otra ROUTE_INELIGIBLE | Matriz por ruta; no emitir ORE global ELIGIBLE |
 | A-07 | Dependencia de settlement atraviesa unidad supuestamente no afectada | SCOPE_UNRESOLVED o dependency affected | Bloquear/revisar unidad dependiente; no asumir independencia |
 | A-08 | Unidades disjuntas, homogéneas y todas favorables | Todas DECISION_ELIGIBLE | DECISION_ELIGIBLE para el requested_scope exactamente cubierto |
+| A-09 | Una unidad INELIGIBLE y otra REVIEW_REQUIRED/ABSTAIN | Outcomes locales preservados | INELIGIBLE agregado para el requested_scope, si envelope VALID |
+| A-10 | REVIEW_REQUIRED + ABSTAIN sin INELIGIBLE | Outcomes locales preservados | REVIEW_REQUIRED agregado |
+| A-11 | Envelope INCOMPLETE/REVIEW_REQUIRED/REJECTED_INVALID_INPUT | Outcomes locales válidos preservados | No emitir DecisionOutcome agregado |
+| A-12 | INELIGIBLE en requested_scope y subset independiente elegible | Outcome original y vector preservados | Subset requiere scope derivado y nueva decisión |
 
 ### 3.7 Invariantes A12
 
@@ -261,7 +261,7 @@ A11:
 
 A12:
 - formalizar algoritmo de partición y agregación en X-06 o documento aprobado;
-- aprobar precedence cuando coexisten resultados no favorables;
+- revisar y aprobar la precedencia propuesta INELIGIBLE > REVIEW_REQUIRED > ABSTAIN y su gate ValidationEnvelope;
 - definir scope algebra, dependencias y límites;
 - aprobar enforcement contract para partial limitations;
 - construir pruebas property-based y escenarios C-07/C-14 ampliados;
@@ -274,4 +274,4 @@ A12:
 
 Los casos W-01..W-07 se materializan como escenarios S-085..S-091; los casos A-01..A-08 se materializan como S-092..S-099 en X-09 v0.4.0-draft. C-07 y C-14 reciben expected outcomes ampliados por unidad. Las invariantes INV-30..INV-35 se añaden a la matriz maestra de conformidad.
 
-La precedencia de agregación cuando coexisten outcomes atómicos INELIGIBLE, REVIEW y ABSTAIN requiere aprobación explícita de los owners. Mientras no exista, se conservan todos los resultados por unidad y se marca ValidationEnvelope.REVIEW_REQUIRED para la agregación ambigua; no se inventa un nuevo DecisionOutcome.
+La precedencia de agregación propuesta se documenta en [18-x09-atomic-aggregation-precedence.md](18-x09-atomic-aggregation-precedence.md). La regla propuesta es INELIGIBLE > REVIEW_REQUIRED > ABSTAIN después de ValidationEnvelope=VALID; envelopes no válidos impiden emitir outcome agregado. La propuesta requiere aprobación explícita de los owners y no constituye política institucional vigente.
