@@ -23,10 +23,23 @@ class IdentityFixtureHarnessTests(unittest.TestCase):
         result = harness.evaluate_fixture(self.fixtures["FX-SOL-MINT-001"], self.schema)
         self.assertEqual(result["execution_status"], "PASS")
 
-    def test_missing_network_checkpoint_is_inconclusive(self):
+    def test_expected_abstention_is_a_passing_conformance_test(self):
         result = harness.evaluate_fixture(self.fixtures["FX-EVM-INCOMPLETE-001"], self.schema)
-        self.assertEqual(result["execution_status"], "INCONCLUSIVE")
+        self.assertEqual(result["execution_status"], "PASS")
+        self.assertEqual(result["resolution_status"], "UNRESOLVED")
+        self.assertEqual(result["expected_resolution_status"], "UNVERIFIED")
         self.assertIn("missing_network_checkpoint", result["diagnostics"])
+
+    def test_expected_result_is_only_used_by_conformance_comparator(self):
+        fixture = copy.deepcopy(self.fixtures["FX-EVM-CASE-001"])
+        original = harness.evaluate_fixture(fixture, self.schema)
+        fixture["expected_result"]["entity_candidates"][0]["key"][1] = "0x" + "0" * 40
+        changed = harness.evaluate_fixture(fixture, self.schema)
+        self.assertEqual(original["identity_key"], changed["identity_key"])
+        self.assertEqual(original["resolution_status"], changed["resolution_status"])
+        self.assertEqual(original["execution_status"], "PASS")
+        self.assertEqual(changed["execution_status"], "FAIL")
+        self.assertIn("expected_identity_key_mismatch", changed["diagnostics"])
 
     def test_wrong_expected_key_fails(self):
         fixture = copy.deepcopy(self.fixtures["FX-EVM-CASE-001"])
