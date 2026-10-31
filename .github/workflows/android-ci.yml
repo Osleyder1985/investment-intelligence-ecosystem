@@ -97,15 +97,28 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Install API 35 emulator image
+      - name: Install API 35 emulator image and create AVD
+        shell: bash
         run: |
+          set -euo pipefail
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
+
           sdkmanager "emulator" "system-images;android-35;google_apis;x86_64"
           echo "no" | avdmanager create avd --force --name iie-api35 --package "system-images;android-35;google_apis;x86_64" --device "pixel_2"
+
+          echo "Created AVD files:"
+          ls -la "$ANDROID_AVD_HOME"
+          test -f "$ANDROID_AVD_HOME/iie-api35.ini"
+          avdmanager list avd
 
       - name: Start emulator with bounded boot detection
         shell: bash
         run: |
           set -euo pipefail
+          : "${ANDROID_AVD_HOME:=$HOME/.android/avd}"
+          test -f "$ANDROID_AVD_HOME/iie-api35.ini"
           "$ANDROID_HOME/emulator/emulator" -avd iie-api35 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -camera-back none > "$RUNNER_TEMP/iie-emulator.log" 2>&1 &
           EMULATOR_PID=$!
           echo "$EMULATOR_PID" > "$RUNNER_TEMP/iie-emulator.pid"
