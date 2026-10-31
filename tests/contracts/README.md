@@ -7,7 +7,7 @@ This suite checks the six preliminary JSON Schemas in `schemas/contracts/`.
 From the repository root:
 
 ```bash
-python -m pip install -r requirements-dev.txt
+python -m pip install -r requirements-dev.txt (includes jsonschema format dependencies)
 python -m unittest discover -s tests/contracts -p 'test_*.py' -v
 ```
 
