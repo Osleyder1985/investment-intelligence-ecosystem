@@ -21,6 +21,16 @@ class ObservationPayloadValidatorTest {
     private val validator = ObservationPayloadValidator(listOf(contract))
 
     @Test
+    fun initialRegistryContainsOnlyTheExplicitIdentityFixtureContract() {
+        val contracts = ObservationPayloadContracts.initial()
+        assertEquals(listOf("IDENTITY_FIXTURE" to 1), contracts.map { it.observationType to it.schemaVersion })
+        assertTrue(ObservationPayloadValidator(contracts).validate(
+            "IDENTITY_FIXTURE", 1,
+            """{"recordType":"synthetic_demo_fixture","marketData":false}"""
+        ) is ObservationPayloadValidation.Valid)
+    }
+
+    @Test
     fun acceptsKnownIdentityFixturePayload() {
         assertTrue(
             validator.validate(
