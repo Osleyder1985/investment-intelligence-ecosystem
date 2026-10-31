@@ -194,3 +194,10 @@ Para pasar a decisión formal:
 ## 8. Límites de esta auditoría
 
 No se inspeccionó una implementación transaccional porque la evidencia documental revisada no demuestra que exista en este repositorio. No se ejecutaron pruebas. No se verificaron proveedores, endpoints, licencias, contratos legales, exchanges, custodia ni infraestructura productiva. No se declara readiness para paper/live trading.
+
+
+## 9. Borrador integrado producido
+
+Se ha publicado [portfolio-execution-integrated-requirements-draft.md](portfolio-execution-integrated-requirements-draft.md), versión 0.2.0-draft. Consolida redacciones de IIM-025 a IIM-037, contratos transversales, reglas de precedencia y dependencias. Sigue siendo un borrador no aprobado; no reemplaza las revisiones independientes ni modifica el registro normativo.
+
+La matriz de revisión fue normalizada: lotes A–D aparecen en las secciones 2.1–2.4, sin duplicación de la sección 2.3 ni bloque tardío del lote D.
