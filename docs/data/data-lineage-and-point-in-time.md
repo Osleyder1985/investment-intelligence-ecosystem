@@ -1,6 +1,6 @@
 # Linaje de datos y semántica point-in-time
 
-**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.0
+**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.1
 
 ## 1. Objetivo
 
@@ -57,7 +57,7 @@ En ambas modalidades:
 - no usar calendarios futuros, unlocks, anuncios o estados publicados después de t, salvo que fueran públicamente conocidos antes y exista evidencia temporal;
 - cualquier dato derivado hereda la disponibilidad más tardía entre sus insumos y la fecha de procesamiento que corresponda.
 
-Un valor corregido retrospectivamente debe guardarse como nueva versión con su propio availability_time. No reemplazar silenciosamente el valor que se conocía en t.
+Un valor corregido retrospectivamente debe guardarse como nueva versión con su propio timestamp de disponibilidad pública o autorizada, según corresponda. No reemplazar silenciosamente el valor que se conocía en t.
 
 ## 5. Linaje de derivados
 
@@ -88,7 +88,7 @@ En `REPLAY_OPERATIONAL`, exigir que el sistema concreto hubiera ingerido y tenid
 
 ## 9. Disponibilidad de datos on-chain y datos derivados
 
-Para datos on-chain separar event/block time, bloque y hash, estado de finalización, reorganización, disponibilidad del nodo/indexador y system_ingestion_time. El timestamp de bloque no prueba cuándo un proveedor terminó de indexar ni cuándo el sistema lo consumió.
+Para datos on-chain separar event/block time, bloque y hash, estado de finalización, reorganización, disponibilidad pública/autorizada del nodo o indexador y `system_ingestion_time`. El timestamp de bloque no prueba cuándo un proveedor terminó de indexar ni cuándo el sistema lo consumió.
 
 Para agregaciones, velas y derivados, documentar cierre de ventana, retrasos, revisiones, backfills y regla de publicación. La disponibilidad del derivado no puede ser anterior a la disponibilidad de sus insumos ni al momento en que el cálculo estuvo terminado y disponible. Conservar valores preliminares y finales como versiones diferentes cuando el proveedor los revise.
 
