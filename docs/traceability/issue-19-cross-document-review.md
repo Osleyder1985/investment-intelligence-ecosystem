@@ -1,8 +1,9 @@
 # Registro de revisión cruzada fundacional — Issue #19
 
 **Estado:** revisión técnica-documental asistida; no constituye aprobación metodológica independiente.  
-**Fecha de revisión:** 2026-10-31 (UTC)  
-**Rama de trabajo:** `docs/issue-19-cross-document-consistency`  
+**Fecha de revisión:** 2026-10-30 (UTC)  
+**Rama de trabajo inicial:** `docs/issue-19-cross-document-consistency`  
+**Iteración de cardinalidades:** `docs/issue-19-identity-cardinality-contract`  
 **Base:** `main` en `df32d5e5a9ed584d1f096c8c55e085b8b7e07fb5`  
 **Issue:** [#19](https://github.com/Osleyder1985/investment-intelligence-ecosystem/issues/19)  
 **PR de aclaraciones anterior:** [#22](https://github.com/Osleyder1985/investment-intelligence-ecosystem/pull/22)
@@ -57,3 +58,26 @@ No se inspeccionaron expedientes reales de proveedores, términos contractuales 
 ## 6. Resultado
 
 La rama corrige contradicciones detectadas y actualiza la trazabilidad. No cierra el Issue #19 ni autoriza implementación, activación de fuentes, captura de datos o validación empírica.
+
+## 7. Iteración de cardinalidades y restricciones — borrador v0.3.0
+
+**Alcance añadido:** sección 11 de `asset-identity-resolution.md` y casos AS-024 a AS-032 en `universe-test-cases.md`.
+
+| ID | Decisión documental | Límite pendiente |
+|---|---|---|
+| XCR-06 | Se especifica que una representación pertenece a una sola instancia de red; una red puede contener múltiples representaciones. | Validar reglas de identidad y normalización por adaptador de red. |
+| XCR-07 | Se separan instrumento y episodio de listing; un listing referencia un instrumento y pueden existir múltiples episodios históricos. | Precisar contratos específicos de venues, mercados spot/derivados y reutilización de IDs. |
+| XCR-08 | Se evita imponer relación 1:1 entre activo económico y representación; se admiten composiciones multi-subyacente con pesos UNKNOWN si no hay evidencia. | Definir semántica y medición de derechos/participaciones para cada clase de activo. |
+| XCR-09 | Se formalizan aristas con tipo, endpoints tipados, vigencia, conocimiento, evidencia y estado. | Acordar vocabulario controlado, serialización y reglas de compatibilidad entre versiones. |
+| XCR-10 | Se separan emisor, administrador, propietario y controlador; se permiten ciclos solo según semántica del tipo de relación. | Probar detección de conflictos/ciclos con grafos reales y revisar excepciones por protocolo. |
+
+### Decisión por requisito tras esta iteración
+
+- **IIM-001: REVISION_REQUIRED.** El borrador define restricciones conceptuales, pero no cierra adaptadores ni casos verificables por todas las familias de red.
+- **IIM-019: REVISION_REQUIRED.** El borrador aporta cardinalidades y semántica relacional, pero no constituye todavía un contrato interoperable aprobado ni validado.
+- **IIM-020, IIM-018: REVISION_REQUIRED.** Esta iteración no resuelve completitud histórica ni controles point-in-time.
+- **IIM-002: BLOCKED para aprobar fuentes concretas.** No se aportaron expedientes probatorios de términos y permisos.
+
+### No-conclusiones
+
+No se definió esquema físico de base de datos, algoritmo universal de matching, umbrales de confianza, adaptadores productivos ni cardinalidades empíricas para todos los protocolos. AS-024 a AS-032 son casos de diseño; no se automatizaron ni ejecutaron. No se realizó validación con datos reales, revisión jurídica ni aprobación independiente. Los cinco requisitos conservan sus estados anteriores.
