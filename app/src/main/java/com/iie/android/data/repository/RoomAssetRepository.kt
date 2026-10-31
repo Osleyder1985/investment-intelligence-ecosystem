@@ -3,6 +3,7 @@ package com.iie.android.data.repository
 import com.iie.android.data.local.IIEDatabase
 import com.iie.android.data.local.entity.WatchlistEntryEntity
 import com.iie.android.domain.model.Asset
+import com.iie.android.domain.model.AssetDeploymentSummary
 import com.iie.android.domain.repository.AssetRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -40,6 +41,20 @@ class RoomAssetRepository(
                     identityStatus = it.identityStatus,
                     createdAtEpochMs = it.createdAtEpochMs,
                     updatedAtEpochMs = it.updatedAtEpochMs
+                )
+            }
+        }
+
+    override fun observeDeployments(assetId: String): Flow<List<AssetDeploymentSummary>> =
+        database.assetDeploymentDao().observeSummariesForAsset(assetId).map { rows ->
+            rows.map { row ->
+                AssetDeploymentSummary(
+                    deploymentId = row.deploymentId,
+                    networkName = row.networkName,
+                    representationKind = row.representationKind,
+                    namespace = row.namespace,
+                    reference = row.reference,
+                    decimals = row.decimals
                 )
             }
         }
