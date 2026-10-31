@@ -23,8 +23,13 @@ La metodología apoya la toma de decisiones; no garantiza resultados ni constitu
 - Mantener historial, versiones, decisiones y evidencia auditables.
 - El usuario decide cuándo ejecutar una evaluación.
 
+## Arquitectura estratégica
+
+La arquitectura estratégica aprobada organiza el ecosistema en cuatro capas: **INTELLIGENCE**, **DECISION**, **PORTFOLIO & EXECUTION** y **VALIDATION & LEARNING**. Su definición, responsabilidades, interfaces conceptuales, controles transversales y fases de implementación se mantienen en [`docs/architecture/strategic-architecture.md`](docs/architecture/strategic-architecture.md). Esta línea base define el alcance objetivo; no implica que las capacidades estén implementadas ni validadas.
+
 ## Estructura documental
 
+- `docs/architecture/`: arquitectura estratégica y especificaciones de arquitectura.
 - `docs/methodology/`: carta y capítulos de la metodología.
 - `docs/standards/`: registro de normas y estado de verificación.
 - `docs/governance/`: políticas de evidencia y control.
