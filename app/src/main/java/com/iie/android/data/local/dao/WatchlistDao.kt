@@ -15,7 +15,8 @@ interface WatchlistDao {
     @Query("SELECT EXISTS(SELECT 1 FROM watchlist_entries WHERE assetId = :assetId)")
     fun observeContains(assetId: String): Flow<Boolean>
 
-    @Insert(onConflict = OnConflictStrategy.ABORT)
+    /** Idempotent add: a repeated request does not overwrite the original timestamp or note. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun add(entry: WatchlistEntryEntity)
 
     @Query("DELETE FROM watchlist_entries WHERE assetId = :assetId")
