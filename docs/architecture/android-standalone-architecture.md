@@ -211,10 +211,10 @@ Such a future service is not part of the first release and must require a separa
 ## 12. Current status and non-claims
 
 At the time of this draft:
-- the Android development branches contain a Jetpack Compose explorer connected to a Room-backed repository and local watchlist;
+- the Android branch contains a small Jetpack Compose UI prototype with static demo data;
 - an initial Room schema, DAOs, database provider, asset repository, and instrumentation-test source have been added on a development branch;
-- the local data model and explorer integration are still pending Android compilation, generated schema review, and instrumentation execution;
-- a transactional, conflict-safe demo fixture seeder and a persistent watchlist interaction have been added as implementation work;
+- the local data model is still draft and has not yet passed Android compilation or instrumentation execution;
+- the explorer UI is not yet connected to Room;
 - the analytical engine and external provider integration are not yet implemented;
 - a Gradle Wrapper and Android CI are not yet present;
 - no Android build, emulator test, performance benchmark, or security assessment is claimed by this document.
