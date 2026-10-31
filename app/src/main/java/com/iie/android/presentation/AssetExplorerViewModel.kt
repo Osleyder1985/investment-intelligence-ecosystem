@@ -7,6 +7,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.iie.android.data.local.DemoAssetSeeder
 import com.iie.android.data.local.IIEDatabaseProvider
+import com.iie.android.data.market.CoinPaprikaTickerClient
+import org.json.JSONObject
 import com.iie.android.data.repository.RoomAssetRepository
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetDeploymentSummary
@@ -28,6 +30,10 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     private val database = IIEDatabaseProvider.get(application)
     private val repository = RoomAssetRepository(database)
     private val evidenceEvaluator = LocalDemoEvidenceEvaluator.create()
+    private val coinPaprikaClient = CoinPaprikaTickerClient()
+
+    private val _marketQuotes = MutableStateFlow<Map<String, MarketQuoteUiState>>(emptyMap())
+    val marketQuotes: StateFlow<Map<String, MarketQuoteUiState>> = _marketQuotes.asStateFlow()
 
     private val query = MutableStateFlow("")
     val searchQuery: StateFlow<String> = query.asStateFlow()
@@ -106,6 +112,65 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+
+    fun loadLatestMarketQuote(assetId: String) {
+        viewModelScope.launch {
+            try {
+                val latest = withContext(Dispatchers.IO) {
+                    repository.getLatestCoinPaprikaQuote(assetId)
+                }
+                if (latest != null) {
+                    _marketQuotes.value = _marketQuotes.value + (assetId to latest.toUiState())
+                }
+            } catch (error: Exception) {
+                _marketQuotes.value = _marketQuotes.value + (assetId to MarketQuoteUiState(
+                    isLoading = false,
+                    error = error.message ?: "No se pudo cargar la cotización local"
+                ))
+            }
+        }
+    }
+
+    fun refreshMarketQuote(assetId: String, symbol: String) {
+        _marketQuotes.value = _marketQuotes.value + (assetId to
+            (_marketQuotes.value[assetId] ?: MarketQuoteUiState()).copy(isLoading = true, error = null))
+        viewModelScope.launch {
+            try {
+                val observation = withContext(Dispatchers.IO) {
+                    repository.fetchAndPersistCoinPaprikaQuote(assetId, symbol, coinPaprikaClient)
+                }
+                val attribution = withContext(Dispatchers.IO) {
+                    repository.getLatestCoinPaprikaQuote(assetId)?.second ?: "CoinPaprika"
+                }
+                val state = observation.toUiState(attribution)
+                _marketQuotes.value = _marketQuotes.value + (assetId to state)
+            } catch (error: Exception) {
+                val previous = _marketQuotes.value[assetId] ?: MarketQuoteUiState()
+                _marketQuotes.value = _marketQuotes.value + (assetId to previous.copy(
+                    isLoading = false,
+                    error = error.message ?: "No se pudo actualizar la cotización"
+                ))
+            }
+        }
+    }
+
+    private fun Pair<com.iie.android.data.local.entity.AssetObservationEntity, String>.toUiState(): MarketQuoteUiState =
+        first.toUiState(second)
+
+    private fun com.iie.android.data.local.entity.AssetObservationEntity.toUiState(
+        attribution: String
+    ): MarketQuoteUiState {
+        val json = JSONObject(valueJson)
+        return MarketQuoteUiState(
+            priceUsd = json.getDouble("price"),
+            providerUpdatedAtEpochMs = json.getLong("providerUpdatedAtEpochMs"),
+            retrievedAtEpochMs = retrievedAtEpochMs,
+            attribution = attribution,
+            providerId = json.getString("providerId"),
+            isLoading = false
+        )
+    }
+
     fun updateSearchQuery(value: String) {
         query.value = value
     }
@@ -126,3 +191,13 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 }
+
+data class MarketQuoteUiState(
+    val priceUsd: Double? = null,
+    val providerUpdatedAtEpochMs: Long? = null,
+    val retrievedAtEpochMs: Long? = null,
+    val attribution: String? = null,
+    val providerId: String? = null,
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
