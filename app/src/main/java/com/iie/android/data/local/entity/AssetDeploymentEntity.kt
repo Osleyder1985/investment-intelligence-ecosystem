@@ -23,6 +23,7 @@ import androidx.room.PrimaryKey
     ],
     indices = [
         Index(value = ["deploymentKey"], unique = true),
+        Index(value = ["deploymentId", "assetId"], unique = true),
         Index(value = ["assetId"]),
         Index(value = ["networkId"]),
         Index(value = ["networkId", "namespace", "reference"])
