@@ -1,6 +1,6 @@
 # Resolución de identidad de criptoactivos
 
-**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.2.1
+**Estado:** Propuesta metodológica; pendiente de revisión y validación. **Versión:** 0.3.0
 
 ## 1. Principio
 
