@@ -289,7 +289,8 @@ El mapeo es semántico y contextual, no un reemplazo mecánico de cadenas.
 | QUARANTINED (screening) | EligibilityStatus o EvidenceStatus | Determinar si el conflicto afecta decisión de elegibilidad o admisibilidad; conservar origen |
 | VETO_ACTIVE | VetoDecision | Mantener |
 | VETO_REVIEW_REQUIRED | VetoDecision | Mantener |
-| RISK_UNKNOWN | VetoDecision / RiskDomainStatus | Duplicar referencias en ambos dominios solo si ambos assessments lo justifican; no equiparar |
+| RISK_UNKNOWN | RiskDomainStatus | Mantener exclusivamente como estado de conocimiento/evaluación del dominio |
+| VETO_NOT_ASSESSED | VetoDecision | Usar cuando la política de veto no fue evaluada para el scope |
 | NO_VETO_IDENTIFIED | VetoDecision | Mantener con cobertura de dominios materiales demostrada |
 | ESTIMABLE / CONDITIONAL | ValuationStatus | Separar outcome y limitaciones |
 | NOT_APPLICABLE | Applicability | Mantener como aplicabilidad, no outcome |
