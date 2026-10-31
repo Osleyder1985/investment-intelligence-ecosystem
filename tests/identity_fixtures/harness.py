@@ -111,6 +111,7 @@ def evaluate_fixture(fixture: dict[str, Any], schema: dict[str, Any]) -> dict[st
         "registry_version": computed["registry_version"],
         "profile_version": computed["profile_version"],
         "evidence_refs": computed["evidence_refs"],
+        "observation_trace": computed["observation_trace"],
         "diagnostics": computed["diagnostics"] + comparison_diagnostics,
     }
 
