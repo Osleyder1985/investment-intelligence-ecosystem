@@ -103,17 +103,17 @@ Evaluar separadamente elegibilidad para investigación, valoración, comparació
 
 La liquidez se evalúa para un tamaño, mercado, lado, horizonte y momento definidos. El volumen reportado no sustituye profundidad ejecutable. Un activo puede ser investigable y no invertible.
 
-### G4 — Análisis de inteligencia
+### G4 — Análisis de inteligencia (sin conclusión de valoración)
 
-Ejecutar los módulos aplicables de las secciones 6 a 10. No todos los módulos son aplicables a todas las tipologías. La inaplicabilidad debe justificarse; la falta de datos no equivale a inaplicabilidad.
+Ejecutar los módulos aplicables de análisis fundamental/económico, tokenomics, tecnología, gobernanza y mercado de las secciones 6 a 9. La valoración de la sección 10 queda expresamente excluida de este gate. No todos los módulos son aplicables a todas las tipologías. La inaplicabilidad debe justificarse; la falta de datos no equivale a inaplicabilidad.
 
 ### G5 — Riesgos y vetos
 
-Evaluar riesgos materiales antes de emitir una conclusión favorable. Aplicar la precedencia de estados de veto y conservar alcance, evidencia, controles y transiciones. VETO_ACTIVE bloquea la candidatura en el alcance afectado. VETO_REVIEW_REQUIRED y RISK_UNKNOWN impiden una conclusión favorable no condicionada.
+Evaluar riesgos materiales antes de cualquier conclusión de valoración u oportunidad. Aplicar la precedencia de estados de veto y conservar alcance, evidencia, controles y transiciones. VETO_ACTIVE bloquea la candidatura en el alcance afectado. VETO_REVIEW_REQUIRED y RISK_UNKNOWN impiden una conclusión favorable no condicionada. Un análisis exploratorio de riesgo puede comenzar antes, pero el estado de riesgo debe resolverse o limitarse explícitamente antes de G6.
 
 ### G6 — Valoración y oportunidad
 
-Estimar valor solo si el objeto y el método son aplicables. Comparar precio ejecutable con rango de valor razonable, incorporando costes, incertidumbre y horizonte. No confundir calidad del activo con atractivo del precio.
+Estimar valor solo si el objeto, los derechos y el método son aplicables y G1–G5 permiten continuar. Comparar precio ejecutable con rango de valor razonable, incorporando costes, incertidumbre y horizonte. No confundir calidad del activo con atractivo del precio. Si no hay modelo defendible, emitir NOT_ESTIMABLE/ABSTAIN según la política aplicable; no fabricar un rango.
 
 ### G7 — Decisión y comparación
 
