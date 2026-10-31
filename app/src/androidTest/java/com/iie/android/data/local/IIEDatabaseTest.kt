@@ -97,11 +97,10 @@ class IIEDatabaseTest {
             WatchlistEntryEntity("asset-eth", addedAtEpochMs = 200L, note = "second")
         )
 
-        val entry = database.watchlistDao().observeEntries()
-        // Read directly through the DAO's observable query using a one-shot query is
-        // intentionally avoided here; the stable primary key and IGNORE policy are
-        // covered by the fact that a duplicate insert does not throw.
+        val entry = database.watchlistDao().getEntry("asset-eth")
         assertNotNull(entry)
+        assertEquals(100L, entry?.addedAtEpochMs)
+        assertEquals("first", entry?.note)
     }
 
     private fun asset(
