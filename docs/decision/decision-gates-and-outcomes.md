@@ -39,7 +39,9 @@ Los estados no se colapsan en un booleano ni en una puntuación única. Un dato 
 
 - **VETO_ACTIVE:** bloquea toda clasificación favorable dentro del alcance del veto. No puede compensarse con descuento, momentum, upside modelado, score ni posición en ranking. La salida será NOT_ELIGIBLE_DUE_TO_ACTIVE_VETO.
 - **VETO_REVIEW_REQUIRED:** no es veto confirmado ni ausencia de riesgo. La salida será REVIEW_REQUIRED; se bloquea la clasificación favorable hasta resolver la revisión o limitar justificadamente su alcance.
-- **RISK_UNKNOWN:** ausencia de evidencia no demuestra seguridad. La salida será RISK_ASSESSMENT_INCOMPLETE; nunca se convierte en NO_VETO_IDENTIFIED.
+- **RiskDomainStatus.UNKNOWN / NOT_ASSESSED / STALE / CONFLICTED / INVALID:** la evidencia del dominio no permite una conclusión favorable dependiente. La salida será RISK_ASSESSMENT_INCOMPLETE o REVIEW_REQUIRED según la causa y la política.
+- **VETO_NOT_ASSESSED:** la política de veto no fue evaluada para el scope; no equivale a ausencia de veto y bloquea conclusiones favorables dependientes.
+- **NO_VETO_IDENTIFIED:** solo procede si todas las reglas de veto y dominios materiales aplicables al scope fueron evaluados con evidencia suficiente.
 - **NO_VETO_IDENTIFIED:** significa únicamente que no se identificó veto con la evidencia y alcance revisados. No equivale a activo seguro ni libre de riesgo.
 
 Un veto debe acotarse a su objeto: activo, representación, red, mercado, jurisdicción, custodio, contraparte, finalidad y/o tamaño de operación. No generalizarlo más allá de la evidencia.
@@ -53,7 +55,8 @@ Abstenerse de emitir conclusión favorable o cuantificada cuando exista:
 - elegibilidad desconocida o incumplida para la finalidad;
 - dato crítico rechazado, en cuarentena o sin procedencia admisible;
 - VETO_ACTIVE o VETO_REVIEW_REQUIRED aplicable;
-- RISK_UNKNOWN material para la tesis;
+- RiskDomainStatus.UNKNOWN / NOT_ASSESSED / STALE / CONFLICTED / INVALID material para la tesis;
+- VETO_NOT_ASSESSED cuando la política de veto requerida para el scope no fue evaluada;
 - derechos/captura de valor no demostrados para el modelo;
 - valoración no estimable o modelos incompatibles sin reconciliación;
 - precio de referencia, unidad, moneda, mercado o timestamp no comparables;
