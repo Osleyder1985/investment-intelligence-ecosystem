@@ -17,5 +17,7 @@
 | IIM-013 | Abstenerse de estimar valor razonable cuando falten derechos o evidencia suficientes | Crítica | Propuesto | Casos de prueba que exijan abstención y expliquen datos faltantes |
 | IIM-014 | Clasificar la brecha entre precio ejecutable y rango de valor razonable con incertidumbre y costes explícitos | Crítica | Propuesto | Casos de prueba de rango, costes, liquidez y no aplicabilidad matemática |
 | IIM-015 | Habilitar la categoría extrema solo tras calibración y validación temporal independiente | Crítica | Propuesto | Protocolo walk-forward/out-of-sample, control de sesgos y falsos descubrimientos |
+| IIM-016 | Evaluar riesgos por tipología, evidencia, alcance, controles y riesgo residual | Crítica | Propuesto | Taxonomía y fichas trazables por activo y dominio |
+| IIM-017 | Aplicar vetos críticos independientes de la valoración y con transiciones verificables | Crítica | Propuesto | Casos de prueba de activación, revisión, remediación y bloqueo de ranking |
 
 Los requisitos no se consideran aprobados hasta su análisis, trazabilidad y aceptación formal.
