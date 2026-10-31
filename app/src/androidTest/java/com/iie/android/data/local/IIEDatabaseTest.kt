@@ -355,6 +355,22 @@ class IIEDatabaseTest {
         org.junit.Assert.assertNotEquals(usdcIdentifier?.identifierValue, usdtIdentifier?.identifierValue)
     }
 
+    @Test
+    fun coinPaprikaMapsUsdcAndUsdtToDifferentProviderIds() = runBlocking {
+        DemoAssetSeeder(database) { 300L }.seed()
+        val usdc = database.assetIdentifierDao().findIdentifier("source:coinpaprika", "coinpaprika", "usdc-usd-coin")
+        val usdt = database.assetIdentifierDao().findIdentifier("source:coinpaprika", "coinpaprika", "usdt-tether")
+        assertNotNull(usdc)
+        assertNotNull(usdt)
+        assertEquals("asset:usd-coin", usdc?.assetId)
+        assertEquals("asset:tether", usdt?.assetId)
+        assertEquals("PROVIDER_ID_CONFIRMED", usdc?.verificationStatus)
+        assertEquals("PROVIDER_ID_CONFIRMED", usdt?.verificationStatus)
+        val source = database.dataSourceDao().getSource("source:coinpaprika")
+        assertNotNull(source)
+        assertEquals("PERSONAL_USE_ONLY", source?.permittedUseStatus)
+    }
+
     private fun asset(
         id: String,
         canonicalKey: String,
