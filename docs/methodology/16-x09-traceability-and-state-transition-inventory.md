@@ -5,7 +5,7 @@
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
 **Objeto:** resolver documentalmente A09 y A10 de la auditoría `15-x09-cross-document-consistency-audit.md`.  
-**Matriz base:** `14-integrated-conformance-scenario-matrix.md` v0.6.0-draft.
+**Matriz base:** `14-integrated-conformance-scenario-matrix.md` v0.7.0-draft.
 
 ## 1. Dictamen y límites
 
@@ -312,3 +312,36 @@ La especificación propuesta está en [19-x09-scope-algebra-and-atomic-partition
 ### 14.3 Límites
 
 Los mappings IIM son candidatos, no declaración de cobertura normativa. Requirement Owners deben validar cada asignación. No hay JSON Schemas, código, fixtures, property-based tests ni ejecución de pruebas. Architecture, Risk, Security, Operations y Governance deben aprobar la semántica y el método de demostración de partición antes de implementación.
+
+
+## 15. A13 — Trazabilidad de verificación formal de Scope Algebra
+
+Documento fuente: [20-x09-scope-algebra-formal-verification-strategy.md](20-x09-scope-algebra-formal-verification-strategy.md) v0.1.0-draft.
+
+| Escenario | Regla/propiedad fuente | Invariante | Futuro test ID | Estado |
+|---|---|---|---|---|
+| S-129 | Doc. 20 §§3,8; conmutatividad y canonicalización | INV-56, INV-60 | TC-X09-S-129 | PARTIAL_DRAFT |
+| S-130 | Doc. 20 §3; asociatividad | INV-56 | TC-X09-S-130 | PARTIAL_DRAFT |
+| S-131 | Doc. 20 §3; partición por intersección/diferencia | INV-56, INV-63 | TC-X09-S-131 | PARTIAL_DRAFT |
+| S-132 | Doc. 20 §§2,4; universo/firma/versiones | INV-56 | TC-X09-S-132 | PARTIAL_DRAFT |
+| S-133 | Doc. 20 §5; certificados y checker | INV-57, INV-61, INV-63 | TC-X09-S-133 | PARTIAL_DRAFT |
+| S-134 | Doc. 20 §5.3; fallo de solver | INV-58 | TC-X09-S-134 | PARTIAL_DRAFT |
+| S-135 | Doc. 20 §7; límites de recursos | INV-59 | TC-X09-S-135 | PARTIAL_DRAFT |
+| S-136 | Doc. 20 §8; determinismo | INV-60 | TC-X09-S-136 | PARTIAL_DRAFT |
+| S-137 | Doc. 20 §8; canonicalización segura | INV-60 | TC-X09-S-137 | PARTIAL_DRAFT |
+| S-138 | Doc. 20 §§2,12; predicate DSL decidible | INV-62 | TC-X09-S-138 | PARTIAL_DRAFT |
+| S-139 | Doc. 20 §6; contención/serialización derived scope | INV-56, INV-63 | TC-X09-S-139 | PARTIAL_DRAFT |
+| S-140 | Doc. 20 §5.2; differential verification | INV-57, INV-61 | TC-X09-S-140 | PARTIAL_DRAFT |
+
+| Invariante | Escenarios | Fuente | Futuro test ID | Estado |
+|---|---|---|---|---|
+| INV-56 Algebra preconditions | S-129,S-130,S-131,S-132,S-139 | Doc. 20 §§2–4 | TC-X09-INV-56 | PARTIAL_DRAFT |
+| INV-57 Proof soundness | S-133,S-140 | Doc. 20 §5 | TC-X09-INV-57 | PARTIAL_DRAFT |
+| INV-58 Solver uncertainty | S-134 | Doc. 20 §5.3 | TC-X09-INV-58 | PARTIAL_DRAFT |
+| INV-59 Resource fail-closed | S-135 | Doc. 20 §7 | TC-X09-INV-59 | PARTIAL_DRAFT |
+| INV-60 Canonical determinism | S-129,S-136,S-137 | Doc. 20 §8 | TC-X09-INV-60 | PARTIAL_DRAFT |
+| INV-61 Checker independence | S-133,S-140 | Doc. 20 §5.2 | TC-X09-INV-61 | PARTIAL_DRAFT |
+| INV-62 Predicate decidability | S-138 | Doc. 20 §§2,12 | TC-X09-INV-62 | PARTIAL_DRAFT |
+| INV-63 Partition proof completeness | S-131,S-133,S-139 | Doc. 20 §§3,5,6 | TC-X09-INV-63 | PARTIAL_DRAFT |
+
+**Límites:** los test IDs son reservas de trazabilidad. No hay fixtures, schemas, property-based tests, differential checker, benchmark ni ejecución de pruebas. Los expected outcomes y proof obligations requieren aprobación de Architecture, Security, Risk y Requirement Owners.
