@@ -1,7 +1,7 @@
 # X-09 — Matriz de trazabilidad y catálogo de transiciones
 
 **ID:** IIE-METH-TRACE-STATE-012  
-**Versión:** 0.4.0-draft  
+**Versión:** 0.5.0-draft  
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
 **Objeto:** resolver documentalmente A09 y A10 de la auditoría `15-x09-cross-document-consistency-audit.md`.  
@@ -20,9 +20,9 @@ Convenciones:
 - `TEST_NOT_IMPLEMENTED` y `NOT_EXECUTED`: no existe evidencia de ejecución.
 
 Los futuros test IDs son reservas de trazabilidad, no tests implementados:
-- Escenarios individuales: `TC-X09-S-001` … `TC-X09-S-140`.
+- Escenarios individuales: `TC-X09-S-001` … `TC-X09-S-151`.
 - Escenarios combinados: `TC-X09-C-01` … `TC-X09-C-16`.
-- Invariantes: `TC-X09-INV-01` … `TC-X09-INV-63`.
+- Invariantes: `TC-X09-INV-01` … `TC-X09-INV-69`.
 
 ## 2. A09 — Crosswalk de escenarios individuales
 
@@ -345,3 +345,33 @@ Documento fuente: [20-x09-scope-algebra-formal-verification-strategy.md](20-x09-
 | INV-63 Partition proof completeness | S-131,S-133,S-139 | Doc. 20 §§3,5,6 | TC-X09-INV-63 | PARTIAL_DRAFT |
 
 **Límites:** los test IDs son reservas de trazabilidad. No hay fixtures, schemas, property-based tests, differential checker, benchmark ni ejecución de pruebas. Los expected outcomes y proof obligations requieren aprobación de Architecture, Security, Risk y Requirement Owners.
+
+
+## 16. FSA-01 — Trazabilidad de semántica de pertenencia e incertidumbre
+
+Documento fuente: [22-x09-scope-algebra-membership-uncertainty-semantics.md](22-x09-scope-algebra-membership-uncertainty-semantics.md) v0.1.0-draft.
+
+| Escenario | Regla/propiedad fuente | Invariante | Futuro test ID | Estado |
+|---|---|---|---|---|
+| S-141 | Doc. 22 §4; NOT UNKNOWN | INV-64 | TC-X09-S-141 | PARTIAL_DRAFT |
+| S-142 | Doc. 22 §§4–5; FALSE AND UNKNOWN | INV-64 | TC-X09-S-142 | PARTIAL_DRAFT |
+| S-143 | Doc. 22 §§4–5; TRUE OR UNKNOWN local | INV-64, INV-66 | TC-X09-S-143 | PARTIAL_DRAFT |
+| S-144 | Doc. 22 §5; difference with UNKNOWN | INV-64, INV-66 | TC-X09-S-144 | PARTIAL_DRAFT |
+| S-145 | Doc. 22 §5.2; exact EMPTY proof | INV-66, INV-67 | TC-X09-S-145 | PARTIAL_DRAFT |
+| S-146 | Doc. 22 §5.2; incomplete universe | INV-64, INV-67 | TC-X09-S-146 | PARTIAL_DRAFT |
+| S-147 | Doc. 22 §5.3; UNKNOWN blocks DISJOINT | INV-64, INV-68 | TC-X09-S-147 | PARTIAL_DRAFT |
+| S-148 | Doc. 22 §5.3; positive overlap witness | INV-68 | TC-X09-S-148 | PARTIAL_DRAFT |
+| S-149 | Doc. 22 §4; strict INVALID | INV-65 | TC-X09-S-149 | PARTIAL_DRAFT |
+| S-150 | Doc. 22 §5.5; existential over incomplete universe | INV-69 | TC-X09-S-150 | PARTIAL_DRAFT |
+| S-151 | Doc. 22 §5.5; universal counterexample witness | INV-69 | TC-X09-S-151 | PARTIAL_DRAFT |
+
+| Invariante | Escenarios | Fuente | Futuro test ID | Estado |
+|---|---|---|---|---|
+| INV-64 Unknown preservation | S-141,S-142,S-143,S-144,S-146,S-147 | Doc. 22 §§3–7 | TC-X09-INV-64 | PARTIAL_DRAFT |
+| INV-65 Invalid strictness | S-149 | Doc. 22 §§2,4,6 | TC-X09-INV-65 | PARTIAL_DRAFT |
+| INV-66 Exact denotation | S-143,S-144,S-145 | Doc. 22 §5.1 | TC-X09-INV-66 | PARTIAL_DRAFT |
+| INV-67 Empty proof completeness | S-145,S-146 | Doc. 22 §5.2 | TC-X09-INV-67 | PARTIAL_DRAFT |
+| INV-68 Disjointness proof completeness | S-147,S-148 | Doc. 22 §5.3 | TC-X09-INV-68 | PARTIAL_DRAFT |
+| INV-69 Quantifier completeness | S-150,S-151 | Doc. 22 §5.5 | TC-X09-INV-69 | PARTIAL_DRAFT |
+
+**Límites:** los IDs son reservas. No hay fixtures ni tests ejecutables. Los outcomes y las reglas lógicas requieren aprobación especializada; FSA-02..FSA-05 permanecen abiertos.
