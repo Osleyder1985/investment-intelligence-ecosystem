@@ -99,6 +99,14 @@ Para una expresión válida P sobre universo cerrado U:
 
 Estas aproximaciones son artefactos internos de razonamiento; no autorizan a tratar H(P) como scope elegible ni L(P) como cobertura exhaustiva. Si U no es cerrado/completo, tampoco puede afirmarse que H(P) cubra el universo real.
 
+Para operandos válidos y compatibles, las cotas se propagan de forma conservadora:
+- `L(A ∪ B) = L(A) ∪ L(B)` y `H(A ∪ B) = H(A) ∪ H(B)`;
+- `L(A ∩ B) = L(A) ∩ L(B)` y `H(A ∩ B) = H(A) ∩ H(B)`;
+- `L(U \\ A) = U \\ H(A)` y `H(U \\ A) = U \\ L(A)`;
+- `L(A \\ B) = L(A) \\ H(B)` y `H(A \\ B) = H(A) \\ L(B)`.
+
+Estas ecuaciones son parte de la obligación de soundness del modelo propuesto y deben demostrarse para el fragmento de predicados aprobado. En consecuencia, `DISJOINT(A,B)` requiere demostrar `H(A) ∩ H(B) = ∅`; `A ⊆ B` requiere demostrar `H(A) \\ L(B) = ∅`; y `A = B` requiere ambas contenciones. No basta con que `L(A) ∩ L(B)` sea vacío, porque regiones UNKNOWN pueden contener una intersección posible.
+
 ### 5.2 Consultas de vacío y no vacío
 
 - **EMPTY probado:** requiere universo cerrado/completo y prueba de que `L(P)=∅` y `H(P)=∅` (equivalentemente, toda pertenencia relevante está demostrada F). Si hay cualquier región U, no se demuestra EMPTY.
