@@ -314,6 +314,8 @@ El mapeo es semántico y contextual, no un reemplazo mecánico de cadenas.
 
 ## 9. Compatibilidad, versionado y migración
 
+La migración específica del vocabulario legacy de valoración se desarrolla como propuesta en [`docs/valuation/valuation-status-vocabulary-migration.md`](../valuation/valuation-status-vocabulary-migration.md) v0.1.0-draft. Este documento no reemplaza la revisión ni aprobación de los mappings aquí descritos.
+
 1. Mantener los vocabularios actuales en sus documentos hasta que el modelo sea revisado y aprobado.
 2. Al aprobar, publicar versión mayor de los contratos afectados si cambia semántica, obligatoriedad o estructura; cambios aditivos compatibles podrán seguir política de versionado acordada.
 3. Todo registro migrado conserva estado original, documento/versión de origen, fecha, regla de mapeo y confianza de la migración.
