@@ -123,3 +123,49 @@ Comprobar identidad, snapshot, finalidad, estado, evidencia, variables, licencia
 - Entrada: token respaldado por cesta de activos o dependiente de varias entidades.
 - Esperado: relaciones BACKED_BY múltiples con pesos/condiciones y vigencia si se conocen; UNKNOWN si no.
 - Fallo: forzar un único subyacente sin evidencia.
+
+
+## AS-024 — Una representación no puede pertenecer a dos redes
+- Entrada: un mismo registro de representación asociado a dos network_id distintos.
+- Esperado: rechazar la asignación dual; crear identidades separadas si son despliegues/representaciones diferentes y relacionarlas cuando corresponda.
+- Fallo: resolver ambas por ticker o dirección sin namespace.
+
+## AS-025 — Instrumentos con igual ticker y especificaciones distintas
+- Entrada: dos mercados con el mismo símbolo visible, pero distinto venue, tipo de mercado, activo base, unidad de cotización o especificación contractual.
+- Esperado: instrument_id distintos; las diferencias relevantes forman parte de la clave del instrumento.
+- Fallo: fusionar series por el símbolo del par.
+
+## AS-026 — Listing retirado y relisting
+- Entrada: un instrumento retirado y posteriormente admitido de nuevo con nuevo identificador/episodio o condiciones.
+- Esperado: conservar episodios de listing separados y enlazados al instrumento cuando la identidad del instrumento no haya cambiado.
+- Fallo: sobrescribir la fecha de admisión o asumir continuidad de liquidez.
+
+## AS-027 — Relación económica multi-subyacente
+- Entrada: representación que declara exposición o respaldo a varios activos, sin pesos verificables.
+- Esperado: varias relaciones tipadas; composición cuantitativa UNKNOWN y valoración dependiente bloqueada o limitada.
+- Fallo: forzar un único subyacente o repartir pesos por igual.
+
+## AS-028 — Conflicto temporal de relaciones
+- Entrada: dos fuentes presentan relaciones incompatibles con periodos efectivos solapados.
+- Esperado: conservar ambas afirmaciones, marcar DISPUTED/CONFLICTED y abstenerse del uso que dependa de resolver la contradicción.
+- Fallo: preferir automáticamente la fuente más reciente o el proveedor de mayor ranking.
+
+## AS-029 — Proxy con varias implementaciones históricas
+- Entrada: proxy con varios upgrades y una implementación actual distinta de la histórica.
+- Esperado: conservar cada implementación con bloque/tiempo, autoridad/mecanismo y evidencia; mantener el proxy como entidad diferenciada.
+- Fallo: sustituir la implementación histórica por la actual en una reconstrucción pasada.
+
+## AS-030 — Ciclo en relaciones del grafo
+- Entrada: ciclo detectado en MIGRATES_TO o en una relación de composición/respaldo.
+- Esperado: evaluar según semántica y periodo del tipo de relación; marcar sospecha para migración cíclica y permitir ciclos legítimos de otras clases si la evidencia los respalda.
+- Fallo: prohibir todos los ciclos o eliminarlos automáticamente.
+
+## AS-031 — Identificador externo reutilizado
+- Entrada: venue/proveedor reutiliza un símbolo o ID externo después de retirar el objeto anterior.
+- Esperado: conservar namespace, versión/periodo y entidades históricas distintas cuando corresponda.
+- Fallo: aplicar unicidad global al identificador externo sin alcance temporal.
+
+## AS-032 — Emisor, administrador y controlador distintos
+- Entrada: emisor inicial, administrador operativo y controlador del proxy son entidades diferentes.
+- Esperado: roles independientes, temporales y sustentados por evidencia; UNKNOWN cuando no se conozca.
+- Fallo: inferir propiedad/control desde el nombre del proyecto o del emisor.
