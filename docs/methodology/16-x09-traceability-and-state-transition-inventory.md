@@ -5,7 +5,7 @@
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
 **Objeto:** resolver documentalmente A09 y A10 de la auditoría `15-x09-cross-document-consistency-audit.md`.  
-**Matriz base:** `14-integrated-conformance-scenario-matrix.md` v0.3.0-draft.
+**Matriz base:** `14-integrated-conformance-scenario-matrix.md` v0.5.0-draft.
 
 ## 1. Dictamen y límites
 
