@@ -11,6 +11,7 @@ import com.iie.android.data.repository.RoomAssetRepository
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetDeploymentSummary
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +30,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     val searchQuery: StateFlow<String> = query.asStateFlow()
 
     val assets: StateFlow<List<Asset>> = query
-        .flatMapLatest(repository::observeAssets)
+        .flatMapLatest { search -> repository.observeAssets(search) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val watchlist: StateFlow<Set<String>> = repository.observeWatchlist()
@@ -51,7 +52,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    fun observeDeployments(assetId: String): kotlinx.coroutines.flow.Flow<List<AssetDeploymentSummary>> =
+    fun observeDeployments(assetId: String): Flow<List<AssetDeploymentSummary>> =
         repository.observeDeployments(assetId)
 
     fun updateSearchQuery(value: String) {
