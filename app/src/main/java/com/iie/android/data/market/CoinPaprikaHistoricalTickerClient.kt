@@ -16,11 +16,11 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 fun interface CoinPaprikaDailyHistoryFetcher {
-    suspend fun fetchDaily(
+    override suspend fun fetchDaily(
         providerId: String,
         start: LocalDate,
-        end: LocalDate?,
-        retrievedAtEpochMs: Long
+        end: LocalDate? = null,
+        retrievedAtEpochMs: Long = System.currentTimeMillis()
     ): List<CoinPaprikaHistoricalPoint>
 }
 
@@ -42,7 +42,7 @@ class CoinPaprikaHistoricalTickerClient(
     private val readTimeoutMs: Int = 12_000,
     private val maxResponseBytes: Int = 2 * 1024 * 1024,
     private val maxPoints: Int = 500
-) {
+) : CoinPaprikaDailyHistoryFetcher {
     init {
         require(connectTimeoutMs in 1..30_000)
         require(readTimeoutMs in 1..30_000)
@@ -53,8 +53,8 @@ class CoinPaprikaHistoricalTickerClient(
     suspend fun fetchDaily(
         providerId: String,
         start: LocalDate,
-        end: LocalDate? = null,
-        retrievedAtEpochMs: Long = System.currentTimeMillis()
+        end: LocalDate?,
+        retrievedAtEpochMs: Long
     ): List<CoinPaprikaHistoricalPoint> = withContext(Dispatchers.IO) {
         require(providerId.matches(Regex("[a-z0-9-]{3,80}"))) { "Invalid CoinPaprika provider ID" }
         require(end == null || !end.isBefore(start)) { "Historical end date precedes start date" }
