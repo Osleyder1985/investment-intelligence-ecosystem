@@ -32,6 +32,10 @@ La capa estratégica PORTFOLIO & EXECUTION necesita requisitos explícitos. Se p
 | IIM-036 | Crítica | Conciliar órdenes, fills, balances, posiciones, comisiones y movimientos con fuentes de venue/custodia, conservando discrepancias. | Conciliación reproducible, diferencias detectadas, estado de resolución y audit trail. |
 | IIM-037 | Crítica | Separar de forma técnica y operativa los entornos de simulación, paper trading y operación real, exigiendo gates y autorizaciones específicas para promoción. | Aislamiento verificable, credenciales y endpoints separados, promoción controlada y ausencia de rutas accidentales a ejecución real. |
 
+## 2.1. Revisión individual y decisiones
+
+La revisión individual de los 13 requisitos se gestiona mediante [`portfolio-execution-requirements-review-matrix.md`](portfolio-execution-requirements-review-matrix.md) y el Issue de seguimiento dedicado. El estado global permanece PENDING_REVIEW; cada identificador mantiene carácter provisional hasta una decisión formal. La aceptación para registro no equivale a especificación, implementación, pruebas ni autorización de operación.
+
 ## 3. Reglas de diseño comunes
 
 Todos los requisitos anteriores deben cumplir:
