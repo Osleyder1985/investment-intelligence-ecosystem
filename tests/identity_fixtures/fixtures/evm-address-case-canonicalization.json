@@ -1,0 +1,83 @@
+{
+  "fixture_version": "1.0.0",
+  "fixture_kind": "SYNTHETIC",
+  "requirement_ids": [
+    "IIM-001",
+    "IIM-019"
+  ],
+  "profile_version": "0.1.0",
+  "adapter_version": "synthetic-harness-0.1.0",
+  "provenance": {
+    "synthetic": true,
+    "source": null,
+    "permission_record": null
+  },
+  "created_at": "2026-10-31T00:00:00Z",
+  "updated_at": "2026-10-31T00:00:00Z",
+  "fixture_id": "FX-EVM-CASE-001",
+  "purpose": "Las variantes de capitalización de una dirección EVM identifican los mismos 20 bytes.",
+  "case_ids": [
+    "AS-034",
+    "AS-058"
+  ],
+  "profile_id": "EVM",
+  "input": {
+    "network_context": {
+      "family": "EVM",
+      "network_id_fixture": "NET-EVM-SYNTH-01",
+      "chain_id": "999001",
+      "genesis_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "checkpoint": {
+        "height_or_slot": 100,
+        "block_or_state_hash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "observations": [
+      {
+        "entity_type": "asset_representation",
+        "raw_identifier": "0x52908400098527886e0f7030069857d2e4169ee7",
+        "encoding": "hex-20-byte-lowercase",
+        "normalized_identifier": "0x52908400098527886e0f7030069857d2e4169ee7",
+        "normalization_method": "EVM_ADDRESS_20_BYTES_CASE_INSENSITIVE_v1",
+        "observation_ref": "synthetic-observation-a",
+        "contract_state": {
+          "code_present": true,
+          "code_hash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "token_interface_check": "ERC20_MINIMAL_INTERFACE_SYNTHETIC"
+        }
+      },
+      {
+        "entity_type": "asset_representation",
+        "raw_identifier": "0x52908400098527886E0F7030069857D2E4169EE7",
+        "encoding": "hex-20-byte-EIP55",
+        "normalized_identifier": "0x52908400098527886e0f7030069857d2e4169ee7",
+        "normalization_method": "EVM_ADDRESS_20_BYTES_CASE_INSENSITIVE_v1",
+        "observation_ref": "synthetic-observation-b",
+        "contract_state": {
+          "code_present": true,
+          "code_hash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "token_interface_check": "ERC20_MINIMAL_INTERFACE_SYNTHETIC"
+        }
+      }
+    ]
+  },
+  "expected_result": {
+    "resolution_status": "RESOLVED",
+    "entity_candidates": [
+      {
+        "entity_fixture_id": "REP-EVM-SYNTH-01",
+        "entity_type": "asset_representation",
+        "key": [
+          "NET-EVM-SYNTH-01",
+          "0x52908400098527886e0f7030069857d2e4169ee7"
+        ]
+      }
+    ],
+    "selected_entity_fixture_id": "REP-EVM-SYNTH-01",
+    "assertions": [
+      "all_observations_same_entity",
+      "adapter_version_not_in_identity_key"
+    ],
+    "abstention_scope": []
+  }
+}

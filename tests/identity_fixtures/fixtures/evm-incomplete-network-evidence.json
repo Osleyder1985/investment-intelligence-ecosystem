@@ -1,0 +1,58 @@
+{
+  "fixture_version": "1.0.0",
+  "fixture_kind": "SYNTHETIC",
+  "requirement_ids": [
+    "IIM-001",
+    "IIM-018"
+  ],
+  "profile_version": "0.1.0",
+  "adapter_version": "synthetic-harness-0.1.0",
+  "provenance": {
+    "synthetic": true,
+    "source": null,
+    "permission_record": null
+  },
+  "created_at": "2026-10-31T00:00:00Z",
+  "updated_at": "2026-10-31T00:00:00Z",
+  "fixture_id": "FX-EVM-INCOMPLETE-001",
+  "purpose": "La ausencia de checkpoint impide confirmar la instancia de red y debe producir resultado inconcluso.",
+  "case_ids": [
+    "AS-033",
+    "AS-065"
+  ],
+  "profile_id": "EVM",
+  "input": {
+    "network_context": {
+      "family": "EVM",
+      "network_id_fixture": "NET-EVM-CANDIDATE-UNKNOWN",
+      "chain_id": "999001",
+      "genesis_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "observations": [
+      {
+        "entity_type": "asset_representation",
+        "raw_identifier": "0x52908400098527886e0f7030069857d2e4169ee7",
+        "encoding": "hex-20-byte-lowercase",
+        "normalized_identifier": "0x52908400098527886e0f7030069857d2e4169ee7",
+        "normalization_method": "EVM_ADDRESS_20_BYTES_CASE_INSENSITIVE_v1",
+        "observation_ref": "synthetic-observation-incomplete",
+        "contract_state": {
+          "code_present": true,
+          "code_hash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      }
+    ]
+  },
+  "expected_result": {
+    "resolution_status": "UNVERIFIED",
+    "entity_candidates": [],
+    "assertions": [],
+    "abstention_scope": [
+      "identity_dependent_valuation",
+      "market_instrument_linkage"
+    ],
+    "expected_diagnostics": [
+      "missing_network_checkpoint"
+    ]
+  }
+}

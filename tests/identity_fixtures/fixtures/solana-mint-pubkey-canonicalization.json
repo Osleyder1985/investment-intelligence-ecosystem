@@ -1,0 +1,84 @@
+{
+  "fixture_version": "1.0.0",
+  "fixture_kind": "SYNTHETIC",
+  "requirement_ids": [
+    "IIM-001",
+    "IIM-019"
+  ],
+  "profile_version": "0.1.0",
+  "adapter_version": "synthetic-harness-0.1.0",
+  "provenance": {
+    "synthetic": true,
+    "source": null,
+    "permission_record": null
+  },
+  "created_at": "2026-10-31T00:00:00Z",
+  "updated_at": "2026-10-31T00:00:00Z",
+  "fixture_id": "FX-SOL-MINT-001",
+  "purpose": "Una public key Base58 de 32 bytes se normaliza como mint dentro de una instancia de cluster; se exige evidencia sintética de cuenta inicializada y programa propietario.",
+  "case_ids": [
+    "AS-039",
+    "AS-058"
+  ],
+  "profile_id": "SOLANA",
+  "input": {
+    "network_context": {
+      "family": "SOLANA",
+      "network_id_fixture": "NET-SOL-SYNTH-01",
+      "cluster_label": "synthetic-cluster",
+      "genesis_hash": "synthetic-genesis-hash",
+      "checkpoint": {
+        "height_or_slot": 500,
+        "block_or_state_hash": "synthetic-slot-hash-500"
+      }
+    },
+    "observations": [
+      {
+        "entity_type": "asset_representation",
+        "raw_identifier": "29d2S7vB453rNYFdR5Ycwt7y9haRT5fwVwL9zTmBhfV2",
+        "encoding": "base58-public-key-32-bytes",
+        "normalized_identifier": "29d2S7vB453rNYFdR5Ycwt7y9haRT5fwVwL9zTmBhfV2",
+        "normalization_method": "SOLANA_PUBKEY_BASE58_DECODE_32_BYTES_v1",
+        "observation_ref": "synthetic-mint-observation-a",
+        "mint_account": {
+          "exists": true,
+          "initialized": true,
+          "owner_program_id": "3JF3sEqM796hk5WFqA6EtmEwJQ9quALszsfJyvXNQKy3",
+          "token_program": "TOKEN_PROGRAM"
+        }
+      },
+      {
+        "entity_type": "asset_representation",
+        "raw_identifier": "29d2S7vB453rNYFdR5Ycwt7y9haRT5fwVwL9zTmBhfV2",
+        "encoding": "base58-public-key-32-bytes",
+        "normalized_identifier": "29d2S7vB453rNYFdR5Ycwt7y9haRT5fwVwL9zTmBhfV2",
+        "normalization_method": "SOLANA_PUBKEY_BASE58_DECODE_32_BYTES_v1",
+        "observation_ref": "synthetic-mint-observation-b",
+        "mint_account": {
+          "exists": true,
+          "initialized": true,
+          "owner_program_id": "3JF3sEqM796hk5WFqA6EtmEwJQ9quALszsfJyvXNQKy3",
+          "token_program": "TOKEN_PROGRAM"
+        }
+      }
+    ]
+  },
+  "expected_result": {
+    "resolution_status": "RESOLVED",
+    "entity_candidates": [
+      {
+        "entity_fixture_id": "REP-SOL-SYNTH-01",
+        "entity_type": "asset_representation",
+        "key": [
+          "NET-SOL-SYNTH-01",
+          "29d2S7vB453rNYFdR5Ycwt7y9haRT5fwVwL9zTmBhfV2"
+        ]
+      }
+    ],
+    "selected_entity_fixture_id": "REP-SOL-SYNTH-01",
+    "assertions": [
+      "mint_identity_is_network_scoped"
+    ],
+    "abstention_scope": []
+  }
+}

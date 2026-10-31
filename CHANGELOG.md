@@ -5,3 +5,4 @@
 - Se establece la estructura documental inicial de la metodología.
 - Se fijan principios de evidencia, incertidumbre, trazabilidad y validación.
 - Se declara pendiente la aprobación de criterios, pesos, umbrales y modelos.
+- Se incorpora un prototipo offline de fixtures sintéticos EVM/Solana, JSON Schema y pruebas unitarias; no constituye validación de red real ni aprobación metodológica.

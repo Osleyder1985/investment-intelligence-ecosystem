@@ -241,3 +241,27 @@ No etiquetar NOT_RUN, INCONCLUSIVE o BLOCKED como TESTED/PASS. La aprobación me
 Este documento no prescribe JSON Schema definitivo, lenguaje de tests, framework, base de datos, CI ni arquitectura del adaptador. Esos contratos pertenecen a la implementación y deben conservar compatibilidad con esta especificación tras su aprobación.
 
 IIM-001 e IIM-019 permanecen en REVISION_REQUIRED. IIM-002 permanece BLOCKED para cualquier fuente concreta cuyo expediente de permisos no exista.
+
+
+## 12. Primera implementación ejecutable (alcance limitado)
+
+Se incorpora un prototipo offline en `tests/identity_fixtures/`:
+
+- `schema/identity-fixture.schema.json`: JSON Schema Draft 2020-12 para el subconjunto inicial EVM/Solana del contrato v0.1.0.
+- `harness.py`: validador de fixtures y runner determinista sin RPC ni llamadas de red.
+- `fixtures/`: fixtures sintéticos iniciales para canonicalización de dirección EVM, identidad de mint Solana y evidencia de red incompleta.
+- `test_harness.py`: pruebas unitarias de estados y guardrails.
+
+Comandos desde la raíz:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m unittest discover -s tests/identity_fixtures -p 'test_*.py' -v
+python tests/identity_fixtures/harness.py
+```
+
+El prototipo solo comprueba reglas sintéticas acotadas: formato/canonicalización de dirección EVM, Base58 de 32 bytes para public keys Solana, presencia declarada de evidencia sintética de contrato/mint, clave namespaced por network_id_fixture y estados derivados de evidencia insuficiente o permisos insuficientes. No valida checksum EIP-55, ABI/estándares completos, estado real de contratos/cuentas, programa SPL real, genesis/checkpoints reales, consenso/finalidad, forks, proxies ni equivalencia económica.
+
+La suite inicial contiene dos resultados PASS y un INCONCLUSIVE esperado. INCONCLUSIVE no es una resolución aprobada. Las pruebas unitarias incluyen escenarios controlados para FAIL, BLOCKED y NOT_RUN; estos escenarios no se cuentan como fixtures reales aprobados.
+
+El harness es un primer instrumento de prueba, no un adaptador de producción ni evidencia de conformidad de todos los perfiles. No se incluyen fixtures CAPTURED o REDACTED_CAPTURE. IIM-001 e IIM-019 permanecen REVISION_REQUIRED; IIM-002 permanece BLOCKED para aprobar fuentes concretas.
