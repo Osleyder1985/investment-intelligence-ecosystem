@@ -96,7 +96,6 @@ class IndependentIdentityResolverTests(unittest.TestCase):
 
     def test_solana_unknown_owner_program_is_unresolved(self):
         fixture = self.fixtures["FX-SOL-MINT-001"]
-        network = next(n for n in SYNTHETIC_REGISTRY.networks if n.family == "SOLANA")
         registry = NetworkIdentityRegistry(
             version="solana-registry-without-token-owner",
             networks=tuple(
