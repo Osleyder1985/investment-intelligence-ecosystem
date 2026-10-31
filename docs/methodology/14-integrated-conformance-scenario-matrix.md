@@ -574,7 +574,7 @@ S-053 debe evaluar policy_id/version, acción exacta, tipo de objeto, scope, lí
 | S-068 | Staking/restaking depende de operadores o claves comprometidas | RSK-02/RSK-07; bloquear exposición y rutas que dependan de control comprometido | Custody/security |
 | S-069 | Red depende de proveedor/consenso externo interrumpido | RSK-03/RSK-12; revisar disponibilidad y finality en scope | External dependency |
 | S-070 | Token liquid-staking cambia derechos, redemption queue o exchange rate | RSK-04/RSK-06; valuation NOT_ESTIMABLE o limitada según evidencia independiente | Tokenomics/rights |
-| S-071 | Liquidez insuficiente para lado/tamaño/ventana concretos | RSK-05/RSK-09; limitar solo scope medido; no extrapolar a todos los tamaños | Liquidity |
+| S-071 | Liquidez insuficiente para lado/tamaño/ventana concretos | RSK-05; limitar solo scope medido; no extrapolar a todos los tamaños | Liquidity |
 | S-072 | Settlement/withdrawal suspendido y trade usa la misma ruta de salida | TRADE no favorable por dependencia demostrada; si no se conoce, REVIEW_REQUIRED | Settlement |
 | S-073 | Stablecoin/reserve/redemption no verificable o suspendida | RSK-06; separar paridad de mercado, solvencia del emisor y derecho de redención | Stablecoin |
 | S-074 | Custody/account/key control comprometido | RSK-07; bloquear acciones dependientes de cuenta/custodio; preservar investigación independiente | Custody |
