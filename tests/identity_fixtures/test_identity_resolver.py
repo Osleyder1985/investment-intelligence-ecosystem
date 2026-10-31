@@ -95,11 +95,23 @@ class IndependentIdentityResolverTests(unittest.TestCase):
         self.assertEqual(result["resolution_status"], "RESOLVED")
 
     def test_solana_unknown_owner_program_is_unresolved(self):
-        fixture = copy.deepcopy(self.fixtures["FX-SOL-MINT-001"])
-        fixture["input"]["observations"][0]["mint_account"]["owner_program_id"] = "11111111111111111111111111111111"
-        result = self.resolve_fixture(fixture)
+        fixture = self.fixtures["FX-SOL-MINT-001"]
+        network = next(n for n in SYNTHETIC_REGISTRY.networks if n.family == "SOLANA")
+        registry = NetworkIdentityRegistry(
+            version="solana-registry-without-token-owner",
+            networks=tuple(
+                NetworkDefinition(
+                    network_key=n.network_key, family=n.family, chain_id=n.chain_id,
+                    genesis_hash=n.genesis_hash,
+                    owner_programs=() if n.family == "SOLANA" else n.owner_programs,
+                )
+                for n in SYNTHETIC_REGISTRY.networks
+            ),
+        )
+        result = self.resolve_fixture(fixture, registry)
         self.assertEqual(result["resolution_status"], "UNRESOLVED")
         self.assertIn("mint_owner_program_not_in_registry", result["diagnostics"])
+        self.assertEqual(result["registry_version"], "solana-registry-without-token-owner")
 
     def test_solana_malformed_pubkey_is_unresolved(self):
         fixture = copy.deepcopy(self.fixtures["FX-SOL-MINT-001"])
