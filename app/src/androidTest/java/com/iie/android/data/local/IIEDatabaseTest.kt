@@ -456,6 +456,82 @@ class IIEDatabaseTest {
             .getLatestObservation("asset:usd-coin", "MARKET_QUOTE")?.let { 1 } ?: 0)
     }
 
+    @Test
+    fun coinPaprikaQuoteReadRejectsObservationFromAnotherSource() = runBlocking {
+        DemoAssetSeeder(database) { 1_800_000_000_000L }.seed()
+        database.dataSourceDao().insertSource(
+            DataSourceEntity(
+                sourceId = "source:other-market",
+                sourceKey = "other-market",
+                displayName = "Other Market",
+                providerType = "MARKET_DATA_PROVIDER",
+                homepageUrl = null,
+                termsUrl = null,
+                attributionText = null,
+                permittedUseStatus = "PERSONAL_USE_ONLY",
+                registeredAtEpochMs = 1L
+            )
+        )
+        insertQuote("observation:other-source", "asset:usd-coin", "source:other-market",
+            "usdc-usd-coin", "USDC")
+
+        val result = com.iie.android.data.repository.RoomAssetRepository(database)
+            .getLatestCoinPaprikaQuote("asset:usd-coin")
+
+        assertEquals(null, result)
+    }
+
+    @Test
+    fun coinPaprikaQuoteReadRejectsMismatchedProviderId() = runBlocking {
+        DemoAssetSeeder(database) { 1_800_000_000_000L }.seed()
+        insertQuote("observation:wrong-provider", "asset:usd-coin", "source:coinpaprika",
+            "usdt-tether", "USDC")
+
+        val result = com.iie.android.data.repository.RoomAssetRepository(database)
+            .getLatestCoinPaprikaQuote("asset:usd-coin")
+
+        assertEquals(null, result)
+    }
+
+    @Test
+    fun coinPaprikaQuoteReadRejectsMismatchedSymbol() = runBlocking {
+        DemoAssetSeeder(database) { 1_800_000_000_000L }.seed()
+        insertQuote("observation:wrong-symbol", "asset:usd-coin", "source:coinpaprika",
+            "usdc-usd-coin", "USDT")
+
+        val result = com.iie.android.data.repository.RoomAssetRepository(database)
+            .getLatestCoinPaprikaQuote("asset:usd-coin")
+
+        assertEquals(null, result)
+    }
+
+    private suspend fun insertQuote(
+        observationId: String,
+        assetId: String,
+        sourceId: String,
+        providerId: String,
+        symbol: String
+    ) {
+        val timestamp = 1_800_000_000_000L
+        database.assetObservationDao().insertObservation(
+            AssetObservationEntity(
+                observationId = observationId,
+                assetId = assetId,
+                deploymentId = null,
+                sourceId = sourceId,
+                observationType = "MARKET_QUOTE",
+                observedAtEpochMs = timestamp,
+                retrievedAtEpochMs = timestamp,
+                status = "ACCEPTED",
+                quality = "PROVIDER_SCHEMA_VALIDATED",
+                valueSchemaVersion = 1,
+                valueJson = """{"schema":"iie.market-quote.v1","providerId":"$providerId","symbol":"$symbol","quoteCurrency":"USD","price":1.0,"providerUpdatedAtEpochMs":1800000000000,"retrievedAtEpochMs":1800000000000}""",
+                payloadSha256 = "fixture-$observationId",
+                licenseReference = "https://coinpaprika.com/terms-of-use"
+            )
+        )
+    }
+
     private fun asset(
         id: String,
         canonicalKey: String,
