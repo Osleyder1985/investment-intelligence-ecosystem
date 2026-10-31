@@ -6,6 +6,9 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.iie.android.data.local.entity.AssetEntity
+import com.iie.android.data.local.entity.AssetDeploymentEntity
+import com.iie.android.data.local.entity.AssetObservationEntity
+import com.iie.android.data.local.entity.DataSourceEntity
 import com.iie.android.data.local.entity.NetworkEntity
 import com.iie.android.data.local.entity.WatchlistEntryEntity
 import kotlinx.coroutines.runBlocking
@@ -84,6 +87,76 @@ class IIEDatabaseTest {
         )
 
         assertNotNull(database.assetDeploymentDao().getDeployment("deployment-btc-mainnet"))
+    }
+
+
+    @Test
+    fun observationCannotReferenceDeploymentOfAnotherAsset() = runBlocking {
+        database.assetDao().insertAssets(
+            listOf(
+                asset("asset-a", "canonical:a", "Asset A", "AAA"),
+                asset("asset-b", "canonical:b", "Asset B", "BBB")
+            )
+        )
+        database.networkDao().insertNetwork(
+            NetworkEntity(
+                networkId = "network-test",
+                networkKey = "test-network",
+                name = "Test Network",
+                networkFamily = "ACCOUNT",
+                chainId = "test:1",
+                nativeCurrencySymbol = "TST"
+            )
+        )
+        database.dataSourceDao().insertSource(
+            DataSourceEntity(
+                sourceId = "source-test",
+                sourceKey = "test-provider",
+                displayName = "Test Provider",
+                providerType = "FIXTURE",
+                homepageUrl = null,
+                termsUrl = null,
+                attributionText = null,
+                permittedUseStatus = "TEST_ONLY",
+                registeredAtEpochMs = 1L
+            )
+        )
+        database.assetDeploymentDao().insertDeployment(
+            AssetDeploymentEntity(
+                deploymentId = "deployment-a",
+                deploymentKey = "native:network-test:asset-a",
+                assetId = "asset-a",
+                networkId = "network-test",
+                representationKind = "NATIVE",
+                namespace = "native",
+                reference = null,
+                decimals = 8,
+                validFromEpochMs = null,
+                validUntilEpochMs = null
+            )
+        )
+
+        assertThrows(SQLiteConstraintException::class.java) {
+            runBlocking {
+                database.assetObservationDao().insertObservation(
+                    AssetObservationEntity(
+                        observationId = "observation-invalid",
+                        assetId = "asset-b",
+                        deploymentId = "deployment-a",
+                        sourceId = "source-test",
+                        observationType = "IDENTITY_FIXTURE",
+                        observedAtEpochMs = 1L,
+                        retrievedAtEpochMs = 1L,
+                        status = "DEMO",
+                        quality = "UNVERIFIED",
+                        valueSchemaVersion = 1,
+                        valueJson = "{}",
+                        payloadSha256 = null,
+                        licenseReference = null
+                    )
+                )
+            }
+        }
     }
 
     @Test
