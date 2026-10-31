@@ -106,7 +106,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          emulator -avd iie-api35 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -camera-back none > "$RUNNER_TEMP/iie-emulator.log" 2>&1 &
+          "$ANDROID_HOME/emulator/emulator" -avd iie-api35 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -camera-back none > "$RUNNER_TEMP/iie-emulator.log" 2>&1 &
           EMULATOR_PID=$!
           echo "$EMULATOR_PID" > "$RUNNER_TEMP/iie-emulator.pid"
 
@@ -117,7 +117,7 @@ jobs:
               exit 1
             fi
 
-            BOOT_STATE="$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+            BOOT_STATE="$(timeout 10s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
             echo "Boot check $attempt/60: sys.boot_completed='${BOOT_STATE}'"
             if [ "$BOOT_STATE" = "1" ]; then
               adb -s emulator-5554 shell settings put global window_animation_scale 0
