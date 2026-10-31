@@ -181,7 +181,11 @@ Este documento establece el mapa estratégico del producto. No sustituye la cart
 
 La asignación de los 24 requisitos IIM a las cuatro capas, las interfaces conceptuales, los gates de dependencia y las brechas de cartera/ejecución se mantienen en [`requirement-allocation-and-layer-contracts.md`](requirement-allocation-and-layer-contracts.md). Ese documento está pendiente de revisión técnica y no altera los estados de aprobación ni evidencia de implementación.
 
-## 12. Criterios para considerar aprobada esta línea base
+## 12. Revisión arquitectónica y requisitos complementarios
+
+La revisión preliminar del Issue #33, sus hallazgos y la propuesta provisional de requisitos IIM-025 a IIM-037 para PORTFOLIO & EXECUTION se documentan en [`issue-33-architecture-review.md`](issue-33-architecture-review.md) y [`portfolio-execution-requirements-proposal.md`](portfolio-execution-requirements-proposal.md). El resultado de la revisión es REVISION_REQUIRED; los nuevos identificadores no son oficiales ni aprobados.
+
+## 13. Criterios para considerar aprobada esta línea base
 
 - Las cuatro capas y sus responsabilidades están identificadas sin solapamientos críticos.
 - Cada capa define misión, capacidades, entradas/salidas y límites.
