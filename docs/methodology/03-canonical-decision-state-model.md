@@ -240,13 +240,13 @@ Los estados de valoración no deben bloquear una finalidad que explícitamente n
 
 | Desde | Hacia | Condición mínima |
 |---|---|---|
+| VETO_NOT_ASSESSED | VETO_REVIEW_REQUIRED | Surge señal material o alerta que requiere investigación |
+| VETO_NOT_ASSESSED | NO_VETO_IDENTIFIED | Todas las reglas obligatorias y dominios materiales del scope se evaluaron con evidencia suficiente |
 | NO_VETO_IDENTIFIED | VETO_REVIEW_REQUIRED | Nueva alerta creíble o evidencia contradictoria |
-| RISK_UNKNOWN | VETO_REVIEW_REQUIRED | Señal material que requiere investigación |
 | VETO_REVIEW_REQUIRED | VETO_ACTIVE | Condición crítica verificada y vigente |
 | VETO_REVIEW_REQUIRED | NO_VETO_IDENTIFIED | Investigación documentada descarta la alerta en el scope |
 | VETO_ACTIVE | VETO_REVIEW_REQUIRED | Evidencia inicial de remediación aún no validada |
 | VETO_ACTIVE | NO_VETO_IDENTIFIED | Remediación y ausencia de condición bloqueante verificadas |
-| Cualquier estado | RISK_UNKNOWN | Evidencia deja de ser suficiente para sostener el assessment |
 
 No se permite retirar veto por paso del tiempo, anuncio del proyecto o ausencia de incidentes nuevos.
 
