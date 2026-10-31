@@ -61,7 +61,7 @@ def sample_for(schema):
             return "USD"
         if "0-9" in pattern and r"\." in pattern:
             return "fixture-1"
-        if "0-9" in pattern:
+        if pattern.startswith("^-?"):
             return "1.25"
         return "fixture"
     if kind == "integer":
