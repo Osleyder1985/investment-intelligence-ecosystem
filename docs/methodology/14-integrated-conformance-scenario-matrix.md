@@ -1,7 +1,7 @@
 # Matriz integrada de escenarios de conformidad
 
 **ID:** IIE-METH-CONFORMANCE-010  
-**Versión:** 0.4.0-draft  
+**Versión:** 0.5.0-draft  
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
 **Hallazgo:** X-09; revisión 0.3.0 incorpora resoluciones propuestas A01-A10 de auditoría 15  
@@ -648,7 +648,7 @@ La especificación detallada está en [17-x09-wrapped-valuation-and-atomic-aggre
 | S-090 | Valoración no iniciada | ValuationStatus.NOT_RUN; no inferir insuficiencia ni inelegibilidad | A11 W-06 |
 | S-091 | Wrapper comprometido y token nativo independiente con evidencia suficiente | ValuationStatus separado por representation_id; wrapper según evidencia; nativo evaluado independientemente | A11 W-07 |
 
-## 20. A12 — Partición atómica y agregación (v0.4.0-draft)
+## 20. A12 — Partición atómica y agregación (v0.5.0-draft)
 
 | ID | Input/condición | Expected outcome por unidad | Agregación/garantía |
 |---|---|---|---|
@@ -660,6 +660,21 @@ La especificación detallada está en [17-x09-wrapped-valuation-and-atomic-aggre
 | S-097 | Varias rutas heterogéneas; una elegible y otra ineligible | ORE separado por route_id | Matriz por ruta; no ORE global ROUTE_ELIGIBLE |
 | S-098 | Dependencia de settlement cruza unidad aparentemente no afectada | SCOPE_UNRESOLVED / review o bloqueo de unidad dependiente | No asumir independencia; resolver grafo de dependencias |
 | S-099 | Unidades disjuntas, exhaustivas, homogéneas y todas elegibles | DECISION_ELIGIBLE por cada unidad | Agregación favorable solo para requested_scope exactamente cubierto |
+| S-100 | INELIGIBLE + REVIEW_REQUIRED en unidades distintas; envelope VALID | Outcomes locales preservados | DECISION_INELIGIBLE agregado; review permanece en vector |
+| S-101 | INELIGIBLE + ABSTAIN en unidades distintas; envelope VALID | Outcomes locales preservados | DECISION_INELIGIBLE agregado; abstain permanece en vector |
+| S-102 | INELIGIBLE + REVIEW_REQUIRED + ABSTAIN; envelope VALID | Tres outcomes locales preservados | DECISION_INELIGIBLE agregado; no se pierden causas |
+| S-103 | REVIEW_REQUIRED + ABSTAIN sin INELIGIBLE; envelope VALID | Outcomes locales preservados | DECISION_REVIEW_REQUIRED agregado |
+| S-104 | ABSTAIN + ELIGIBLE; envelope VALID | Outcomes locales preservados | DECISION_ABSTAIN agregado |
+| S-105 | IN_PROGRESS + ELIGIBLE, sin outcomes superiores | Outcomes locales preservados | DECISION_IN_PROGRESS agregado |
+| S-106 | NOT_ASSESSED + ELIGIBLE, sin outcomes superiores | Outcomes locales preservados | DECISION_NOT_ASSESSED agregado |
+| S-107 | ELIGIBLE + ELIGIBLE_WITH_LIMITATIONS; enforcement válido | Outcomes locales preservados | DECISION_ELIGIBLE_WITH_LIMITATIONS |
+| S-108 | INELIGIBLE en requested_scope y subset candidato elegible | Outcome original INELIGIBLE | Subset requiere derived_scope_id y decisión independiente |
+| S-109 | ValidationEnvelope=INCOMPLETE con outcomes atómicos disponibles | Conservar resultados locales válidos | No emitir DecisionOutcome agregado |
+| S-110 | ValidationEnvelope=REVIEW_REQUIRED por partición/scope ambiguo | Conservar evidencia local | No emitir DecisionOutcome agregado hasta adjudicación |
+| S-111 | ValidationEnvelope=REJECTED_INVALID_INPUT | Registrar rechazo y causa | No emitir DecisionOutcome agregado |
+| S-112 | Misma colección de outcomes con distinto orden de llegada | Vector y causas equivalentes | Outcome agregado idéntico |
+| S-113 | Mezcla de policy_version/decision_type incompatible | Inputs incompatibles identificados | Envelope REVIEW_REQUIRED/REJECTED; sin agregado |
+| S-114 | Dos rutas: ROUTE_INELIGIBLE y ROUTE_ELIGIBLE | ORE separado por route_id | No aplicar agregación analítica; no permiso global |
 
 ### 20.1 Expected outcome ampliado de C-07
 
@@ -687,8 +702,16 @@ Para vetos concurrentes con scopes parcialmente solapados:
 - **INV-33 Atomic partition integrity:** las unidades cubren exactamente requested_scope y son disjuntas.
 - **INV-34 Cause conservation:** ninguna causa se pierde al particionar o agregar; resolver una causa no elimina otras.
 - **INV-35 No heterogeneous global permission:** rutas/unidades heterogéneas conservan resultados separados; el summary no concede elegibilidad global.
+- **INV-36 Aggregate proven-failure dominance:** con envelope VALID, cualquier unidad DECISION_INELIGIBLE hace que el requested_scope agregado sea DECISION_INELIGIBLE.
+- **INV-37 Aggregate review precedence:** sin INELIGIBLE, cualquier DECISION_REVIEW_REQUIRED prevalece sobre ABSTAIN en el resumen.
+- **INV-38 Aggregate envelope gate:** envelope distinto de VALID impide emitir DecisionOutcome agregado.
+- **INV-39 Aggregate cause conservation:** el resumen no elimina outcomes ni causas atómicos.
+- **INV-40 Aggregate exact-scope semantics:** el resumen describe exactamente requested_scope; un subset requiere scope derivado y decisión separada.
+- **INV-41 Aggregate order independence:** permutar el orden de llegada no cambia el resultado.
+- **INV-42 Aggregate context homogeneity:** no se agregan decision_type, finalidad, policy version o contextos incompatibles.
+- **INV-43 Operational route separation:** ORE permanece por route_id y no adopta implícitamente la precedencia analítica.
 
-**Estado A11/A12:** ADDRESSED_IN_DRAFT; pendiente revisión de Valuation, Risk, Architecture, Operations y Legal/Compliance. Los escenarios S-085..S-099 son especificaciones de prueba futuras, no tests ejecutables ni resultados validados.
+**Estado A11/A12:** ADDRESSED_IN_DRAFT; pendiente revisión de Valuation, Risk, Architecture, Operations, Security, Governance y Legal/Compliance. Los escenarios S-085..S-114 son especificaciones de prueba futuras, no tests ejecutables ni resultados validados. La precedencia agregada se propone en [documento 18](18-x09-atomic-aggregation-precedence.md) y no está aprobada.
 
 
 ### 21. GAP de armonización de ValuationStatus legacy
