@@ -1,7 +1,7 @@
 # Matriz integrada de escenarios de conformidad
 
 **ID:** IIE-METH-CONFORMANCE-010  
-**Versión:** 0.6.0-draft  
+**Versión:** 0.7.0-draft  
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
 **Hallazgo:** X-09; revisión 0.3.0 incorpora resoluciones propuestas A01-A10 de auditoría 15  
@@ -759,3 +759,36 @@ La resolución A11 define los outcomes objetivo de X-06, pero el catálogo exist
 El crosswalk y el plan de migración están propuestos, pero pendientes de aprobación e implementación. No se deben consumir ni transformar automáticamente los enums legacy como si fueran los estados canónicos. Ver [documento 17, §2.3.1](17-x09-wrapped-valuation-and-atomic-aggregation.md) y la propuesta de migración.
 
 **A11 permanece ADDRESSED_IN_DRAFT con GAP de armonización legacy; no cerrado formalmente.**
+
+
+## 23. A13 — Verificación formal del Scope Algebra (v0.7.0-draft)
+
+La estrategia de obligaciones formales, certificados, TCB, complejidad y pruebas se desarrolla en [20-x09-scope-algebra-formal-verification-strategy.md](20-x09-scope-algebra-formal-verification-strategy.md) v0.1.0-draft. Los escenarios siguientes son criterios de conformidad futuros; no son tests implementados.
+
+| ID | Condición | Resultado esperado | Dimensión |
+|---|---|---|---|
+| S-129 | A y B resueltos, misma firma/universo; intercambiar operandos de unión/intersección | Denotation equivalente; digest semántico canónico igual | Conmutatividad |
+| S-130 | A, B y C resueltos y comparables | Asociatividad de unión/intersección preserva denotation | Asociatividad |
+| S-131 | A y B resueltos | (A∩B) y (A\\B) disjuntos; su unión reconstruye A | Diferencia |
+| S-132 | Comparar scopes de universos o normalization versions incompatibles | INVALID/UNRESOLVED; no emitir prueba de equivalencia | Compatibilidad |
+| S-133 | Checker verifica certificado de DISJOINT/CONTAINS/COVERAGE | Aceptar solo si certificado válido y operands/versiones coinciden | Proof checking |
+| S-134 | Solver retorna UNKNOWN, timeout o sin certificado | UNRESOLVED/INCOMPLETE; nunca EMPTY/DISJOINT | Fallo solver |
+| S-135 | Particionador excede límite determinista de regiones/tiempo/memoria | No VALID; residual unresolved y envelope no favorable | Resource bound |
+| S-136 | Permutar orden de inputs, reglas y edges sin cambiar semántica | Mismo resultado y digest semántico | Determinismo |
+| S-137 | Alias/Unicode/normalización colisionan o son ambiguos | UNRESOLVED/INVALID; no fusionar identidades | Canonicalización |
+| S-138 | Predicate DSL contiene operador no permitido o expresión no decidible | Rechazar o UNRESOLVED; nunca aproximar como exacto | Predicate language |
+| S-139 | Derived scope se serializa y valida contra parent/version | Denotation contenida y parent decision intacta | Derived scope |
+| S-140 | Differential checker discrepa del particionador | INVALID/REVIEW_REQUIRED; bloquear envelope VALID y conservar artefactos | Verificación independiente |
+
+### 23.1 Invariantes adicionales
+
+- **INV-56 Algebra preconditions:** leyes algebraicas solo se aplican a operandos resueltos, comparables y del mismo universo/firma.
+- **INV-57 Proof soundness:** EMPTY, DISJOINT, CONTAINS, EQUAL y COVERAGE requieren evidencia verificable acorde al método aprobado.
+- **INV-58 Solver uncertainty:** UNKNOWN, timeout o certificado ausente nunca se interpreta como prueba exacta.
+- **INV-59 Resource fail-closed:** exceder límites no puede producir resultado favorable ni partición VALID.
+- **INV-60 Canonical determinism:** permutación semánticamente irrelevante no cambia denotation/digest.
+- **INV-61 Checker independence:** discrepancia o fallo del checker bloquea VALID y genera evidencia auditable.
+- **INV-62 Predicate decidability:** solo se aceptan operadores/expresiones dentro del fragmento versionado aprobado.
+- **INV-63 Partition proof completeness:** cobertura, contención, no vacío y disjunción se verifican como obligaciones distintas.
+
+**Estado:** A13 ADDRESSED_IN_DRAFT / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED. S-129..S-140 e INV-56..INV-63 no son fixtures ni pruebas ejecutadas.
