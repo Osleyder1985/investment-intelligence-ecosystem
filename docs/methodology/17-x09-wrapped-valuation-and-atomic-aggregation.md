@@ -191,7 +191,7 @@ Para el scope agregado:
 7. ORE nunca se reduce a una autorización global: mantener una fila por ruta. Si el consumidor solicita varias rutas, presentar matriz por ruta y resumen restrictivo sin permiso implícito.
 8. DECISION_ELIGIBLE_WITH_LIMITATIONS/ROUTE_ELIGIBLE_WITH_LIMITATIONS solo si el subset permitido está identificado y su enforcement es efectivo. Si no, REVIEW/ABSTAIN/INELIGIBLE según causa.
 
-**Nota de precedencia:** para evitar ambigüedad de agregación cuando coexisten INELIGIBLE, REVIEW y ABSTAIN, la salida agregada deberá seguir el orden de severidad explícito que aprueben los owners; hasta entonces, devolver siempre vector por unidad y un summary no favorable `AGGREGATE_REVIEW_REQUIRED` en el envelope, sin inventar un nuevo DecisionOutcome. Este envelope es una condición de composición, no sustituye los outcomes atómicos.
+**Nota de precedencia:** para evitar ambigüedad de agregación cuando coexisten INELIGIBLE, REVIEW y ABSTAIN, la salida agregada deberá seguir el orden de severidad explícito que aprueben los owners; hasta entonces, conservar siempre el vector por unidad y marcar `ValidationEnvelope.REVIEW_REQUIRED` por ambigüedad de agregación, sin inventar un nuevo DecisionOutcome. Este envelope es una condición de composición, no sustituye los outcomes atómicos.
 
 ### 3.6 Escenarios de agregación obligatorios
 
