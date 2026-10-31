@@ -47,6 +47,10 @@ La revisión preliminar de IIM-025, IIM-027 e IIM-028 está documentada en [`por
 
 La revisión preliminar de IIM-026, IIM-029, IIM-030 e IIM-031 está documentada en [`portfolio-execution-lot-b-review.md`](portfolio-execution-lot-b-review.md) y se sigue en el [Issue #36](https://github.com/Osleyder1985/investment-intelligence-ecosystem/issues/36). La recomendación técnica es REVISE para los cuatro requisitos. Sus estados formales permanecen PENDING_REVIEW hasta que se registre una decisión autorizada en el Issue #34.
 
+## 2.3. Revisión técnica del lote C
+
+La revisión preliminar de IIM-032, IIM-035 e IIM-037 está documentada en [`portfolio-execution-lot-c-review.md`](portfolio-execution-lot-c-review.md) y se sigue en el [Issue #37](https://github.com/Osleyder1985/investment-intelligence-ecosystem/issues/37). La recomendación técnica es REVISE para los tres requisitos. Sus estados formales permanecen PENDING_REVIEW hasta decisión autorizada en el Issue #34.
+
 ## 3. Riesgos de solapamiento que deben resolverse
 
 1. **IIM-016 vs IIM-028:** IIM-016 produce evaluación de riesgo del activo/oportunidad; IIM-028 gobierna límites y presupuestos agregados de cartera. Evitar duplicar métricas o confundir perfil con política de riesgo.
