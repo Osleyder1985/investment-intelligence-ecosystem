@@ -70,7 +70,7 @@ class IdentityFixtureHarnessTests(unittest.TestCase):
         result = harness.evaluate_fixture(self.fixtures["FX-EVM-NO-CODE-001"], self.schema)
         self.assertEqual(result["execution_status"], "INCONCLUSIVE")
         self.assertEqual(result["resolution_status"], "UNVERIFIED")
-        self.assertIn("contract_code_presence_not_proven", result["diagnostics"])
+        self.assertIn("contract_code_absent_at_checkpoint", result["diagnostics"])
 
     def test_unsupported_token2022_extension_limits_behavioral_conclusions(self):
         result = harness.evaluate_fixture(
