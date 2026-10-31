@@ -371,6 +371,55 @@ class IIEDatabaseTest {
         assertEquals("PERSONAL_USE_ONLY", source?.permittedUseStatus)
     }
 
+
+    @Test
+    fun marketQuoteObservationsRemainSeparateForUsdcAndUsdt() = runBlocking {
+        DemoAssetSeeder(database) { 1_800_000_000_000L }.seed()
+        val sourceId = "source:coinpaprika"
+        val dao = database.assetObservationDao()
+        dao.insertObservations(
+            listOf(
+                AssetObservationEntity(
+                    observationId = "observation:quote:usdc",
+                    assetId = "asset:usd-coin",
+                    deploymentId = null,
+                    sourceId = sourceId,
+                    observationType = "MARKET_QUOTE",
+                    observedAtEpochMs = 1_799_999_900_000L,
+                    retrievedAtEpochMs = 1_800_000_000_000L,
+                    status = "ACCEPTED",
+                    quality = "PROVIDER_SCHEMA_VALIDATED",
+                    valueSchemaVersion = 1,
+                    valueJson = """{"schema":"iie.market-quote.v1","providerId":"usdc-usd-coin","symbol":"USDC","quoteCurrency":"USD","price":1.0001,"providerUpdatedAtEpochMs":1799999900000,"retrievedAtEpochMs":1800000000000}""",
+                    payloadSha256 = "fixture-usdc",
+                    licenseReference = "https://coinpaprika.com/terms-of-use"
+                ),
+                AssetObservationEntity(
+                    observationId = "observation:quote:usdt",
+                    assetId = "asset:tether",
+                    deploymentId = null,
+                    sourceId = sourceId,
+                    observationType = "MARKET_QUOTE",
+                    observedAtEpochMs = 1_799_999_900_000L,
+                    retrievedAtEpochMs = 1_800_000_000_000L,
+                    status = "ACCEPTED",
+                    quality = "PROVIDER_SCHEMA_VALIDATED",
+                    valueSchemaVersion = 1,
+                    valueJson = """{"schema":"iie.market-quote.v1","providerId":"usdt-tether","symbol":"USDT","quoteCurrency":"USD","price":0.9999,"providerUpdatedAtEpochMs":1799999900000,"retrievedAtEpochMs":1800000000000}""",
+                    payloadSha256 = "fixture-usdt",
+                    licenseReference = "https://coinpaprika.com/terms-of-use"
+                )
+            )
+        )
+
+        val usdc = dao.getLatestObservation("asset:usd-coin", "MARKET_QUOTE")
+        val usdt = dao.getLatestObservation("asset:tether", "MARKET_QUOTE")
+        assertEquals("usdc-usd-coin", org.json.JSONObject(usdc!!.valueJson).getString("providerId"))
+        assertEquals("usdt-tether", org.json.JSONObject(usdt!!.valueJson).getString("providerId"))
+        assertEquals("USDC", org.json.JSONObject(usdc.valueJson).getString("symbol"))
+        assertEquals("USDT", org.json.JSONObject(usdt.valueJson).getString("symbol"))
+    }
+
     private fun asset(
         id: String,
         canonicalKey: String,
