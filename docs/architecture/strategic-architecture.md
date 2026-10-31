@@ -177,7 +177,11 @@ Esta arquitectura no:
 
 Este documento establece el mapa estratégico del producto. No sustituye la carta metodológica, los requisitos IIM, los contratos de identidad/universo/datos, las políticas de riesgo, las especificaciones de valoración ni el protocolo de validación. Las correspondencias requisito-capa y los criterios técnicos de aceptación deberán incorporarse a la matriz de trazabilidad en una revisión posterior.
 
-## 11. Criterios para considerar aprobada esta línea base
+## 11. Trazabilidad de requisitos e interfaces
+
+La asignación de los 24 requisitos IIM a las cuatro capas, las interfaces conceptuales, los gates de dependencia y las brechas de cartera/ejecución se mantienen en [`requirement-allocation-and-layer-contracts.md`](requirement-allocation-and-layer-contracts.md). Ese documento está pendiente de revisión técnica y no altera los estados de aprobación ni evidencia de implementación.
+
+## 12. Criterios para considerar aprobada esta línea base
 
 - Las cuatro capas y sus responsabilidades están identificadas sin solapamientos críticos.
 - Cada capa define misión, capacidades, entradas/salidas y límites.
