@@ -44,7 +44,7 @@ def encode_base58(value: bytes) -> str:
     while number:
         number, remainder = divmod(number, 58)
         encoded = BASE58_ALPHABET[remainder] + encoded
-    leading_zeroes = len(value) - len(value.lstrip(b"\\x00"))
+    leading_zeroes = len(value) - len(value.lstrip(b"\x00"))
     return ("1" * leading_zeroes) + (encoded or "")
 
 
@@ -60,7 +60,7 @@ def decode_base58(value: str) -> bytes:
         number = number * 58 + digit
     body = number.to_bytes((number.bit_length() + 7) // 8, "big") if number else b""
     leading_zeroes = len(value) - len(value.lstrip("1"))
-    return (b"\\x00" * leading_zeroes) + body
+    return (b"\x00" * leading_zeroes) + body
 
 
 def _permission_blocked(fixture: dict[str, Any]) -> bool:
