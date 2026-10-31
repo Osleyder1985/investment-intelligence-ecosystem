@@ -35,7 +35,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.iie.android.domain.model.Asset
-import com.iie.android.domain.model.AssetDeploymentSummary
 import com.iie.android.presentation.AssetExplorerViewModel
 
 class MainActivity : ComponentActivity() {
