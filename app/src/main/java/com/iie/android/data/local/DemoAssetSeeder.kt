@@ -95,7 +95,8 @@ class DemoAssetSeeder(
             AssetEntity("asset:bitcoin", "demo:bitcoin:native", "Bitcoin", "BTC", "CRYPTO_ASSET", "DEMO_UNVERIFIED", 0L, 0L),
             AssetEntity("asset:ethereum", "demo:ethereum:native", "Ethereum", "ETH", "CRYPTO_ASSET", "DEMO_UNVERIFIED", 0L, 0L),
             AssetEntity("asset:solana", "demo:solana:native", "Solana", "SOL", "CRYPTO_ASSET", "DEMO_UNVERIFIED", 0L, 0L),
-            AssetEntity("asset:usd-coin", "demo:usd-coin:unresolved", "USD Coin", "USDC", "CRYPTO_ASSET", "DEMO_UNVERIFIED", 0L, 0L)
+            AssetEntity("asset:usd-coin", "demo:usd-coin:unresolved", "USD Coin", "USDC", "CRYPTO_ASSET", "DEMO_UNVERIFIED", 0L, 0L),
+            AssetEntity("asset:tether", "demo:tether:unresolved", "Tether", "USDT", "CRYPTO_ASSET", "DEMO_UNVERIFIED", 0L, 0L)
         )
 
         val networks = listOf(
@@ -114,7 +115,8 @@ class DemoAssetSeeder(
             AssetIdentifierEntity("identifier:bitcoin", "demo:identifier:bitcoin", "asset:bitcoin", SOURCE_ID, "iie-demo-fixture", "bitcoin", null, null, "DEMO_ONLY"),
             AssetIdentifierEntity("identifier:ethereum", "demo:identifier:ethereum", "asset:ethereum", SOURCE_ID, "iie-demo-fixture", "ethereum", null, null, "DEMO_ONLY"),
             AssetIdentifierEntity("identifier:solana", "demo:identifier:solana", "asset:solana", SOURCE_ID, "iie-demo-fixture", "solana", null, null, "DEMO_ONLY"),
-            AssetIdentifierEntity("identifier:usd-coin", "demo:identifier:usd-coin", "asset:usd-coin", SOURCE_ID, "iie-demo-fixture", "usd-coin", null, null, "DEMO_ONLY")
+            AssetIdentifierEntity("identifier:usd-coin", "demo:identifier:usd-coin", "asset:usd-coin", SOURCE_ID, "iie-demo-fixture", "usd-coin", null, null, "DEMO_ONLY"),
+            AssetIdentifierEntity("identifier:tether", "demo:identifier:tether", "asset:tether", SOURCE_ID, "iie-demo-fixture", "tether", null, null, "DEMO_ONLY")
         )
     }
 }
