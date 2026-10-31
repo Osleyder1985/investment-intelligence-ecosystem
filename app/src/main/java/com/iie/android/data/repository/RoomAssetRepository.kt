@@ -8,6 +8,7 @@ import com.iie.android.data.market.CoinPaprikaTickerClient
 import com.iie.android.data.market.CoinPaprikaQuote
 import java.security.MessageDigest
 import java.util.UUID
+import org.json.JSONObject
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetDeploymentSummary
 import com.iie.android.domain.model.AssetObservation
@@ -135,12 +136,15 @@ class RoomAssetRepository(
             "CoinPaprika provider identifier is not confirmed"
         }
 
-        val cached = database.assetObservationDao().getLatestObservation(
-            assetId, MARKET_QUOTE_OBSERVATION_TYPE
+        val cached = database.assetObservationDao().getLatestForSource(
+            assetId = assetId,
+            observationType = MARKET_QUOTE_OBSERVATION_TYPE,
+            sourceId = sourceId
         )
         val now = nowEpochMs()
         if (cached != null && now >= cached.retrievedAtEpochMs &&
-            now - cached.retrievedAtEpochMs < QUOTE_CACHE_TTL_MS
+            now - cached.retrievedAtEpochMs < QUOTE_CACHE_TTL_MS &&
+            cachedMatchesProvider(cached, identifier.identifierValue, expectedSymbol)
         ) {
             return cached
         }
@@ -173,11 +177,42 @@ class RoomAssetRepository(
     }
 
     suspend fun getLatestCoinPaprikaQuote(assetId: String): Pair<AssetObservationEntity, String>? {
-        val observation = database.assetObservationDao().getLatestObservation(
-            assetId, MARKET_QUOTE_OBSERVATION_TYPE
+        val sourceId = "source:coinpaprika"
+        val asset = database.assetDao().getAsset(assetId) ?: return null
+        val identifier = database.assetIdentifierDao().findForAsset(
+            assetId = assetId,
+            sourceId = sourceId,
+            namespace = "coinpaprika"
         ) ?: return null
-        val source = database.dataSourceDao().getSource(observation.sourceId) ?: return null
+        if (identifier.verificationStatus != "PROVIDER_ID_CONFIRMED") return null
+        val observation = database.assetObservationDao().getLatestForSource(
+            assetId = assetId,
+            observationType = MARKET_QUOTE_OBSERVATION_TYPE,
+            sourceId = sourceId
+        ) ?: return null
+        if (!cachedMatchesProvider(observation, identifier.identifierValue, asset.symbol)) return null
+        val source = database.dataSourceDao().getSource(sourceId) ?: return null
+        if (source.permittedUseStatus != "PERSONAL_USE_ONLY") return null
         return observation to (source.attributionText ?: source.displayName)
+    }
+
+    private fun cachedMatchesProvider(
+        observation: AssetObservationEntity,
+        expectedProviderId: String,
+        expectedSymbol: String
+    ): Boolean = try {
+        if (observation.sourceId != "source:coinpaprika" ||
+            observation.observationType != MARKET_QUOTE_OBSERVATION_TYPE ||
+            observation.status != "ACCEPTED"
+        ) return false
+        val payload = JSONObject(observation.valueJson)
+        payload.optString("schema") == "iie.market-quote.v1" &&
+            payload.optString("providerId") == expectedProviderId &&
+            payload.optString("symbol").equals(expectedSymbol, ignoreCase = true) &&
+            payload.optString("quoteCurrency") == "USD" &&
+            payload.optDouble("price", Double.NaN).let { it.isFinite() && it > 0.0 }
+    } catch (_: Exception) {
+        false
     }
 
     private fun CoinPaprikaQuote.toObservationJson(): String =
