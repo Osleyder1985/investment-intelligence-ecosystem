@@ -29,7 +29,7 @@ La inspección documental de main confirma:
 - Existe un harness offline de fixtures sintéticos EVM/Solana en tests/identity_fixtures/.
 - Existe una suite preliminar de contratos JSON para Portfolio & Execution en tests/contracts/.
 - requirements-dev.txt declara jsonschema>=4.18,<5.
-- Estos harnesses no constituyen un motor integral de selección. Los tests no se declaran ejecutados en esta actualización.
+- Estos harnesses no constituyen un motor integral de selección. Issue #19 registra que PR #31 aportó evidencia histórica de nueve pruebas unitarias OK y dos fixtures PASS más un INCONCLUSIVE esperado; esa evidencia no sustituye una ejecución CI actual ni revisión independiente. La ejecución del workflow CI recién incorporado sigue pendiente de verificar.
 - La matriz de trazabilidad existente afirma que ningún requisito se encuentra IMPLEMENTED, TESTED o EMPIRICALLY_VALIDATED.
 
 La inspección es estática de los artefactos citados; no equivale a ejecución local ni a auditoría completa de cada commit.
