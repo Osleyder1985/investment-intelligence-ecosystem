@@ -16,7 +16,7 @@ python -m unittest discover -s tests/contracts -p 'test_*.py' -v
 - JSON parsing for all six schema files.
 - Meta-validation with `Draft202012Validator.check_schema`.
 - Synthetic minimal instances generated from each schema's required structure.
-- Explicit `FormatChecker` validation for date-time and URI formats where exercised.
+- Explicit `FormatChecker` validation for date-time fields.
 - Rejection of missing required root properties, undeclared root properties and wrong schema versions.
 - Rejection of malformed decimal strings where the schema declares the shared decimal pattern.
 
