@@ -12,6 +12,12 @@ on:
     branches:
       - "feat/android-*"
 
+# Push and pull_request events for the same branch share one CI concurrency group.
+# New commits supersede stale builds instead of queueing multiple emulator jobs.
+concurrency:
+  group: android-ci-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
