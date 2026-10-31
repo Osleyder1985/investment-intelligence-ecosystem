@@ -91,3 +91,16 @@ No iniciar contratos de ejecución real mientras los lotes C y D no tengan decis
 ## 6. Decisión global
 
 **PENDING_REVIEW.** La matriz sirve como instrumento de revisión. No incorpora los requisitos al registro oficial, no modifica los estados de IIM-001 a IIM-024, no declara contratos SPECIFIED y no habilita operación real.
+
+
+## 8. Revisión técnica preliminar — lote D
+
+El análisis documental de IIM-033, IIM-034 e IIM-036 está registrado en [portfolio-execution-lot-d-review.md](portfolio-execution-lot-d-review.md) y se sigue en [Issue #38](https://github.com/Osleyder1985/investment-intelligence-ecosystem/issues/38).
+
+| ID | Recomendación técnica | Estado formal |
+|---|---|---|
+| IIM-033 | REVISE — estados inciertos, eventos duplicados/fuera de orden, semántica de idempotencia externa y fills parciales. | PENDING_REVIEW |
+| IIM-034 | REVISE — controles fail-closed, reservas atómicas, alcance del kill switch y reanudación autorizada. | PENDING_REVIEW |
+| IIM-036 | REVISE — fuentes de verdad, conciliación bidireccional, finality y resolución auditable de discrepancias. | PENDING_REVIEW |
+
+Esta revisión es asistida y documental. No constituye aprobación, implementación, pruebas ejecutadas ni autorización de operación. El Issue #34 permanece como autoridad de seguimiento y el registro oficial no se modifica.
