@@ -136,7 +136,7 @@ Precedencia agregada, de mayor a menor restricción:
 3. `VETO_NOT_ASSESSED`
 4. `NO_VETO_IDENTIFIED`
 
-Solo se agrega `NO_VETO_IDENTIFIED` cuando todos los dominios materiales aplicables están suficientemente evaluados y no hay veto ni revisión pendiente. Dominios no aplicables requieren justificación registrada. No se permite inferir ausencia de veto a partir de dominios no evaluados.
+Solo se agrega `NO_VETO_IDENTIFIED` cuando todas las reglas de veto obligatorias y todos los dominios materiales aplicables al scope están suficientemente evaluados y no hay veto ni revisión pendiente. Si una regla obligatoria no se evaluó, el resultado es `VETO_NOT_ASSESSED`. `RiskDomainStatus.UNKNOWN` y `NOT_ASSESSED` permanecen en el objeto de riesgo y no se renombran como estados de veto. Dominios no aplicables requieren justificación taxonómica registrada.
 
 ### 4.7 Aplicabilidad y resultado de valoración — ValuationStatus
 
@@ -164,7 +164,7 @@ Resultado único por clave de decisión y versión, derivado de los dominios ant
 | BLOCKED_EVIDENCE | Evidencia crítica no admisible, insuficiente u obsoleta |
 | VETOED | Existe VETO_ACTIVE aplicable |
 | REVIEW_REQUIRED | Existe VETO_REVIEW_REQUIRED u otra revisión bloqueante |
-| RISK_INCOMPLETE | Riesgo material UNKNOWN, NOT_ASSESSED, STALE o CONFLICTED |
+| RISK_INCOMPLETE | Riesgo material UNKNOWN, NOT_ASSESSED, ASSESSMENT_IN_PROGRESS, STALE, CONFLICTED o INVALID |
 | VALUATION_NOT_APPLICABLE | No aplica valoración al objeto/finalidad; no es una oportunidad valorada |
 | VALUATION_NOT_ESTIMABLE | Valoración aplicable pero no defendible actualmente |
 | INSUFFICIENT_EVIDENCE | Evidencia insuficiente para una conclusión de selección |
@@ -213,7 +213,7 @@ La decisión agregada se calcula sin borrar estados de origen. Precedencia propu
 3. Evidencia crítica inadmisible, en cuarentena, desconocida u obsoleta → `BLOCKED_EVIDENCE`.
 4. `VETO_ACTIVE` aplicable → `VETOED`.
 5. `VETO_REVIEW_REQUIRED` u otra revisión bloqueante → `REVIEW_REQUIRED`.
-6. Riesgo material desconocido/no evaluado/obsoleto/conflictivo → `RISK_INCOMPLETE`.
+6. Riesgo material desconocido/no evaluado/en curso/obsoleto/conflictivo/inválido → `RISK_INCOMPLETE`.
 7. Valoración aplicable no estimable o insuficiente → `VALUATION_NOT_ESTIMABLE` / `INSUFFICIENT_EVIDENCE`.
 8. Incomparabilidad → `NOT_COMPARABLE`.
 9. Valoración no aplicable → `VALUATION_NOT_APPLICABLE`, salvo que la finalidad no requiera valoración y exista otra decisión válida.
@@ -358,7 +358,7 @@ M-02 solo podrá marcarse como resuelto después de:
 |---|---|---|
 | Identidad conflictiva y oportunidad modelada favorable | Identity=CONFLICTED; valuation=ESTIMABLE | BLOCKED_IDENTITY; no ranking favorable |
 | Veto activo y score superior | Veto=VETO_ACTIVE; score alto | VETOED; score no compensa |
-| Riesgo no evaluado | Risk=NOT_ASSESSED | RISK_INCOMPLETE, no NO_VETO_IDENTIFIED |
+| Riesgo no evaluado | RiskDomainStatus=NOT_ASSESSED; VetoDecision=VETO_NOT_ASSESSED | RISK_INCOMPLETE; no inferir NO_VETO_IDENTIFIED |
 | Alerta no corroborada | Veto=VETO_REVIEW_REQUIRED | REVIEW_REQUIRED; no oportunidad favorable |
 | Datos críticos obsoletos | Evidence=STALE | BLOCKED_EVIDENCE si son materiales |
 | Conflicto de screening | Eligibility=QUARANTINED | Cuarentena; no convertir automáticamente en INELIGIBLE |
