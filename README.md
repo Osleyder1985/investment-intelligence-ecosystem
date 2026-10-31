@@ -33,7 +33,8 @@ La metodología apoya la toma de decisiones; no garantiza resultados ni constitu
 - `docs/undervaluation/`: detección de infravaloración.
 - `docs/validation/`: validación empírica.
 - `requirements/`: requisitos trazables.
-- `models/`, `evidence/`, `templates/`, `validation/`, `tests/`: artefactos futuros.
+- `tests/identity_fixtures/`: primera suite offline de fixtures sintéticos EVM/Solana; alcance limitado y pendiente de revisión independiente.
+- `models/`, `evidence/`, `templates/`, `validation/`: artefactos futuros.
 
 ## Referencias normativas
 
