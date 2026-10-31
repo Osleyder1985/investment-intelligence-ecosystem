@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.iie.android.domain.model.Asset
+import com.iie.android.domain.model.AssetDeploymentSummary
 import com.iie.android.presentation.AssetExplorerViewModel
 
 class MainActivity : ComponentActivity() {
@@ -114,35 +115,12 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
     }
 
     selectedAsset?.let { asset ->
-        val isWatched = asset.assetId in watchlist
-        AlertDialog(
-            onDismissRequest = { selectedAsset = null },
-            title = { Text("${asset.name} (${asset.symbol})") },
-            text = {
-                Column {
-                    Text("ID local: ${asset.assetId}")
-                    Text("Clave canónica de demostración: ${asset.canonicalKey}")
-                    Text("Estado de identidad: ${asset.identityStatus}")
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        if (asset.symbol == "USDC") {
-                            "Red y contrato: no especificados. USDC tiene múltiples despliegues."
-                        } else {
-                            "La red y el despliegue se almacenan como entidades separadas."
-                        }
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text("Procedencia: fixture local IIE; no verificado como fuente de producción.")
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { viewModel.toggleWatchlist(asset.assetId) }) {
-                    Text(if (isWatched) "Quitar de seguimiento" else "Añadir a seguimiento")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { selectedAsset = null }) { Text("Cerrar") }
-            }
+        AssetDetailDialog(
+            asset = asset,
+            isWatched = asset.assetId in watchlist,
+            viewModel = viewModel,
+            onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) },
+            onDismiss = { selectedAsset = null }
         )
     }
 }
@@ -173,4 +151,57 @@ private fun AssetRow(
             }
         }
     }
+}
+
+@Composable
+private fun AssetDetailDialog(
+    asset: Asset,
+    isWatched: Boolean,
+    viewModel: AssetExplorerViewModel,
+    onToggleWatchlist: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val deployments by viewModel.observeDeployments(asset.assetId)
+        .collectAsState(initial = emptyList())
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("${asset.name} (${asset.symbol})") },
+        text = {
+            Column {
+                Text("ID local: ${asset.assetId}")
+                Text("Clave canónica de demostración: ${asset.canonicalKey}")
+                Text("Estado de identidad: ${asset.identityStatus}")
+                Spacer(Modifier.height(8.dp))
+                Text("Redes y representaciones:")
+                if (deployments.isEmpty()) {
+                    Text(
+                        if (asset.symbol == "USDC") {
+                            "Sin despliegue asignado: activo multi-red pendiente de resolución."
+                        } else {
+                            "No hay despliegues registrados para este activo."
+                        },
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                } else {
+                    deployments.forEach { deployment ->
+                        Text(
+                            "${deployment.networkName} · ${deployment.representationKind} · ${deployment.decimals ?: "N/D"} decimales",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("Procedencia: fixture local IIE; no verificado como fuente de producción.")
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onToggleWatchlist) {
+                Text(if (isWatched) "Quitar de seguimiento" else "Añadir a seguimiento")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cerrar") }
+        }
+    )
 }
