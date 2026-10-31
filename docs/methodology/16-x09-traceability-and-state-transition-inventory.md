@@ -1,7 +1,7 @@
 # X-09 — Matriz de trazabilidad y catálogo de transiciones
 
 **ID:** IIE-METH-TRACE-STATE-012  
-**Versión:** 0.3.0-draft  
+**Versión:** 0.4.0-draft  
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
 **Objeto:** resolver documentalmente A09 y A10 de la auditoría `15-x09-cross-document-consistency-audit.md`.  
@@ -20,9 +20,9 @@ Convenciones:
 - `TEST_NOT_IMPLEMENTED` y `NOT_EXECUTED`: no existe evidencia de ejecución.
 
 Los futuros test IDs son reservas de trazabilidad, no tests implementados:
-- Escenarios individuales: `TC-X09-S-001` … `TC-X09-S-084`.
+- Escenarios individuales: `TC-X09-S-001` … `TC-X09-S-140`.
 - Escenarios combinados: `TC-X09-C-01` … `TC-X09-C-16`.
-- Invariantes: `TC-X09-INV-01` … `TC-X09-INV-29`.
+- Invariantes: `TC-X09-INV-01` … `TC-X09-INV-63`.
 
 ## 2. A09 — Crosswalk de escenarios individuales
 
