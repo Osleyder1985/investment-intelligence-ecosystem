@@ -176,6 +176,23 @@ class IIEDatabaseTest {
         assertEquals("first", entry?.note)
     }
 
+    @Test
+    fun demoSeederIsIdempotentAndPreservesUserWatchlistData() = runBlocking {
+        DemoAssetSeeder(database) { 100L }.seed()
+        database.watchlistDao().add(
+            WatchlistEntryEntity("asset:bitcoin", addedAtEpochMs = 150L, note = "user note")
+        )
+
+        DemoAssetSeeder(database) { 200L }.seed()
+
+        assertEquals(4, database.assetDao().countAssets())
+        assertNotNull(database.assetDeploymentDao().getDeployment("deployment:bitcoin-native"))
+        val entry = database.watchlistDao().getEntry("asset:bitcoin")
+        assertNotNull(entry)
+        assertEquals(150L, entry?.addedAtEpochMs)
+        assertEquals("user note", entry?.note)
+    }
+
     private fun asset(
         id: String,
         canonicalKey: String,
