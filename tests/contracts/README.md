@@ -8,6 +8,11 @@ From the repository root:
 
 ```bash
 python -m pip install -r requirements-dev.txt
+```
+
+The development requirements include the optional `jsonschema` format dependencies.
+
+```
 python -m unittest discover -s tests/contracts -p 'test_*.py' -v
 ```
 

@@ -11,6 +11,7 @@ import unittest
 from pathlib import Path
 
 from jsonschema import Draft202012Validator, FormatChecker
+from jsonschema.exceptions import FormatError
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_DIR = ROOT / "schemas" / "contracts"
@@ -75,17 +76,32 @@ def sample_for(schema):
     return {}
 
 
-def find_pattern_path(schema, pattern, path=()):
+def find_present_schema_path(schema, instance, predicate, path=()):
+    """Find a matching schema path that actually exists in the generated instance.
+
+    Optional properties and arrays with minItems=0 are intentionally absent from
+    minimal instances. Tests must not mutate those nonexistent paths.
+    """
     if not isinstance(schema, dict):
         return None
-    if schema.get("pattern") == pattern:
+    if predicate(schema):
         return path
-    for key, child in schema.get("properties", {}).items():
-        found = find_pattern_path(child, pattern, path + (key,))
-        if found is not None:
-            return found
-    if isinstance(schema.get("items"), dict):
-        return find_pattern_path(schema["items"], pattern, path + (0,))
+    if isinstance(instance, dict):
+        for key, child_schema in schema.get("properties", {}).items():
+            if key not in instance:
+                continue
+            found = find_present_schema_path(
+                child_schema, instance[key], predicate, path + (key,)
+            )
+            if found is not None:
+                return found
+    if isinstance(instance, list) and isinstance(schema.get("items"), dict):
+        for index, item in enumerate(instance):
+            found = find_present_schema_path(
+                schema["items"], item, predicate, path + (index,)
+            )
+            if found is not None:
+                return found
     return None
 
 
@@ -126,6 +142,10 @@ class ContractSchemaTests(unittest.TestCase):
                 errors = list(validator.iter_errors(self.instances[filename]))
                 self.assertEqual(errors, [], msg="; ".join(e.message for e in errors))
 
+    def test_format_checker_dependency_rejects_invalid_rfc3339(self):
+        with self.assertRaises(FormatError):
+            FORMATS.check("not-a-timestamp", "date-time")
+
     def test_missing_required_root_property_is_rejected(self):
         for filename, schema in self.schemas.items():
             with self.subTest(schema=filename):
@@ -154,39 +174,30 @@ class ContractSchemaTests(unittest.TestCase):
     def test_invalid_date_time_format_is_rejected_when_present(self):
         checked = 0
         for filename, schema in self.schemas.items():
-            # Contract timestamp fields are declared with format=date-time.
-            timestamp_path = self._find_format_path(schema, "date-time")
+            timestamp_path = find_present_schema_path(
+                schema,
+                self.instances[filename],
+                lambda node: node.get("format") == "date-time",
+            )
             if timestamp_path is None:
                 continue
             checked += 1
-            with self.subTest(schema=filename):
+            with self.subTest(schema=filename, path=timestamp_path):
                 instance = copy.deepcopy(self.instances[filename])
                 set_at_path(instance, timestamp_path, "not-a-timestamp")
                 validator = Draft202012Validator(schema, format_checker=FORMATS)
                 self.assertTrue(list(validator.iter_errors(instance)))
         self.assertGreater(checked, 0)
 
-    @staticmethod
-    def _find_format_path(schema, fmt, path=()):
-        if not isinstance(schema, dict):
-            return None
-        if schema.get("format") == fmt:
-            return path
-        for key, child in schema.get("properties", {}).items():
-            found = ContractSchemaTests._find_format_path(child, fmt, path + (key,))
-            if found is not None:
-                return found
-        if isinstance(schema.get("items"), dict):
-            return ContractSchemaTests._find_format_path(
-                schema["items"], fmt, path + (0,)
-            )
-        return None
-
     def test_decimal_pattern_rejects_non_decimal_text(self):
         checked = 0
         decimal_pattern = r"^-?(0|[1-9][0-9]*)(\.[0-9]+)?$"
         for filename, schema in self.schemas.items():
-            path = find_pattern_path(schema, decimal_pattern)
+            path = find_present_schema_path(
+                schema,
+                self.instances[filename],
+                lambda node: node.get("pattern") == decimal_pattern,
+            )
             if path is None:
                 continue
             checked += 1
