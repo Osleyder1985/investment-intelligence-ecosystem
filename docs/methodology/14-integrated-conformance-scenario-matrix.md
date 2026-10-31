@@ -689,3 +689,12 @@ Para vetos concurrentes con scopes parcialmente solapados:
 - **INV-35 No heterogeneous global permission:** rutas/unidades heterogéneas conservan resultados separados; el summary no concede elegibilidad global.
 
 **Estado A11/A12:** ADDRESSED_IN_DRAFT; pendiente revisión de Valuation, Risk, Architecture, Operations y Legal/Compliance. Los escenarios S-085..S-099 son especificaciones de prueba futuras, no tests ejecutables ni resultados validados.
+
+
+### 21. GAP de armonización de ValuationStatus legacy
+
+La resolución A11 define los outcomes objetivo de X-06, pero el catálogo existente `docs/valuation/valuation-method-catalog.md` v0.1.0 aún utiliza `VALUATION_SUPPORTED`, `VALUATION_CONDITIONAL`, `NO_APPLICABLE_METHOD` y `NOT_VALUABLE_WITH_AVAILABLE_EVIDENCE`. No existe mapping aprobado uno-a-uno. La matriz de aplicabilidad usa `CONDITIONAL` como estado de aplicabilidad del método, no como ValuationStatus.
+
+El crosswalk y la migración están pendientes. No se deben consumir ni transformar automáticamente los enums legacy como si fueran los estados canónicos. Ver [documento 17, §2.3.1](17-x09-wrapped-valuation-and-atomic-aggregation.md).
+
+**A11 permanece ADDRESSED_IN_DRAFT con GAP de armonización legacy; no cerrado formalmente.**
