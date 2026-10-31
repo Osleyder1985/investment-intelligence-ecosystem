@@ -15,7 +15,7 @@ El veto es independiente de la valoración. Ningún descuento, puntuación, mome
 | NO_VETO_IDENTIFIED | No se identificó veto con la evidencia examinada | No significa seguridad ni ausencia de riesgo |
 | RISK_UNKNOWN | Evidencia insuficiente para evaluar dominio material | No asumir riesgo nulo; abstenerse o limitar conclusión |
 
-El estado agregado debe reflejar el más restrictivo aplicable y conservar estados por dominio. Un dominio no evaluado permanece RISK_UNKNOWN.
+El estado agregado debe conservar estados por dominio y aplicar esta precedencia: VETO_ACTIVE, VETO_REVIEW_REQUIRED, RISK_UNKNOWN y NO_VETO_IDENTIFIED. Un dominio no evaluado permanece RISK_UNKNOWN. Solo puede asignarse NO_VETO_IDENTIFIED como estado agregado cuando todos los dominios materiales aplicables han sido revisados con evidencia suficiente; nunca significa ausencia absoluta de riesgo.
 
 ## Condiciones candidatas de veto
 
