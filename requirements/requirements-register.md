@@ -20,5 +20,7 @@
 | IIM-016 | Evaluar riesgos por tipología, evidencia, alcance, controles y riesgo residual | Crítica | Propuesto | Taxonomía y fichas trazables por activo y dominio |
 | IIM-017 | Aplicar vetos críticos independientes de la valoración y con transiciones verificables | Crítica | Propuesto | Casos de prueba de activación, revisión, remediación y bloqueo de ranking |
 | IIM-018 | Asegurar calidad, admisibilidad, linaje y disponibilidad point-in-time de cada dato utilizado | Crítica | Propuesto | Registro de fuentes, manifiestos reproducibles y pruebas de leakage, licencias y conflictos |
+| IIM-019 | Resolver identidad canónica de activos, redes, contratos y representaciones sin depender del ticker | Crítica | Propuesto | Casos de colisión, wrapper, migración, fork y activo nativo resueltos con evidencia |
+| IIM-020 | Construir universos versionados y screening por finalidad sin sesgo de supervivencia ni precio nominal | Crítica | Propuesto | Snapshots históricos, criterios trazables y pruebas de activos desaparecidos y supply desconocido |
 
 Los requisitos no se consideran aprobados hasta su análisis, trazabilidad y aceptación formal.
