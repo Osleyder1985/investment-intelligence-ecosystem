@@ -106,3 +106,28 @@ No se definió esquema físico de base de datos, algoritmo universal de matching
 ### No-conclusiones
 
 Los perfiles son borradores de especificación, no software ejecutable. AS-033 a AS-042 no se han automatizado ni ejecutado. No se probaron endpoints, snapshots ni parsers; no se hizo revisión jurídica ni aprobación metodológica independiente. No se afirma cobertura completa de EVM o Solana.
+
+
+## 9. Perfiles Cosmos SDK/IBC y UTXO Bitcoin-like — borrador v0.1.0
+
+**Artefacto:** [network-identity-profiles-cosmos-utxo](../asset-selection/network-identity-profiles-cosmos-utxo.md).  
+**Casos añadidos:** AS-043 a AS-050.
+
+| ID | Regla documentada | Límite pendiente |
+|---|---|---|
+| XCR-16 | Cosmos: network_id no se deriva solo de chain-id; se usan genesis, app hash/checkpoints y evidencia de endpoint. | Fixtures para resets, forks, cadenas privadas y endpoints divergentes. |
+| XCR-17 | Cosmos: denom base exacto separado de display metadata; CW20 separado de bank denom. | Fixtures de módulos, metadata histórica y migraciones de contratos. |
+| XCR-18 | IBC: voucher local conserva denom trace y ruta; no se fusiona por ticker ni por posible subyacente común. | Verificar multi-hop, forwarding, trace hash y packet/ack en casos reproducibles. |
+| XCR-19 | UTXO: activo nativo tipado; dirección, script y outpoint son evidencia/instancias, no claves universales de activo. | Fixtures de forks, reorganizaciones y reglas de consenso por red. |
+| XCR-20 | Activos UTXO emitidos requieren namespace/versión y validador específico del protocolo. | Perfiles separados para Liquid, RGB, Taproot Assets, Omni, Counterparty y otras capas. |
+
+### Decisión por requisito
+
+- **IIM-001: REVISION_REQUIRED.** Se amplía cobertura documental, pero no se cubren todas las familias ni hay adaptadores/fixtures ejecutados.
+- **IIM-019: REVISION_REQUIRED.** IBC y activos protocolarios requieren validación de relaciones y derechos; no se aprueban mappings por similitud económica.
+- **IIM-020 e IIM-018: REVISION_REQUIRED.** No se valida cobertura histórica ni controles point-in-time.
+- **IIM-002: BLOCKED para aprobar fuentes concretas.** No se aportan expedientes de términos/permisos.
+
+### No-conclusiones
+
+Los perfiles son borradores acotados, no implementaciones. AS-043 a AS-050 no se han automatizado ni ejecutado. No se consultaron nodos ni se validaron denom traces, módulos, outpoints o protocolos de activos. No se afirma cobertura completa de Cosmos o UTXO.
