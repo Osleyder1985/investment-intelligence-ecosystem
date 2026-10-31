@@ -205,7 +205,7 @@ A10 solo se cierra cuando SM-01..SM-12 tengan catálogo y owner aprobado (o excl
 No se afirma cobertura completa de transiciones, aprobación institucional, implementación ni validación empírica.
 
 
-## 12. Actualización de trazabilidad A11/A12 — X-09 v0.4.0
+## 12. Actualización de trazabilidad A11/A12 — X-09 v0.5.0
 
 La ampliación de valoración wrapped y agregación atómica se especifica en [17-x09-wrapped-valuation-and-atomic-aggregation.md](17-x09-wrapped-valuation-and-atomic-aggregation.md).
 
@@ -238,3 +238,41 @@ La ampliación de valoración wrapped y agregación atómica se especifica en [1
 - Los escenarios no son tests ejecutables y no han sido ejecutados.
 
 **Estado A11/A12: ADDRESSED_IN_DRAFT / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED.**
+
+
+## 13. Trazabilidad de precedencia agregada A12 — X-09 v0.5.0
+
+La regla propuesta está especificada en [18-x09-atomic-aggregation-precedence.md](18-x09-atomic-aggregation-precedence.md) v0.1.0-draft. Define precedencia del resumen para requested_scope únicamente después de ValidationEnvelope=VALID: INELIGIBLE > REVIEW_REQUIRED > ABSTAIN > IN_PROGRESS > NOT_ASSESSED > ELIGIBLE_WITH_LIMITATIONS > ELIGIBLE. La regla conserva el vector atómico y no sustituye decisiones por subset.
+
+### 13.1 Escenarios nuevos
+
+| Escenarios | Regla fuente | Dimensión | Requisito IIM candidato | Test futuro | Estado |
+|---|---|---|---|---|---|
+| S-100..S-103 | X-06 §9–10; documento 18 §§2–4 | Precedencia INELIGIBLE/REVIEW/ABSTAIN | IIM-020,022,024; mappings sujetos a owners | TC-X09-S-100..103 | PARTIAL_DRAFT |
+| S-104..S-107 | X-06 §10; documento 18 §§3–5 | Abstención, progreso, no evaluado y limitaciones | IIM-020,022,024 | TC-X09-S-104..107 | PARTIAL_DRAFT |
+| S-108..S-111 | X-06 §10; documento 18 §§2–5 | Scope derivado y gate ValidationEnvelope | IIM-020,022,024; IIM-025/032–035 propuestos | TC-X09-S-108..111 | PARTIAL_DRAFT |
+| S-112..S-114 | X-04; X-06 §3,9–10; documento 18 | Determinismo, homogeneidad y separación ORE | IIM-022,024; IIM-029,032–035 propuestos | TC-X09-S-112..114 | PARTIAL_DRAFT |
+
+### 13.2 Invariantes nuevas
+
+| Invariante | Escenarios mínimos | Regla fuente | Test futuro | Estado |
+|---|---|---|---|---|
+| INV-36 Aggregate proven-failure dominance | S-100..S-102 | Documento 18 §3 | TC-X09-INV-36 | PARTIAL_DRAFT |
+| INV-37 Aggregate review precedence | S-103 | Documento 18 §3 | TC-X09-INV-37 | PARTIAL_DRAFT |
+| INV-38 Aggregate envelope gate | S-109..S-111 | Documento 18 §2 | TC-X09-INV-38 | PARTIAL_DRAFT |
+| INV-39 Aggregate cause conservation | S-100..S-103 | Documento 18 §§3–4 | TC-X09-INV-39 | PARTIAL_DRAFT |
+| INV-40 Aggregate exact-scope semantics | S-108 | Documento 18 §3.3 | TC-X09-INV-40 | PARTIAL_DRAFT |
+| INV-41 Aggregate order independence | S-112 | Documento 18 §5 | TC-X09-INV-41 | PARTIAL_DRAFT |
+| INV-42 Aggregate context homogeneity | S-113 | Documento 18 §5 | TC-X09-INV-42 | PARTIAL_DRAFT |
+| INV-43 Operational route separation | S-114 | Documento 18 §8; X-04 | TC-X09-INV-43 | PARTIAL_DRAFT |
+
+### 13.3 Aprobaciones y límites
+
+- Risk/Governance deben aprobar el significado de precedencia categórica y la distinción entre fallo demostrado y falta de evidencia.
+- Architecture debe aprobar el gate ValidationEnvelope, homogeneidad de contextos y scope algebra.
+- Operations debe aprobar el tratamiento de subset y enforcement.
+- Security debe revisar integridad, orden independiente de llegada y resistencia a manipulación de inputs.
+- Requirement Owners deben validar cualquier mapeo a IIM.
+- ORE requiere revisión separada; S-114 solo afirma que no se hereda la regla analítica.
+
+Los escenarios S-100..S-114 e invariantes INV-36..INV-43 son especificaciones futuras. No existen fixtures ni tests ejecutables asociados y no se han ejecutado pruebas. La precedencia propuesta sigue NOT_APPROVED.
