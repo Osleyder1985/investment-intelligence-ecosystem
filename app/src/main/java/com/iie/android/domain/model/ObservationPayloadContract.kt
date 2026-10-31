@@ -33,6 +33,9 @@ data class ObservationPayloadContract(
     init {
         require(observationType.isNotBlank())
         require(schemaVersion > 0)
+        require(requiredRootType == PayloadFieldType.OBJECT) {
+            "Root-object contracts are required while field-level validation is defined for objects only"
+        }
         require(fields.map { it.name }.distinct().size == fields.size) {
             "Payload contract field names must be unique"
         }
