@@ -140,7 +140,7 @@ def resolve_observations(
 ) -> dict[str, Any]:
     """Resolve representation identity from observations, never expected fixture output."""
     def finish(status: str, selected_family: str, diagnostics: Sequence[str], **kwargs: Any) -> dict[str, Any]:
-        result = finish(status, selected_family, diagnostics, **kwargs)
+        result = _result(status, selected_family, diagnostics, **kwargs)
         result["registry_version"] = registry.version
         return result
     if family not in {"EVM", "SOLANA"}:
