@@ -63,7 +63,7 @@ class FreshnessEvaluatorTest {
             "source:market-test", "MARKET_PRICE", "PAPER_TRADING",
             150_000L, 155_000L, 200_000L
         ) as FreshnessEvaluation.Evaluated
-        assertEquals(FreshnessStatus.FRESH, result.assessment.status)
+        assertEquals(FreshnessStatus.APPROACHING_EXPIRY, result.assessment.status)
 
         val nearExpiry = evaluator.evaluate(
             "source:market-test", "MARKET_PRICE", "PAPER_TRADING",
