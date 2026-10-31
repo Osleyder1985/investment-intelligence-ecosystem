@@ -26,7 +26,7 @@ Nunca reutilizar el identificador externo de uno para el otro.
 
 El seeder actual contiene una ficha sintética para USD Coin (`asset:usd-coin`) con identidad y despliegue sin resolver. No contiene aún una ficha separada para Tether (USDT). Este fixture no constituye una identificación verificada ni un mapeo de proveedor.
 
-La incorporación de USDT al catálogo debe crear un nuevo `assetId` y `canonicalKey` independiente, con sus propios identificadores externos y despliegues verificados. No se debe renombrar ni reutilizar el registro de USDC.
+La incorporación de USDT al catálogo debe crear un nuevo `assetId` y `canonicalKey` independiente, con sus propios identificadores externos y despliegues verificados. No se debe renombrar ni reutilizar el registro de USDC. El seeder demo incorpora ahora una ficha sintética USDT separada y un identificador dentro del namespace local `iie-demo-fixture`; ese valor `tether` es solo un fixture, no una correspondencia verificada con CoinPaprika ni otro proveedor. Ambas fichas permanecen sin despliegues de red hasta que se verifiquen contratos y redes concretos.
 
 ## Consecuencias para la integración de mercado
 
