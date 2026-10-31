@@ -113,3 +113,11 @@ La corrección armoniza los rangos reservados; no implica que esos tests existan
 **ADDRESSED_IN_DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED.**
 
 La corrección de rangos de trazabilidad fue documental. Los hallazgos FSA-01..FSA-05 permanecen abiertos. No se modificaron requisitos IIM, schemas, código, fixtures ni políticas aprobadas. No se ejecutaron pruebas matemáticas, property-based, differential, adversariales, benchmarks ni validación empírica.
+
+## 6. Seguimiento FSA-01 — propuesta documental publicada
+
+Se publicó [22-x09-scope-algebra-membership-uncertainty-semantics.md](22-x09-scope-algebra-membership-uncertainty-semantics.md) v0.1.0-draft. La propuesta distingue validez de contrato, evaluación de pertenencia y resultado de operación; define TRUE/FALSE/UNKNOWN y INVALID estricto; propone lógica de Kleene fuerte, aproximaciones inferior/superior, reglas para EMPTY/DISJOINT/CONTAINS/EQUAL y cuantificación.
+
+X-09 fue ampliado a v0.8.0-draft con S-141..S-151 e INV-64..INV-69. El documento 16 fue actualizado a v0.5.0-draft con crosswalks y rangos de IDs hasta S-151 e INV-69.
+
+**Resultado de seguimiento:** FSA-01 pasa de GAP sin propuesta a ADDRESSED_IN_DRAFT / REVIEW_REQUIRED. No se cierra: las tablas de verdad, la regla INVALID estricta, las aproximaciones inferior/superior, los criterios de completitud y los mappings requieren aprobación de owners y revisión formal independiente. FSA-02..FSA-05 siguen abiertos. No hay implementación ni tests ejecutados.
