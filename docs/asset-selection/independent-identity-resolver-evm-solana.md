@@ -20,7 +20,15 @@ PROPOSED IMPLEMENTATION / SYNTHETIC TESTS ONLY / NOT APPROVED FOR PRODUCTION OR 
 - EVM code hash is format-checked only. No bytecode is supplied, so the hash is not recomputed or authenticated.
 - Solana mint account state is supplied as an observation. The resolver does not independently fetch or verify account state.
 - This identifies a network-scoped representation, not an economic asset, issuer, backing claim, bridge relationship, solvency, market listing, or investment suitability.
-- The existing fixture harness remains a separate conformance runner in this increment. Resolver output does not consume `expected_result`; tests compare independently derived output to explicit expectations.
+- The fixture harness now calls the independent resolver and then compares its output with `expected_result`; the resolver itself never reads expected outputs.
+- Harness `execution_status` is distinct from resolver `resolution_status`. A conformance test can be `PASS` while the resolver correctly returns `UNRESOLVED` for an abstention fixture.
+- A temporary, explicit legacy crosswalk maps fixture expectation `UNVERIFIED` to resolver outcome `UNRESOLVED`; this does not amend the canonical methodology state catalog.
+
+## Harness and test semantics
+
+- `execution_status`: PASS, FAIL, BLOCKED, NOT_RUN.
+- `resolution_status`: RESOLVED, UNRESOLVED, CONFLICTED (or NOT_ASSESSED if the resolver was not run).
+- The conformance runner compares the computed status and identity key against the fixture expectation after resolution.
 
 ## Run
 
