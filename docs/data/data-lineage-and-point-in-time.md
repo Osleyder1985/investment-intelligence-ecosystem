@@ -12,12 +12,12 @@ Poder reconstruir qué dato se utilizó, de dónde provino, cómo se transformó
 |---|---|
 | event_time | Momento en que ocurrió el hecho económico/técnico |
 | publication_time | Momento en que el proveedor publicó el dato |
-| availability_time / knowledge_time | Primer momento demostrable en que el dato estuvo disponible para el sistema/usuario |
+| availability_time / knowledge_time | Primer momento demostrable en que el dato estuvo disponible públicamente o para el usuario autorizado |
 | capture_time | Momento en que el sistema lo capturó |
 | processing_time | Momento en que se validó/transformó |
 | decision_time | Momento de corte de la evaluación |
 
-Todos los tiempos deben normalizarse a UTC y conservar el valor/origen original cuando sea necesario. Si publication_time o availability_time no se conocen, registrar DESCONOCIDO; no inferirlos a partir de capture_time.
+Todos los tiempos deben normalizarse a UTC y conservar el valor/origen original cuando sea necesario. Si publication_time o availability_time no se conocen, registrar DESCONOCIDO; no inferirlos a partir de capture_time. Para evaluar qué conocía el sistema concreto, registrar además su momento real de ingestión/captura y disponibilidad interna.
 
 Para datos on-chain, conservar block height, block timestamp, hash de bloque/transacción, red y semántica de finalización. Un timestamp de bloque no demuestra por sí solo cuándo el dato estuvo indexado o disponible para un observador.
 
@@ -40,7 +40,7 @@ No almacenar datos cuyo almacenamiento esté prohibido. En ese caso conservar so
 
 ## 4. Reglas point-in-time
 
-Para una evaluación con decision_time = t:
+Para una evaluación con decision_time = t, distinguir dos modalidades:\n\n- REPLAY_OPERATIONAL: solo se admite información que el sistema concreto había ingerido y tenía disponible antes de t.\n- RECONSTRUCTION_POINT_IN_TIME: puede utilizarse información publicada y demostrablemente accesible antes de t aunque se capture después, pero debe identificarse como reconstrucción retrospectiva y no como reproducción de lo que el sistema realmente procesó entonces.\n\nEn ambas modalidades:
 - admitir solo información con availability_time ≤ t;
 - si availability_time es desconocido y la variable puede introducir look-ahead, excluirla o marcar evaluación no reproducible;
 - no usar revisiones posteriores como si fueran valores originales;
