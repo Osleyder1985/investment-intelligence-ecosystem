@@ -132,7 +132,7 @@ No existe una clave universal de activo emitido para todas las redes UTXO. Cada 
 - relación con scripts/outpoints y cómo se preserva el estado del activo;
 - parser/decoder versionado y casos de prueba.
 
-La clave conceptual será (network_id, protocol_namespace, protocol_version, protocol_asset_id) solo cuando el protocolo garantice esa semántica. Si no se puede verificar la regla de derivación o el estado de emisión, registrar el objeto como UNVERIFIED y no atribuirle un ticker/proyecto por heurística.
+La clave conceptual será (network_id, protocol_namespace, protocol_asset_id) solo cuando el protocolo garantice esa semántica. La versión del estándar y del parser se conserva como metadato de interpretación; solo forma parte del namespace de identidad si el propio protocolo define explícitamente espacios de IDs incompatibles. Si no se puede verificar la regla de derivación o el estado de emisión, registrar el objeto como UNVERIFIED y no atribuirle un ticker/proyecto por heurística.
 
 Activos en sidechains o capas adicionales (por ejemplo, Liquid, RGB o protocolos sobre Taproot) requieren perfil separado que defina su modelo de emisión, validación, custodia y relación con Bitcoin. No asumir que un asset ID de una sidechain comparte namespace o derechos con el activo de la cadena base.
 
