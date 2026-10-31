@@ -24,7 +24,9 @@ permissions:
 jobs:
   android-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Hard upper bound for the entire job; emulator boot and test execution
+    # also have their own smaller limits below.
+    timeout-minutes: 25
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -55,16 +57,22 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_2
-          emulator-boot-timeout: 900
+          # Do not let ADB boot polling consume the whole job.
+          emulator-boot-timeout: 300
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
             set +e
-            gradle :app:connectedDebugAndroidTest
+            timeout --signal=TERM --kill-after=30s 12m gradle :app:connectedDebugAndroidTest
             test_status=$?
-            mkdir -p app/build/reports/androidTests/connected/debug
-            adb logcat -d -v threadtime > app/build/reports/androidTests/connected/debug/logcat.txt || true
             exit $test_status
+
+      - name: Capture emulator diagnostics
+        if: always()
+        run: |
+          mkdir -p app/build/reports/androidTests/connected/debug
+          timeout 10s adb devices -l > app/build/reports/androidTests/connected/debug/adb-devices.txt 2>&1 || true
+          timeout 15s adb -s emulator-5554 logcat -d -v threadtime > app/build/reports/androidTests/connected/debug/logcat.txt 2>&1 || true
 
       - name: Upload instrumentation diagnostics
         if: always()
