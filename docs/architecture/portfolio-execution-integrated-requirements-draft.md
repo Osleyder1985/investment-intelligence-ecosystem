@@ -113,3 +113,8 @@ Son contratos conceptuales; no schemas implementados.
 ## 17. Estado y limitaciones
 
 **DRAFT FOR REVIEW — NOT APPROVED.** Los 13 requisitos siguen PENDING_REVIEW. Se requiere revisión humana de arquitectura, riesgo y operaciones; revisión independiente de seguridad; y revisión legal/compliance donde aplique. Este documento no declara implementación, pruebas, validación empírica ni readiness operativa.
+
+
+### 14.1. Borrador técnico de contratos
+
+Los primeros contratos tienen esquemas JSON candidatos Draft 2020-12 y semántica documentada en [portfolio-execution-contracts-v0.1.0.md](../contracts/portfolio-execution-contracts-v0.1.0.md). Incluyen InvestmentMandate, ExposureSnapshot, RiskPolicy, RiskBudget, PortfolioProposal y AuditEvent. Su estado es DRAFT; aún requieren validación automática, revisión y aprobación. Los schemas no se consideran SPECIFIED ni IMPLEMENTED.
