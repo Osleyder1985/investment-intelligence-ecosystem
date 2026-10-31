@@ -283,7 +283,9 @@ private fun MarketQuoteDetails(
                 Text("Recuperado y guardado localmente: ${formatter.format(Date(it))}", style = MaterialTheme.typography.bodySmall)
             }
             Text(quote.attribution ?: "Powered by CoinPaprika", style = MaterialTheme.typography.bodySmall)
-            Text("Frescura: NO EVALUADA · aún no existe una política aprobada para cotizaciones.", style = MaterialTheme.typography.bodySmall)
+            Text("Frescura local: ${quote.freshnessStatus} · ${quote.freshnessReason}", style = MaterialTheme.typography.bodySmall)
+            Text("Política operativa local: FRESH hasta 10 min; STALE hasta 60 min; EXPIRED después. No certifica exactitud del precio.", style = MaterialTheme.typography.bodySmall)
+            Text("Caché local: intervalo mínimo de 10 minutos entre consultas por activo.", style = MaterialTheme.typography.bodySmall)
         }
         else -> Text("No hay cotización guardada para este activo.", style = MaterialTheme.typography.bodySmall)
     }
