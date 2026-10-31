@@ -41,15 +41,15 @@ La asignación indica responsabilidad arquitectónica, no propiedad exclusiva de
 | IIM-005 | L2 | L1, L4, X | Tesis con hipótesis, alternativas, evidencia favorable/contraria y registro de cambios. |
 | IIM-006 | L2 | L1, L3, L4 | Evaluación de riesgos críticos y vetos que no puedan compensarse mediante una puntuación. |
 | IIM-007 | L4 | L1, L2, L3, X | Evidencia de controles temporales y validación fuera de muestra sin leakage ni sesgos indebidos. |
-| IIM-008 | L4 | L2, L3, X | Historial versionado, reconstruible y comparable de evaluaciones y decisiones. |
-| IIM-009 | L3 (orquestación) | L1, L2, L4, X | Ejecución de evaluaciones solo bajo solicitud explícita y autorización correspondiente. |
+| IIM-008 | X (transversal) | L2, L3, L4 | Historial versionado, reconstruible y comparable de evaluaciones y decisiones a través de todas las capas. |
+| IIM-009 | X (transversal) | L1, L2, L3, L4 | Control de invocación: ninguna evaluación se ejecuta sin solicitud explícita válida; el control se aplica a todos los puntos de entrada. |
 | IIM-010 | L2 | L1, L4, X | Conclusión estructurada con evidencia, incertidumbre, limitaciones y estado de decisión. |
 | IIM-011 | L1 | L2, L4 | Taxonomía de activos por derechos, función y captura de valor, incluidas tipologías híbridas. |
 | IIM-012 | L1 | L4 | Selección justificada del método de valoración según objeto y tipología. |
 | IIM-013 | L1 | L2, L4 | Abstención de valoración cuando derechos, identidad o evidencia sean insuficientes. |
 | IIM-014 | L2 | L1, L3, L4 | Evaluación de brecha entre precio ejecutable y rango de valor razonable, incluyendo costes e incertidumbre. |
 | IIM-015 | L4 | L2, X | Calibración y validación independiente requeridas antes de habilitar cualquier categoría extrema. |
-| IIM-016 | L2 | L1, L3, L4 | Perfil de riesgo por tipología, evidencia, controles y riesgo residual. |
+| IIM-016 | L1 | L2, L3, L4 | Evaluación y perfil de riesgo por tipología, evidencia, alcance, controles y riesgo residual; L2 aplica sus consecuencias decisionales y vetos. |
 | IIM-017 | L2 | L3, L4, X | Gates de veto con transiciones verificables y precedencia sobre el resultado de valoración/ranking. |
 | IIM-018 | L1 | L4, X | Datos admisibles, con calidad, linaje y semántica temporal point-in-time demostrables. |
 | IIM-019 | L1 | L4, X | Resolución canónica de activos, redes, contratos y representaciones sin depender del ticker. |
@@ -57,7 +57,7 @@ La asignación indica responsabilidad arquitectónica, no propiedad exclusiva de
 | IIM-021 | L1 | L2, L4 | Modelos reproducibles con atribución, escenarios, sensibilidad e incertidumbre. |
 | IIM-022 | L2 | L1, L3, L4 | Decisiones y rankings parciales reproducibles por horizonte, con gates, dominancia y abstención. |
 | IIM-023 | L2 | L4, X | Informes trazables y snapshots inmutables, comparables longitudinalmente. |
-| IIM-024 | L3 (orquestación) | L1, L2, L4, X | Workflow bajo demanda con estados, gates, idempotencia, recuperación y observabilidad. |
+| IIM-024 | X (transversal) | L1, L2, L3, L4 | Orquestación de evaluaciones y procesos con estados, gates, idempotencia, recuperación y observabilidad en todo el ecosistema. |
 
 ### 3.1 Interpretación
 
@@ -66,6 +66,10 @@ La asignación indica responsabilidad arquitectónica, no propiedad exclusiva de
 - **L3 controla la materialización de decisiones en cartera/operaciones.** Una decisión elegible no equivale a autorización para operar.
 - **L4 tiene autoridad de control y evaluación.** Puede bloquear, condicionar, retirar o exigir revisión de componentes cuando la evidencia no supere los criterios aprobados.
 - **X aplica a todo el ciclo.** No debe existir una ruta de datos, decisión u operación que evada provenance, seguridad, versionado y auditoría.
+
+## 3.2 Ajustes detectados en la asignación
+
+La revisión técnica preliminar recomienda tratar IIM-008, IIM-009 e IIM-024 como responsabilidades transversales (X), no como funciones exclusivas de una capa. IIM-016 se asigna a L1 para la generación del perfil de riesgo, mientras L2 consume esa evaluación para decidir y aplicar vetos. Estos ajustes son una propuesta de coherencia arquitectónica y requieren aceptación en la revisión formal; no alteran los estados metodológicos de los requisitos.
 
 ## 4. Interfaces conceptuales entre capas
 
@@ -204,6 +208,8 @@ Esta lista es un **sobre conceptual mínimo**, no un JSON Schema aprobado. La ob
 Los gates son dependencias de entrega. L4 (VALIDATION & LEARNING) debe proporcionar pruebas desde G0; G5 representa la madurez de validación empírica, no el inicio tardío de las pruebas.
 
 ## 7. Brecha entre requisitos actuales y alcance estratégico
+
+La propuesta de requisitos complementarios IIM-025 a IIM-037 para Portfolio & Execution se encuentra en [`portfolio-execution-requirements-proposal.md`](portfolio-execution-requirements-proposal.md). Los identificadores son provisionales y no forman parte del registro oficial hasta su aprobación.
 
 Los 24 requisitos actuales no cubren por sí solos todo el alcance de PORTFOLIO & EXECUTION. Antes de implementar esa capa deben derivarse y aprobarse requisitos específicos, al menos para:
 
