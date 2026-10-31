@@ -142,6 +142,9 @@ def _evaluate_solana(fixture: dict[str, Any]) -> tuple[str, list[str]]:
             return "INCONCLUSIVE", ["mint_owner_program_id_invalid"]
         if mint.get("token_program") not in {"TOKEN_PROGRAM", "TOKEN_2022"}:
             return "INCONCLUSIVE", ["mint_owner_program_not_classified"]
+        unsupported = mint.get("unsupported_extensions", [])
+        if unsupported:
+            return "INCONCLUSIVE", ["unsupported_token2022_extension"]
         normalized.append(obs["normalized_identifier"])
     if len(set(normalized)) != 1:
         return "FAIL", ["same_mint_observations_diverged"]
