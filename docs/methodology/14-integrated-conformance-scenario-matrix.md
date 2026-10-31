@@ -1,10 +1,10 @@
 # Matriz integrada de escenarios de conformidad
 
 **ID:** IIE-METH-CONFORMANCE-010  
-**Versión:** 0.2.0-draft  
+**Versión:** 0.3.0-draft  
 **Fecha:** 2026-10-31  
 **Estado:** DRAFT / REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED / NOT_VALIDATED  
-**Hallazgo:** X-09; revisión 0.2.0 incorpora resoluciones propuestas A01-A08 de auditoría 15  
+**Hallazgo:** X-09; revisión 0.3.0 incorpora resoluciones propuestas A01-A10 de auditoría 15  
 **Dependencias:** M-02 a M-13; resoluciones X-01 a X-08  
 **Propósito:** especificar escenarios, combinaciones, resultados esperados e invariantes antes de construir fixtures y pruebas ejecutables.
 
@@ -616,3 +616,19 @@ No se declaran porcentajes de cobertura hasta que los inventarios de estados/tra
 
 **Importante:** ADDRESSED_IN_DRAFT significa que el texto de la propuesta incorpora una respuesta al hallazgo. No significa que el hallazgo haya sido aceptado por sus owners, que la matriz esté aprobada, que exista implementación o que se hayan ejecutado pruebas.
 
+
+
+## 18. Trazabilidad y catálogo de transiciones (v0.3.0)
+
+La resolución documental de A09 y A10 se desarrolla en el documento complementario:
+
+[`16-x09-traceability-and-state-transition-inventory.md`](16-x09-traceability-and-state-transition-inventory.md)
+
+Este documento complementario contiene:
+- Crosswalk inicial de S-001..S-084 y C-01..C-16 hacia reglas fuente, dimensiones, requisitos IIM candidatos y futuros test IDs.
+- Crosswalk INV-01..INV-29 hacia escenarios y reglas.
+- Inventario SM-01..SM-12 con estados de cobertura y brechas.
+- Transiciones fuente explícitas de VetoDecision y eventos/reglas lifecycle.
+- Transiciones prohibidas, métricas y criterios de aceptación.
+
+**Estado:** A09/A10 ADDRESSED_IN_DRAFT. El crosswalk requiere expansión por escenario y validación por Requirement Owners. El inventario revela que varias máquinas (incluidas RiskDomainStatus, ORE, AE, SelectionDecision, Governance y TradeAuthorization) carecen todavía de grafos exhaustivos. No se declara cobertura completa ni aprobación. No se han creado ni ejecutado tests.
