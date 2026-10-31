@@ -251,3 +251,8 @@ La tabla siguiente resume la clave conceptual, sin sustituir los perfiles ni res
 - RETIRED_OR_MIGRATED: entidad histórica retirada o migrada, conservada con relación temporal al sucesor.
 
 Un perfil puede registrar el estado de cada afirmación (por ejemplo, relación bridge o autoridad) de forma separada, pero debe mapearlo al estado global cuando afecte a la identidad. Mapping recomendado: CONFIRMED → RESOLVED; PARTIALLY_CONFIRMED → RESOLVED_WITH_LIMITATIONS; DISPUTED → CONFLICTED; UNVERIFIED → UNVERIFIED. AMBIGUOUS y RETIRED_OR_MIGRATED se mantienen como estados globales propios.
+
+
+## 16. Contrato de fixtures de conformidad
+
+La estructura común de fixtures, su procedencia, temporalidad, resultados esperados y reglas de ejecución se define en [identity-profile-fixture-contract](identity-profile-fixture-contract.md). Los casos AS son especificaciones documentales hasta que se implementen fixtures versionados y se registren resultados de ejecución.

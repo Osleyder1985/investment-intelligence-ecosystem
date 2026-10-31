@@ -323,3 +323,24 @@ Comprobar identidad, snapshot, finalidad, estado, evidencia, variables, licencia
 - Entrada: activo nativo de red cuyo protocolo no expone contract/mint/denom asset ID (p. ej. gas coin EVM o ADA).
 - Esperado: (network_id, NATIVE_ASSET); perfil/normalizador versionado solo como procedencia.
 - Fallo: añadir versión del parser o una dirección ficticia a la clave.
+
+
+## AS-063 — Separación entre fixture sintético y captura real
+- Entrada: fixture marcado SYNTHETIC o CAPTURED.
+- Esperado: exigir provenance y permisos para CAPTURED/REDACTED_CAPTURE; los datos sintéticos no se presentan como evidencia real.
+- Fallo: atribuir fuente, existencia on-chain o permiso a un fixture sintético.
+
+## AS-064 — Replay determinista sin RPC
+- Entrada: mismo fixture versionado, perfil, configuración y adapter version.
+- Esperado: resultado reproducible offline; consultas live quedan como suite separada.
+- Fallo: depender de endpoint externo no versionado durante la prueba determinista.
+
+## AS-065 — Fixture incompleto
+- Entrada: falta genesis/checkpoint, raw identifier o evidencia obligatoria para el uso solicitado.
+- Esperado: INCONCLUSIVE/BLOCKED o estado de identidad no resuelto; registrar qué evidencia falta.
+- Fallo: convertir ausencia de evidencia en PASS o completar campos por heurística.
+
+## AS-066 — Permiso de fuente insuficiente
+- Entrada: snapshot capturado con permiso de consulta, pero sin permiso demostrado de almacenamiento/retención.
+- Esperado: bloquear la inclusión/retención del payload capturado; conservar solo referencias/metadatos permitidos o sustituir por fixture sintético.
+- Fallo: asumir que permiso de consulta implica permiso de almacenamiento o redistribución.

@@ -179,3 +179,26 @@ El perfil es un borrador, no un indexador ni parser implementado. AS-051 a AS-05
 ### No-conclusiones
 
 No se ejecutaron AS-058 a AS-062 ni suites automatizadas. No se implementaron migraciones de IDs, adaptadores ni parsers. No se realizó revisión independiente ni validación empírica. Los perfiles siguen siendo borradores.
+
+
+## 12. Contrato de fixtures de conformidad — borrador v0.1.0
+
+**Artefacto:** [identity-profile-fixture-contract](../asset-selection/identity-profile-fixture-contract.md).  
+**Casos añadidos:** AS-063 a AS-066.
+
+| ID | Regla documentada | Límite pendiente |
+|---|---|---|
+| XCR-30 | Se separan fixtures sintéticos, capturados y capturados/redactados. | Aprobar expediente IIM-002 para cada fuente antes de guardar payload real. |
+| XCR-31 | Se definen campos de red, observación, expected result y temporalidad. | Revisión de compatibilidad con el esquema de la futura implementación. |
+| XCR-32 | Las pruebas deterministas corren offline; consultas live son una capa separada. | Implementar harness y verificar reproducibilidad en CI. |
+| XCR-33 | La falta de evidencia produce INCONCLUSIVE/BLOCKED, no PASS. | Definir catálogo de diagnósticos y mapearlo a estados de ejecución del software. |
+
+### Decisión por requisito
+
+- **IIM-001 e IIM-019: REVISION_REQUIRED.** Se documenta contrato de fixtures, pero no se implementó ni ejecutó.
+- **IIM-018: REVISION_REQUIRED.** El contrato conserva timestamps separados; no demuestra su captura real ni cobertura point-in-time.
+- **IIM-002: BLOCKED para capturas de fuentes concretas.** No se almacenará payload capturado sin permisos de retención demostrados.
+
+### No-conclusiones
+
+No se definió JSON Schema definitivo, framework, harness, CI ni fixtures de red real. El ejemplo del documento es sintético. AS-063 a AS-066 no se automatizaron ni ejecutaron. No hay evidencia de pruebas PASS.
