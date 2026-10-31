@@ -572,7 +572,7 @@ class IIEDatabaseTest {
     }
 
     @Test
-    fun coinPaprikaDailyHistoryRejectsDuplicateTimestampsWithinBatch() = runBlocking {
+    fun coinPaprikaDailyHistoryRejectsDuplicateTimestampsWithinBatch(): Unit = runBlocking {
         val now = 1_800_000_000_000L
         DemoAssetSeeder(database) { now }.seed()
         val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
