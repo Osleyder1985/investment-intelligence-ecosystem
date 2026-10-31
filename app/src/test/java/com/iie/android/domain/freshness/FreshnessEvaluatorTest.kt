@@ -94,6 +94,24 @@ class FreshnessEvaluatorTest {
     }
 
     @Test
+    fun rejectsObservedTimestampAfterRetrievalEvenWhenPolicyUsesRetrievalTime() {
+        val retrievalPolicy = policy.copy(
+            policyId = "retrieval-time-policy",
+            timestampBasis = TimestampBasis.RETRIEVED_AT
+        )
+        val result = FreshnessEvaluator(listOf(retrievalPolicy)).evaluate(
+            "source:market-test", "MARKET_PRICE", "PAPER_TRADING",
+            observedAtEpochMs = 250L,
+            retrievedAtEpochMs = 200L,
+            evaluatedAtEpochMs = 300L
+        )
+        assertEquals(
+            FreshnessEvaluation.Reason.INVALID_TIME_ORDER,
+            (result as FreshnessEvaluation.NotEvaluated).reason
+        )
+    }
+
+    @Test
     fun duplicatePoliciesForSameScopeAreRejected() {
         assertThrows(IllegalArgumentException::class.java) {
             FreshnessEvaluator(listOf(policy, policy.copy(version = 2)))
