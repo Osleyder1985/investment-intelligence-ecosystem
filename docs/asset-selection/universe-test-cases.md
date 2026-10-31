@@ -220,3 +220,44 @@ Comprobar identidad, snapshot, finalidad, estado, evidencia, variables, licencia
 - Entrada: mint con cambio de authority o metadata entre slots.
 - Esperado: conservar observaciones temporales; separar mint authority/freeze authority/extensiones de metadata y proyecto.
 - Fallo: usar metadata como clave o asumir que autoridad revocada en un slot nunca puede haber existido.
+
+
+## AS-043 — Cosmos: chain-id reutilizado o genesis ambiguo
+- Entrada: dos endpoints presentan el mismo chain-id o un genesis coincidente sin checkpoints suficientes para distinguir la instancia.
+- Esperado: contrastar genesis, app hash, checkpoints y endpoint; mantener AMBIGUOUS/UNVERIFIED si no hay ancla confiable.
+- Fallo: usar chain-id o prefijo Bech32 como clave global.
+
+## AS-044 — Cosmos: denom base frente a display denom
+- Entrada: un denom bank tiene metadata con base denom y uno o más display denoms/unidades.
+- Esperado: identity por network_id + base denom exacto; metadata de presentación versionada.
+- Fallo: sustituir el denom base por ticker/display denom o asumir exponentes constantes históricamente.
+
+## AS-045 — Cosmos IBC: vouchers con rutas distintas
+- Entrada: dos vouchers con denom traces distintos que pueden referir al mismo activo económico.
+- Esperado: representaciones locales separadas, traces completos y relaciones de origen temporales; no fusionar por ticker.
+- Fallo: tratar todos los vouchers como el mismo activo o inferir respaldo/redención solo por IBC.
+
+## AS-046 — Cosmos IBC: denom hash sin trace verificable
+- Entrada: denom IBC con hash pero trace ausente, inconsistente o no recuperable.
+- Esperado: conservar hash/observación y clasificar relación económica como UNVERIFIED/CONFLICTED hasta verificar trace.
+- Fallo: inventar el path a partir del símbolo o del proveedor.
+
+## AS-047 — Cosmos: CW20 frente a bank denom
+- Entrada: token CW20 en contrato y bank denom con mismo nombre/símbolo.
+- Esperado: identidades distintas; contrato por network_id + contract address y bank asset por network_id + denom.
+- Fallo: fusionar por metadata o ticker.
+
+## AS-048 — UTXO: dirección/script frente a activo
+- Entrada: varias direcciones/scriptPubKey reciben el mismo activo nativo o un activo protocolario.
+- Esperado: dirección/script/outpoint como evidencia de gasto/tenencia; identidad del activo resuelta por network_id y protocolo.
+- Fallo: crear un activo distinto por cada dirección o usar una dirección como asset ID.
+
+## AS-049 — UTXO: outpoint en reorganización
+- Entrada: una transacción/outpoint observada en una rama que deja de ser canónica tras reorganización.
+- Esperado: conservar la observación con block hash, altura y estado de canonicalidad actualizado; no borrar el historial.
+- Fallo: tratar el outpoint como válido sin contexto de cadena o eliminar evidencia histórica.
+
+## AS-050 — UTXO: activo emitido por protocolo no soportado
+- Entrada: transacción que parece emitir un colored/overlay asset sin adaptador/validador del protocolo.
+- Esperado: registrar transacción/outpoint y protocolo candidato, pero mantener identidad económica y supply como UNVERIFIED.
+- Fallo: atribuir ticker, supply o derechos por inclusión en la cadena base solamente.
