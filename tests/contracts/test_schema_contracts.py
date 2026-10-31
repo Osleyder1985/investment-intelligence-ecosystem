@@ -53,13 +53,13 @@ def sample_for(schema):
         if fmt == "uri":
             return "https://example.org/evidence/fixture-1"
         pattern = schema.get("pattern", "")
-        if "0-9" in pattern and r"\." in pattern:
+        if pattern.startswith("^[0-9]+") and r"\\." in pattern:
             return "1.0.0"
         if "[a-fA-F0-9]{64}" in pattern:
             return "a" * 64
-        if "0-9" in pattern and r"\." in pattern:
+        if pattern.startswith("^[A-Z]"):
             return "USD"
-        if "0-9" in pattern and r"\." in pattern:
+        if pattern.startswith("^[A-Za-z0-9]"):
             return "fixture-1"
         if pattern.startswith("^-?"):
             return "1.25"
