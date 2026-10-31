@@ -42,7 +42,7 @@ class LocalDemoEvidenceEvaluatorTest {
     }
 
     @Test
-    fun demoFixtureIsBlockedForMarketAnalysis() {
+    fun demoFixtureIsNotEvaluatedForMarketAnalysis() {
         val result = LocalDemoEvidenceEvaluator.create().evaluate(
             observation = observation,
             sourcePermittedUseStatus = "INTERNAL_DEMO_ONLY",
