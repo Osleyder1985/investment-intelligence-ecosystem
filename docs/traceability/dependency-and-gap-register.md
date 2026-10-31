@@ -40,7 +40,11 @@ Las relaciones siguientes representan dependencias lógicas para construir una e
 | GAP-06 | Estado del registro de requisitos desactualizado | El registro anterior marcaba todos los requisitos como «Propuesto» sin diferenciar evidencia documental | No representa el avance documental ni las brechas reales | Sustituir estados genéricos por estados multidimensionales y enlaces de evidencia |
 | GAP-07 | No existe aún un proceso formal de aprobación de especificaciones en el registro | PRs fusionados, pero sin evidencia de aprobación metodológica por requisito | La integración Git puede confundirse con aprobación | Aplicar [la plantilla de revisión y aprobación](specification-review-record-template.md), registrar revisor, decisión, versión, fecha y desviaciones |
 
-## 4. Paquetes de trabajo futuros sugeridos
+## 4. Revisión fundacional en curso
+
+Los hallazgos preliminares de IIM-001, IIM-002, IIM-018, IIM-019 e IIM-020 están registrados en [issue-19-foundational-review-findings](issue-19-foundational-review-findings.md). Las decisiones son REVISION_REQUIRED o BLOCKED; no se ha aprobado ningún requisito ni fuente concreta. El documento identifica las evidencias y correcciones necesarias antes de considerar SPECIFIED estos requisitos.
+
+## 5. Paquetes de trabajo futuros sugeridos
 
 No se crean Issues de implementación en este cambio: primero debe determinarse qué repositorio albergará cada componente y aprobarse el alcance de sus contratos. Para evitar duplicados, estos paquetes se convierten en Issues separados solo tras revisar los repositorios de software y sus Issues existentes.
 
@@ -50,7 +54,7 @@ No se crean Issues de implementación en este cambio: primero debe determinarse 
 4. **Validación temporal y categoría extrema:** IIM-007, IIM-015.
 5. **Reporting, historial y orquestación:** IIM-008, IIM-009, IIM-010, IIM-023, IIM-024.
 
-## 5. Regla para abrir nuevas brechas
+## 6. Regla para abrir nuevas brechas
 
 Antes de crear un Issue de implementación:
 
