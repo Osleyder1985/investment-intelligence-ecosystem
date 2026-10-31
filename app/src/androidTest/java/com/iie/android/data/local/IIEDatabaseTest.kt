@@ -260,7 +260,7 @@ class IIEDatabaseTest {
             .allowMainThreadQueries()
             .build()
 
-        assertEquals(4, database.assetDao().countAssets())
+        assertEquals(5, database.assetDao().countAssets())
         val entry = database.watchlistDao().getEntry("asset:bitcoin")
         assertNotNull(entry)
         assertEquals(150L, entry?.addedAtEpochMs)
