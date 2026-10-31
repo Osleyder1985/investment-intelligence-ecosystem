@@ -38,6 +38,8 @@ La revisión individual de los 13 requisitos se gestiona mediante [`portfolio-ex
 
 La revisión técnica preliminar del lote B (IIM-026, IIM-029, IIM-030 e IIM-031) recomienda REVISE y está documentada en [`portfolio-execution-lot-b-review.md`](portfolio-execution-lot-b-review.md); no constituye aprobación.
 
+La revisión técnica preliminar del lote C (IIM-032, IIM-035 e IIM-037) recomienda REVISE y está documentada en [`portfolio-execution-lot-c-review.md`](portfolio-execution-lot-c-review.md); no constituye aprobación.
+
 ## 3. Reglas de diseño comunes
 
 Todos los requisitos anteriores deben cumplir:
