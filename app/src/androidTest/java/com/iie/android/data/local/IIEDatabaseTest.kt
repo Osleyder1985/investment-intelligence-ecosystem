@@ -43,7 +43,7 @@ class IIEDatabaseTest {
     }
 
     @Test
-    fun symbolsAreNotUniqueButCanonicalKeysAreUnique() = runBlocking {
+    fun symbolsAreNotUniqueButCanonicalKeysAreUnique(): Unit = runBlocking {
         database.assetDao().insertAssets(
             listOf(
                 asset("asset-1", "chain-a:asset-1", "Example One", "EX"),
@@ -95,7 +95,7 @@ class IIEDatabaseTest {
     }
 
     @Test
-    fun observationCannotReferenceDeploymentOfAnotherAsset() = runBlocking {
+    fun observationCannotReferenceDeploymentOfAnotherAsset(): Unit = runBlocking {
         database.assetDao().insertAssets(
             listOf(
                 asset("asset-a", "canonical:a", "Asset A", "AAA"),
