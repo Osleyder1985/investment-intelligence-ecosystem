@@ -114,7 +114,7 @@ class ObservationPayloadValidator(
 
     private fun matches(element: JsonElement, type: PayloadFieldType): Boolean = when (type) {
         PayloadFieldType.STRING -> element is JsonPrimitive && element.isString
-        PayloadFieldType.BOOLEAN -> (element as? JsonPrimitive)?.booleanOrNull != null
+        PayloadFieldType.BOOLEAN -> (element as? JsonPrimitive)?.let { !it.isString && it.booleanOrNull != null } == true
         PayloadFieldType.NUMBER -> (element as? JsonPrimitive)?.let {
             !it.isString && it.doubleOrNull != null
         } == true
