@@ -3,6 +3,7 @@ package com.iie.android.data.repository
 import com.iie.android.data.local.IIEDatabase
 import com.iie.android.data.local.entity.WatchlistEntryEntity
 import com.iie.android.domain.model.Asset
+import com.iie.android.domain.repository.AssetRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
