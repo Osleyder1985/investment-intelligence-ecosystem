@@ -44,6 +44,7 @@ import com.iie.android.domain.model.ObservationPayloadValidation
 import com.iie.android.domain.model.ObservationQualityEvaluation
 import com.iie.android.presentation.AssetExplorerViewModel
 import com.iie.android.presentation.EvidenceEvaluationUiState
+import com.iie.android.presentation.MarketQuoteUiState
 import java.text.DateFormat
 import java.util.Date
 
@@ -175,9 +176,12 @@ private fun AssetDetailDialog(
     val provenance by viewModel.observeProvenance(asset.assetId)
         .collectAsState(initial = emptyList())
     val evidenceState by viewModel.evidenceEvaluation.collectAsState()
+    val marketQuotes by viewModel.marketQuotes.collectAsState()
+    val marketQuote = marketQuotes[asset.assetId]
 
     LaunchedEffect(asset.assetId) {
         viewModel.evaluateLatestEvidence(asset.assetId)
+        viewModel.loadLatestMarketQuote(asset.assetId)
     }
 
     AlertDialog(
@@ -207,6 +211,13 @@ private fun AssetDetailDialog(
                         )
                     }
                 }
+
+                Spacer(Modifier.height(12.dp))
+                Text("Cotización de mercado · USD", fontWeight = FontWeight.SemiBold)
+                MarketQuoteDetails(
+                    quote = marketQuote,
+                    onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) }
+                )
 
                 Spacer(Modifier.height(12.dp))
                 Text("Procedencia de los datos", fontWeight = FontWeight.SemiBold)
@@ -248,6 +259,41 @@ private fun AssetDetailDialog(
             TextButton(onClick = onDismiss) { Text("Cerrar") }
         }
     )
+}
+
+
+@Composable
+private fun MarketQuoteDetails(
+    quote: MarketQuoteUiState?,
+    onRefresh: () -> Unit
+) {
+    val formatter = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+    when {
+        quote?.priceUsd != null -> {
+            Text(
+                "$" + String.format(java.util.Locale.US, "%.8f", quote.priceUsd) + " USD",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text("Proveedor: CoinPaprika · ID: ${quote.providerId}", style = MaterialTheme.typography.bodySmall)
+            quote.providerUpdatedAtEpochMs?.let {
+                Text("Actualizado por el proveedor: ${formatter.format(Date(it))}", style = MaterialTheme.typography.bodySmall)
+            }
+            quote.retrievedAtEpochMs?.let {
+                Text("Recuperado y guardado localmente: ${formatter.format(Date(it))}", style = MaterialTheme.typography.bodySmall)
+            }
+            Text(quote.attribution ?: "Powered by CoinPaprika", style = MaterialTheme.typography.bodySmall)
+            Text("Frescura: NO EVALUADA · aún no existe una política aprobada para cotizaciones.", style = MaterialTheme.typography.bodySmall)
+        }
+        else -> Text("No hay cotización guardada para este activo.", style = MaterialTheme.typography.bodySmall)
+    }
+    if (quote?.error != null) {
+        Text("Error de actualización: ${quote.error}", color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall)
+    }
+    TextButton(onClick = onRefresh, enabled = quote?.isLoading != true) {
+        Text(if (quote?.isLoading == true) "Consultando proveedor…" else "Actualizar cotización")
+    }
 }
 
 @Composable
