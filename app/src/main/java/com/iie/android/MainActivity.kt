@@ -526,7 +526,7 @@ private fun AssetDetailDialog(
                 Text("Redes y representaciones:", fontWeight = FontWeight.SemiBold)
                 if (deployments.isEmpty()) {
                     Text(
-                        if (asset.symbol == "USDC") {
+                        if (asset.symbol == "USDC" || asset.symbol == "USDT") {
                             "Sin despliegue asignado: activo multi-red pendiente de resolución."
                         } else {
                             "No hay despliegues registrados para este activo."
