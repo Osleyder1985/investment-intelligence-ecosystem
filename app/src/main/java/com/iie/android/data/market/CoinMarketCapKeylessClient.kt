@@ -10,19 +10,15 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
- * CoinMarketCap's keyless public listings adapter.
- *
- * The keyless route is deliberately used: no API credential is embedded in the APK.
- * This adapter returns provider observations only; it does not persist them or claim
- * that a provider's circulating-supply methodology is independently verified.
+ * CoinMarketCap public/keyless quote. Missing provider fields remain null.
+ * The public route requires no API key and is rate-limited independently of Pro access.
  */
-data class CoinMarketCapListing(
+data class CoinMarketCapQuote(
     val providerId: Long,
     val name: String,
     val symbol: String,
@@ -30,6 +26,8 @@ data class CoinMarketCapListing(
     val circulatingSupply: Double?,
     val totalSupply: Double?,
     val maxSupply: Double?,
+    val marketCapUsd: Double?,
+    val fullyDilutedMarketCapUsd: Double?,
     val providerUpdatedAtEpochMs: Long,
     val retrievedAtEpochMs: Long
 )
@@ -37,25 +35,22 @@ data class CoinMarketCapListing(
 class CoinMarketCapKeylessClient(
     private val connectTimeoutMs: Int = 8_000,
     private val readTimeoutMs: Int = 8_000,
-    private val maxResponseBytes: Int = 2 * 1024 * 1024
+    private val maxResponseBytes: Int = 512 * 1024
 ) {
     init {
         require(connectTimeoutMs in 1..30_000)
         require(readTimeoutMs in 1..30_000)
-        require(maxResponseBytes in 1..4_194_304)
+        require(maxResponseBytes in 1..1_048_576)
     }
 
-    suspend fun fetchListings(
-        expectedSymbols: Set<String>,
+    suspend fun fetchQuote(
+        expectedProviderId: Long,
         retrievedAtEpochMs: Long = System.currentTimeMillis()
-    ): List<CoinMarketCapListing> = withContext(Dispatchers.IO) {
-        require(expectedSymbols.isNotEmpty())
-        require(expectedSymbols.size <= 50)
-        require(expectedSymbols.all { it.matches(Regex("[A-Za-z0-9]{2,12}")) })
+    ): CoinMarketCapQuote = withContext(Dispatchers.IO) {
+        require(expectedProviderId > 0L)
         require(retrievedAtEpochMs > 0L)
-
         val url = URL(
-            "$BASE_URL/v3/cryptocurrency/listings/latest?start=1&limit=$LISTING_LIMIT&convert=USD"
+            "$BASE_URL/v3/cryptocurrency/quotes/latest?id=$expectedProviderId&convert=USD"
         )
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
@@ -92,7 +87,7 @@ class CoinMarketCapKeylessClient(
                 }
                 output.toByteArray()
             }
-            parse(bytes.toString(Charsets.UTF_8), expectedSymbols, retrievedAtEpochMs)
+            parse(bytes.toString(Charsets.UTF_8), expectedProviderId, retrievedAtEpochMs)
         } finally {
             connection.disconnect()
         }
@@ -100,9 +95,9 @@ class CoinMarketCapKeylessClient(
 
     internal fun parse(
         payload: String,
-        expectedSymbols: Set<String>,
+        expectedProviderId: Long,
         retrievedAtEpochMs: Long
-    ): List<CoinMarketCapListing> {
+    ): CoinMarketCapQuote {
         val root = try {
             Json.parseToJsonElement(payload).jsonObject
         } catch (error: Exception) {
@@ -114,72 +109,73 @@ class CoinMarketCapKeylessClient(
         if (errorCode != null && errorCode != "0") {
             throw IOException("CoinMarketCap API error: $errorCode")
         }
-        val data = try {
-            root["data"]?.jsonArray
-        } catch (error: Exception) {
-            null
-        } ?: throw IOException("CoinMarketCap response is missing listings data")
-
-        val normalized = expectedSymbols.map { it.uppercase() }.toSet()
-        val matches = data.mapNotNull { element ->
-            val item = element.jsonObject
-            val symbol = item["symbol"]?.jsonPrimitive?.contentOrNull?.uppercase()
-                ?: return@mapNotNull null
-            if (symbol !in normalized) return@mapNotNull null
-            val id = item["id"]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
-                ?: throw IOException("CoinMarketCap listing has an invalid ID for $symbol")
-            val name = item["name"]?.jsonPrimitive?.contentOrNull
-                ?: throw IOException("CoinMarketCap listing is missing name for $symbol")
-            val lastUpdated = item["last_updated"]?.jsonPrimitive?.contentOrNull
-                ?: throw IOException("CoinMarketCap listing is missing last_updated for $symbol")
-            val updatedAt = try {
-                Instant.parse(lastUpdated).toEpochMilli()
-            } catch (error: Exception) {
-                throw IOException("CoinMarketCap last_updated is invalid for $symbol", error)
-            }
-            if (updatedAt <= 0L || updatedAt > retrievedAtEpochMs + 60_000L) {
-                throw IOException("CoinMarketCap timestamp is outside accepted bounds for $symbol")
-            }
-            val quoteElement = item["quote"]
-                ?: throw IOException("CoinMarketCap quote is missing for $symbol")
-            val usd = when (quoteElement) {
-                is JsonObject -> quoteElement["USD"]?.jsonObject
-                is JsonArray -> quoteElement.firstOrNull { quote ->
-                    quote.jsonObject["symbol"]?.jsonPrimitive?.contentOrNull == "USD"
-                }?.jsonObject
-                else -> null
-            } ?: throw IOException("CoinMarketCap USD quote is missing for $symbol")
-            val price = usd["price"]?.jsonPrimitive?.doubleOrNull
-            if (price == null || !price.isFinite() || price <= 0.0) {
-                throw IOException("CoinMarketCap USD price is invalid for $symbol")
-            }
-            fun optionalSupply(key: String): Double? {
-                val primitive = item[key]?.jsonPrimitive ?: return null
-                if (primitive.contentOrNull == null) return null
-                val value = primitive.doubleOrNull
-                    ?: throw IOException("CoinMarketCap $key is invalid for $symbol")
-                if (!value.isFinite() || value < 0.0) {
-                    throw IOException("CoinMarketCap $key is outside accepted bounds for $symbol")
-                }
-                return value
-            }
-            CoinMarketCapListing(
-                providerId = id,
-                name = name,
-                symbol = symbol,
-                priceUsd = price,
-                circulatingSupply = optionalSupply("circulating_supply"),
-                totalSupply = optionalSupply("total_supply"),
-                maxSupply = optionalSupply("max_supply"),
-                providerUpdatedAtEpochMs = updatedAt,
-                retrievedAtEpochMs = retrievedAtEpochMs
+        val data = root["data"] ?: throw IOException("CoinMarketCap response is missing quote data")
+        val items = when (data) {
+            is JsonObject -> data.values.map { it.jsonObject }
+            is JsonArray -> data.map { it.jsonObject }
+            else -> throw IOException("CoinMarketCap quote data has an unexpected shape")
+        }
+        val matches = items.filter {
+            it["id"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() == expectedProviderId
+        }
+        if (matches.size != 1) {
+            throw IOException(
+                if (matches.isEmpty()) "CoinMarketCap did not resolve provider ID $expectedProviderId"
+                else "CoinMarketCap returned an ambiguous result for provider ID $expectedProviderId"
             )
         }
-        val ambiguous = matches.groupBy { it.symbol }.filterValues { it.size > 1 }.keys
-        if (ambiguous.isNotEmpty()) {
-            throw IOException("CoinMarketCap returned ambiguous symbols: ${ambiguous.sorted().joinToString()}")
+        val item = matches.single()
+        val id = item["id"]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
+            ?: throw IOException("CoinMarketCap returned an invalid asset ID")
+        val name = item["name"]?.jsonPrimitive?.contentOrNull
+            ?: throw IOException("CoinMarketCap response is missing asset name")
+        val symbol = item["symbol"]?.jsonPrimitive?.contentOrNull?.uppercase()
+            ?: throw IOException("CoinMarketCap response is missing asset symbol")
+        val quoteElement = item["quote"] ?: throw IOException("CoinMarketCap quote is missing")
+        val usd = when (quoteElement) {
+            is JsonObject -> quoteElement["USD"]?.jsonObject
+            is JsonArray -> quoteElement.firstOrNull {
+                it.jsonObject["symbol"]?.jsonPrimitive?.contentOrNull == "USD"
+            }?.jsonObject
+            else -> null
+        } ?: throw IOException("CoinMarketCap USD quote is missing")
+        fun optionalNonNegativeNumber(container: JsonObject, key: String): Double? {
+            val element = container[key] ?: return null
+            if (element.toString() == "null") return null
+            val value = element.jsonPrimitive.doubleOrNull
+                ?: throw IOException("CoinMarketCap $key is invalid")
+            if (!value.isFinite() || value < 0.0) {
+                throw IOException("CoinMarketCap $key is outside accepted bounds")
+            }
+            return value
         }
-        return matches.sortedBy { it.symbol }
+        val price = optionalNonNegativeNumber(usd, "price")
+            ?: throw IOException("CoinMarketCap USD price is missing")
+        if (price <= 0.0) throw IOException("CoinMarketCap USD price is invalid")
+        val updatedAtText = usd["last_updated"]?.jsonPrimitive?.contentOrNull
+            ?: item["last_updated"]?.jsonPrimitive?.contentOrNull
+            ?: throw IOException("CoinMarketCap response is missing quote timestamp")
+        val updatedAt = try {
+            Instant.parse(updatedAtText).toEpochMilli()
+        } catch (error: Exception) {
+            throw IOException("CoinMarketCap quote timestamp is invalid", error)
+        }
+        if (updatedAt <= 0L || updatedAt > retrievedAtEpochMs + 60_000L) {
+            throw IOException("CoinMarketCap timestamp is outside accepted bounds")
+        }
+        return CoinMarketCapQuote(
+            providerId = id,
+            name = name,
+            symbol = symbol,
+            priceUsd = price,
+            circulatingSupply = optionalNonNegativeNumber(item, "circulating_supply"),
+            totalSupply = optionalNonNegativeNumber(item, "total_supply"),
+            maxSupply = optionalNonNegativeNumber(item, "max_supply"),
+            marketCapUsd = optionalNonNegativeNumber(usd, "market_cap"),
+            fullyDilutedMarketCapUsd = optionalNonNegativeNumber(usd, "fully_diluted_market_cap"),
+            providerUpdatedAtEpochMs = updatedAt,
+            retrievedAtEpochMs = retrievedAtEpochMs
+        )
     }
 
     companion object {
@@ -187,6 +183,5 @@ class CoinMarketCapKeylessClient(
         const val BASE_URL = "https://pro-api.coinmarketcap.com/public-api"
         const val TERMS_URL = "https://coinmarketcap.com/api/terms/"
         const val ATTRIBUTION = "Data provided by CoinMarketCap"
-        const val LISTING_LIMIT = 500
     }
 }
