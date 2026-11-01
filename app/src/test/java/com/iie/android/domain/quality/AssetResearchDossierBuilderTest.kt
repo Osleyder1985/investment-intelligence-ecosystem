@@ -4,6 +4,7 @@ import com.iie.android.domain.model.ResearchMarketHistoryPoint
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.ResearchFieldStatus
 import com.iie.android.domain.model.ResearchQuoteInput
+import com.iie.android.domain.model.ResearchQuoteComparisonInput
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -54,7 +55,7 @@ class AssetResearchDossierBuilderTest {
         val primary = ResearchQuoteInput(100.0, "CoinPaprika", 1_000L, 1_100L, "FRESH")
         val stale = ResearchQuoteInput(100.1, "CoinMarketCap", 1_000L, 1_100L, "STALE")
         val dossier = builder.build(asset, emptyList(), primary, emptyList(), emptyList(), 2_000L,
-            ResearchQuoteComparisonInput(primary, stale, "obs-cp", "obs-cmc"))
+            com.iie.android.domain.model.ResearchQuoteComparisonInput(primary, stale, "obs-cp", "obs-cmc"))
         assertEquals("NOT_COMPARABLE", dossier.market.quoteComparisonStatus)
         assertNull(dossier.market.quoteDifferencePercent)
     }
