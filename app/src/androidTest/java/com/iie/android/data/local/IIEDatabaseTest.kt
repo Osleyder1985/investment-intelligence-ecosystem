@@ -661,6 +661,36 @@ class IIEDatabaseTest {
         assertEquals(false, fetchCalled)
     }
 
+    @Test
+    fun controlledHistoryDownloadRejectsRequestsOlderThanOneYearBeforeCallingFetcher(): Unit = runBlocking {
+        val now = 1_800_000_000_000L
+        DemoAssetSeeder(database) { now }.seed()
+        val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
+        var fetchCalled = false
+        val fetcher = object : CoinPaprikaDailyHistoryFetcher {
+            override suspend fun fetchDaily(
+                providerId: String,
+                start: LocalDate,
+                end: LocalDate?,
+                retrievedAtEpochMs: Long
+            ): List<CoinPaprikaHistoricalPoint> {
+                fetchCalled = true
+                return emptyList()
+            }
+        }
+        val todayUtc = java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneOffset.UTC).toLocalDate()
+        val tooOldStart = todayUtc.minusYears(1).minusDays(1)
+
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking {
+                repository.downloadAndPersistCoinPaprikaDailyHistory(
+                    "asset:usd-coin", "USDC", tooOldStart, todayUtc, fetcher
+                )
+            }
+        }
+        assertEquals(false, fetchCalled)
+    }
+
     private suspend fun insertQuote(
         observationId: String,
         assetId: String,
