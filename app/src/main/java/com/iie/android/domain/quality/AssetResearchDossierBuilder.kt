@@ -1,6 +1,5 @@
 package com.iie.android.domain.quality
 
-import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetDeploymentSummary
 import com.iie.android.domain.model.AssetObservationProvenance
@@ -9,6 +8,7 @@ import com.iie.android.domain.model.MarketResearchSection
 import com.iie.android.domain.model.ResearchDeployment
 import com.iie.android.domain.model.ResearchFieldStatus
 import com.iie.android.domain.model.ResearchQuoteInput
+import com.iie.android.domain.model.ResearchMarketHistoryPoint
 
 /** Builds a transparent dossier from provider-validated observations; never infers investment merit. */
 class AssetResearchDossierBuilder {
@@ -16,7 +16,7 @@ class AssetResearchDossierBuilder {
         asset: Asset,
         deployments: List<AssetDeploymentSummary>,
         quote: ResearchQuoteInput?,
-        history: List<CoinPaprikaHistoricalPoint>,
+        history: List<ResearchMarketHistoryPoint>,
         provenance: List<AssetObservationProvenance>,
         generatedAtEpochMs: Long
     ): AssetResearchDossier {
