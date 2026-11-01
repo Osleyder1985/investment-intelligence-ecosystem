@@ -307,8 +307,8 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             assets.forEachIndexed { index, asset ->
                 markQuoteLoading(asset.assetId)
                 refreshMarketQuoteNow(asset.assetId, asset.symbol)
-                if (_dailyMarketHistory.value[asset.assetId].isNullOrEmpty()) {
-                    _dashboardRefreshStatus.value = "Descargando histórico · ${asset.symbol.uppercase()}"
+                if ((_dailyMarketHistory.value[asset.assetId]?.size ?: 0) < 2) {
+                    _dashboardRefreshStatus.value = "Actualizando · descargando histórico · ${asset.symbol.uppercase()}"
                     downloadDailyMarketHistoryNow(asset.assetId, asset.symbol)
                 }
                 _dashboardRefreshStatus.value = "Actualizando ${index + 1}/${assets.size} · ${asset.symbol.uppercase()}"
