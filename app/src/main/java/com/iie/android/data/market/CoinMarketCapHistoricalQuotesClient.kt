@@ -29,7 +29,10 @@ fun interface CoinMarketCapDailyHistoryFetcher {
 /** Usage metadata returned by CMC's zero-credit key-info endpoint. */
 data class CoinMarketCapKeyValidation(
     val monthlyCreditLimit: Long?,
-    val monthlyCreditsLeft: Long?
+    val monthlyCreditsLeft: Long?,
+    val dailyCreditsLeft: Long?,
+    val minuteRateLimit: Long?,
+    val minuteRequestsLeft: Long?
 )
 
 /**
@@ -97,16 +100,19 @@ class CoinMarketCapApiKeyValidator(
         val data = root["data"]?.jsonObject
             ?: throw IOException("CoinMarketCap key-info response is missing data")
         val plan = data["plan"]?.jsonObject
-        val usage = data["usage"]?.jsonObject?.get("current_month")?.jsonObject
+        val usage = data["usage"]?.jsonObject
         fun optionalLong(value: kotlinx.serialization.json.JsonElement?): Long? {
             if (value == null || value.toString() == "null") return null
             return value.jsonPrimitive.contentOrNull?.toLongOrNull()
                 ?.takeIf { it >= 0L }
-                ?: throw IOException("CoinMarketCap returned invalid monthly usage metadata")
+                ?: throw IOException("CoinMarketCap returned invalid usage metadata")
         }
         return CoinMarketCapKeyValidation(
             monthlyCreditLimit = optionalLong(plan?.get("credit_limit_monthly")),
-            monthlyCreditsLeft = optionalLong(usage?.get("credits_left"))
+            monthlyCreditsLeft = optionalLong(usage?.get("current_month")?.jsonObject?.get("credits_left")),
+            dailyCreditsLeft = optionalLong(usage?.get("current_day")?.jsonObject?.get("credits_left")),
+            minuteRateLimit = optionalLong(plan?.get("rate_limit_minute")),
+            minuteRequestsLeft = optionalLong(usage?.get("current_minute")?.jsonObject?.get("requests_left"))
         )
     }
 
