@@ -16,6 +16,11 @@ data class CoinMarketCapAuthenticatedQuote(
     val name: String,
     val symbol: String,
     val priceUsd: Double,
+    val circulatingSupply: Double?,
+    val totalSupply: Double?,
+    val maxSupply: Double?,
+    val marketCapUsd: Double?,
+    val fullyDilutedMarketCapUsd: Double?,
     val providerUpdatedAtEpochMs: Long,
     val retrievedAtEpochMs: Long
 )
@@ -147,6 +152,31 @@ class CoinMarketCapAuthenticatedClient(
         if (price == null || !price.isFinite() || price <= 0.0) {
             throw IOException("CoinMarketCap returned an invalid USD price")
         }
+        fun optionalNonNegativeNumber(key: String): Double? {
+            val element = item[key] ?: return null
+            if (element.toString() == "null") return null
+            val value = element.jsonPrimitive.doubleOrNull
+                ?: throw IOException("CoinMarketCap returned an invalid $key")
+            if (!value.isFinite() || value < 0.0) {
+                throw IOException("CoinMarketCap returned an invalid $key")
+            }
+            return value
+        }
+        fun optionalQuoteNumber(key: String): Double? {
+            val element = usd[key] ?: return null
+            if (element.toString() == "null") return null
+            val value = element.jsonPrimitive.doubleOrNull
+                ?: throw IOException("CoinMarketCap returned an invalid $key")
+            if (!value.isFinite() || value < 0.0) {
+                throw IOException("CoinMarketCap returned an invalid $key")
+            }
+            return value
+        }
+        val circulatingSupply = optionalNonNegativeNumber("circulating_supply")
+        val totalSupply = optionalNonNegativeNumber("total_supply")
+        val maxSupply = optionalNonNegativeNumber("max_supply")
+        val marketCapUsd = optionalQuoteNumber("market_cap")
+        val fullyDilutedMarketCapUsd = optionalQuoteNumber("fully_diluted_market_cap")
         val updatedAtText = usd["last_updated"]?.jsonPrimitive?.contentOrNull
             ?: item["last_updated"]?.jsonPrimitive?.contentOrNull
             ?: throw IOException("CoinMarketCap response is missing quote timestamp")
@@ -163,6 +193,11 @@ class CoinMarketCapAuthenticatedClient(
             name = name,
             symbol = expectedSymbol.uppercase(),
             priceUsd = price,
+            circulatingSupply = circulatingSupply,
+            totalSupply = totalSupply,
+            maxSupply = maxSupply,
+            marketCapUsd = marketCapUsd,
+            fullyDilutedMarketCapUsd = fullyDilutedMarketCapUsd,
             providerUpdatedAtEpochMs = updatedAt,
             retrievedAtEpochMs = retrievedAtEpochMs
         )
