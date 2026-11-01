@@ -36,7 +36,7 @@ data class CoinPaprikaHistoricalPoint(
     val volume24hUsd: Double?,
     val marketCapUsd: Double?,
     val retrievedAtEpochMs: Long,
-    val sourceId: String = SOURCE_ID
+    val sourceId: String = "source:coinpaprika"
 )
 
 /**
