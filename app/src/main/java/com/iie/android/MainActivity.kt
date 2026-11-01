@@ -572,6 +572,10 @@ private fun AssetDetailDialog(
                     providerName = "CoinMarketCap",
                     onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) }
                 )
+                MarketQuoteComparison(
+                    coinPaprika = marketQuote,
+                    coinMarketCap = coinMarketCapQuote
+                )
 
                 Spacer(Modifier.height(10.dp))
                 Text("Histórico diario · CoinPaprika", fontWeight = FontWeight.SemiBold)
@@ -694,6 +698,43 @@ private fun MarketQuoteDetails(
     }
 }
 
+
+@Composable
+private fun MarketQuoteComparison(
+    coinPaprika: MarketQuoteUiState?,
+    coinMarketCap: MarketQuoteUiState?
+) {
+    val paprikaPrice = coinPaprika?.priceUsd
+    val cmcPrice = coinMarketCap?.priceUsd
+    val paprikaTime = coinPaprika?.providerUpdatedAtEpochMs
+    val cmcTime = coinMarketCap?.providerUpdatedAtEpochMs
+    if (paprikaPrice == null || cmcPrice == null || paprikaTime == null || cmcTime == null) {
+        Text(
+            "Comparación entre proveedores: pendiente de dos cotizaciones válidas.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        return
+    }
+    val timeDifference = kotlin.math.abs(paprikaTime - cmcTime)
+    if (timeDifference > 5 * 60 * 1000L ||
+        coinPaprika.freshnessStatus != "FRESH" ||
+        coinMarketCap.freshnessStatus != "FRESH"
+    ) {
+        Text(
+            "Comparación: NO COMPARABLE · cotizaciones no suficientemente sincronizadas o frescas.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        return
+    }
+    val meanPrice = (paprikaPrice + cmcPrice) / 2.0
+    val differencePercent = kotlin.math.abs(paprikaPrice - cmcPrice) / meanPrice * 100.0
+    val status = if (differencePercent > 2.0) "CONFLICTED" else "CONSISTENT"
+    Text(
+        "Contraste CoinPaprika / CoinMarketCap: $status · diferencia ${String.format(java.util.Locale.US, "%.3f", differencePercent)}%. Umbral operativo: 2%. No se promedian precios.",
+        color = if (status == "CONFLICTED") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodySmall
+    )
+}
 
 @Composable
 private fun MarketHistorySyncDetails(
