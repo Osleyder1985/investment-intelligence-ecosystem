@@ -8,14 +8,14 @@ import com.iie.android.domain.model.AssetResearchDossier
 import com.iie.android.domain.model.MarketResearchSection
 import com.iie.android.domain.model.ResearchDeployment
 import com.iie.android.domain.model.ResearchFieldStatus
-import com.iie.android.presentation.MarketQuoteUiState
+import com.iie.android.domain.model.ResearchQuoteInput
 
 /** Builds a transparent dossier from provider-validated observations; never infers investment merit. */
 class AssetResearchDossierBuilder {
     fun build(
         asset: Asset,
         deployments: List<AssetDeploymentSummary>,
-        quote: MarketQuoteUiState?,
+        quote: ResearchQuoteInput?,
         history: List<CoinPaprikaHistoricalPoint>,
         provenance: List<AssetObservationProvenance>,
         generatedAtEpochMs: Long
