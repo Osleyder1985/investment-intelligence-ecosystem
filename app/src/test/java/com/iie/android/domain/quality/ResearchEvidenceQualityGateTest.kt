@@ -49,6 +49,35 @@ class ResearchEvidenceQualityGateTest {
         assertTrue(result.reasons.contains("VALUE_NOT_KNOWN"))
     }
 
+    @Test fun conflictedEvidenceRemainsConflictedAfterRejection() {
+        val result = ResearchEvidenceQualityGate.evaluate(
+            evidence(status = ResearchFieldStatus.CONFLICTED),
+            1_000L,
+            ResearchLicenseStatus.ATTRIBUTION_REQUIRED
+        )
+        assertFalse(result.accepted)
+        assertEquals(ResearchFieldStatus.CONFLICTED, result.status)
+    }
+
+    @Test fun nonFiniteNumericEvidenceIsRejected() {
+        val result = ResearchEvidenceQualityGate.evaluate(
+            evidence(value = Double.NaN),
+            1_000L,
+            ResearchLicenseStatus.ATTRIBUTION_REQUIRED
+        )
+        assertFalse(result.accepted)
+        assertTrue(result.reasons.contains("NUMERIC_VALUE_NOT_FINITE"))
+    }
+
+    @Test fun unknownPermittedUseStatusIsRejected() {
+        val unclassified = evidence().copy(permittedUseStatus = "SOME_UNKNOWN_STATUS")
+        val result = ResearchEvidenceQualityGate.evaluate(
+            unclassified, 1_000L, ResearchLicenseStatus.ATTRIBUTION_REQUIRED
+        )
+        assertFalse(result.accepted)
+        assertTrue(result.reasons.contains("PERMITTED_USE_STATUS_UNRECOGNIZED"))
+    }
+
     @Test fun futureRetrievalTimestampIsRejected() {
         val result = ResearchEvidenceQualityGate.evaluate(
             evidence(retrievedAt = 1_001L), 1_000L,
