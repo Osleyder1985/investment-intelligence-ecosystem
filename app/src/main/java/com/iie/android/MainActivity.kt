@@ -418,14 +418,14 @@ private fun InvestorDashboard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "CoinPaprika · dato del proveedor: ${DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(globalMetrics.providerUpdatedAtEpochMs))}",
+                    "CoinPaprika · dato del proveedor: ${DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(globalMetrics.providerUpdatedAtEpochMs))} · recuperado: ${DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(globalMetrics.retrievedAtEpochMs))}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
         item {
-            Text("SENTIMIENTO DEL MERCADO", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text("SENTIMIENTO · FEAR & GREED (BITCOIN)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             if (fearGreed == null) {
                 EmptyState("Fear & Greed todavía no está disponible. Se mostrará cuando Alternative.me responda.")
@@ -433,7 +433,7 @@ private fun InvestorDashboard(
                 Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B25))) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("Fear & Greed Index", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("Fear & Greed · Bitcoin", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             Text(fearGreed.classification, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("Fuente: Alternative.me · actualización diaria", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("Fecha del índice: ${DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(fearGreed.providerUpdatedAtEpochMs))}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -441,7 +441,7 @@ private fun InvestorDashboard(
                         Text("${fearGreed.value}/100", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     }
                 }
-                Text("Indicador de sentimiento, no una señal autónoma de inversión. Alternative.me exige atribución visible junto al dato.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Indicador de sentimiento orientado a Bitcoin; no es una señal autónoma de inversión. Alternative.me exige atribución visible junto al dato.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         item {
@@ -453,7 +453,7 @@ private fun InvestorDashboard(
             }
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                MetricCard("Volatilidad anualizada mediana", medianVolatility?.let { String.format(java.util.Locale.US, "%.1f%%", it) } ?: "Sin datos suficientes", Modifier.weight(1f))
+                MetricCard("Volatilidad anualizada mediana · ${volatilityValues.size} activos", medianVolatility?.let { String.format(java.util.Locale.US, "%.1f%%", it) } ?: "Sin datos suficientes", Modifier.weight(1f))
                 MetricCard("Históricos disponibles", "$historyCoverage / ${assets.size}", Modifier.weight(1f))
             }
             Spacer(Modifier.height(6.dp))
