@@ -1,5 +1,7 @@
 package com.iie.android.presentation
 
+import com.iie.android.BuildConfig
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -50,6 +52,22 @@ fun CoinMarketCapSettingsScreen(onHistoricalSyncRequested: () -> Unit = {}) {
         modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+        ) {
+            Column(
+                Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text("VERSIÓN DE LA APLICACIÓN", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary)
+                Text("Investment Intelligence Ecosystem", style = MaterialTheme.typography.titleMedium)
+                Text("Versión ${BuildConfig.VERSION_NAME} · compilación ${BuildConfig.VERSION_CODE}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         Text(
             "PROVEEDORES DE DATOS",
             style = MaterialTheme.typography.labelMedium,
