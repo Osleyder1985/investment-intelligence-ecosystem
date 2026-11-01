@@ -95,14 +95,7 @@ fun CoinMarketCapSettingsScreen(onCredentialSaved: () -> Unit = {}) {
                                     withContext(Dispatchers.IO) { keyStore.save(apiKey) }
                                     apiKey = ""
                                     hasStoredKey = true
-                                    val left = validation.monthlyCreditsLeft
-                                    val limit = validation.monthlyCreditLimit
-                                    usageSummary = if (left != null && limit != null) {
-                                        "Créditos mensuales restantes informados por CMC: " +
-                                            "%,d / %,d".format(java.util.Locale.US, left, limit)
-                                    } else {
-                                        "Credencial aceptada. CMC no devolvió el detalle de cuota mensual."
-                                    }
+                                    usageSummary = formatCoinMarketCapUsage(validation)
                                     status = "Credencial válida y guardada cifrada en este dispositivo. Iniciando actualización de históricos…"
                                     onCredentialSaved()
                                 } catch (error: Exception) {
@@ -137,12 +130,7 @@ fun CoinMarketCapSettingsScreen(onCredentialSaved: () -> Unit = {}) {
                                         val storedKey = withContext(Dispatchers.IO) { keyStore.read() }
                                             ?: error("No hay una credencial almacenada.")
                                         val validation = validator.validate(storedKey)
-                                        val left = validation.monthlyCreditsLeft
-                                        val limit = validation.monthlyCreditLimit
-                                        usageSummary = if (left != null && limit != null) {
-                                            "Créditos mensuales restantes informados por CMC: " +
-                                                "%,d / %,d".format(java.util.Locale.US, left, limit)
-                                        } else null
+                                        usageSummary = formatCoinMarketCapUsage(validation)
                                         status = "La credencial almacenada sigue siendo válida."
                                     } catch (error: Exception) {
                                         status = error.message ?: "No se pudo validar la credencial almacenada."
@@ -193,4 +181,19 @@ fun CoinMarketCapSettingsScreen(onCredentialSaved: () -> Unit = {}) {
         }
         Spacer(Modifier.height(4.dp))
     }
+}
+
+private fun formatCoinMarketCapUsage(validation: com.iie.android.data.market.CoinMarketCapKeyValidation): String {
+    val numberFormat = java.text.NumberFormat.getIntegerInstance(java.util.Locale.US)
+    val monthly = validation.monthlyCreditsLeft?.let(numberFormat::format)
+    val monthlyLimit = validation.monthlyCreditLimit?.let(numberFormat::format)
+    val daily = validation.dailyCreditsLeft?.let(numberFormat::format)
+    val requests = validation.minuteRequestsLeft?.let(numberFormat::format)
+    val rate = validation.minuteRateLimit?.let(numberFormat::format)
+    return buildList {
+        if (monthly != null && monthlyLimit != null) add("Créditos mensuales: $monthly / $monthlyLimit")
+        if (daily != null) add("Créditos diarios restantes: $daily")
+        if (requests != null && rate != null) add("Solicitudes restantes este minuto: $requests / $rate")
+    }.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+        ?: "Credencial aceptada. CMC no devolvió el detalle de cuotas."
 }
