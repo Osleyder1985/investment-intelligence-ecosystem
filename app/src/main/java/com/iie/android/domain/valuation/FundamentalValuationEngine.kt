@@ -87,13 +87,14 @@ object FundamentalValuationEngine {
         if (reasons.isNotEmpty()) return result(ValuationClassification.INSUFFICIENT_EVIDENCE)
 
         when (input.applicability) {
-            ValuationApplicability.NOT_APPLICABLE ->
+            ValuationApplicability.NOT_APPLICABLE -> {
                 reasons += "METHOD_NOT_APPLICABLE_TO_ASSET"
                 return result(ValuationClassification.NOT_VALUABLE_WITH_AVAILABLE_EVIDENCE)
-            ValuationApplicability.INSUFFICIENT_EVIDENCE ->
-                return result(ValuationClassification.INSUFFICIENT_EVIDENCE).also {
-                    reasons += "METHOD_APPLICABILITY_NOT_ESTABLISHED"
-                }
+            }
+            ValuationApplicability.INSUFFICIENT_EVIDENCE -> {
+                reasons += "METHOD_APPLICABILITY_NOT_ESTABLISHED"
+                return result(ValuationClassification.INSUFFICIENT_EVIDENCE)
+            }
             ValuationApplicability.CONDITIONAL -> if (!input.conditionalRequirementsSatisfied) {
                 reasons += "CONDITIONAL_METHOD_REQUIREMENTS_NOT_MET"
                 return result(ValuationClassification.NOT_VALUABLE_WITH_AVAILABLE_EVIDENCE)
