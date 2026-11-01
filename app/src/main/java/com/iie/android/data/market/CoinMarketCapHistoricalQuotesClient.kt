@@ -39,9 +39,9 @@ class CoinMarketCapHistoricalQuotesClient(
             require(!start.isBefore(latestAllowedStart)) {
                 "El plan Basic permite solicitar como máximo un año de histórico diario"
             }
-            val query = "id=$cmcAssetId&time_start=\${encode(start.toString())}" +
-                "&time_end=\${encode(end.toString())}&interval=daily&convert=USD"
-            val connection = (URL("\$BASE_URL?\$query").openConnection() as HttpURLConnection).apply {
+            val query = "id=$cmcAssetId&time_start=${encode(start.toString())}" +
+                "&time_end=${encode(end.toString())}&interval=daily&convert=USD"
+            val connection = (URL("$BASE_URL?$query").openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = connectTimeoutMs
                 readTimeout = readTimeoutMs
@@ -58,8 +58,8 @@ class CoinMarketCapHistoricalQuotesClient(
                         Json.parseToJsonElement(errorBody).jsonObject["status"]?.jsonObject
                             ?.get("error_code")?.jsonPrimitive?.contentOrNull
                     }.getOrNull()
-                    throw IOException("CoinMarketCap historical HTTP \$status" +
-                        (code?.let { " (API error \$it)" } ?: ""))
+                    throw IOException("CoinMarketCap historical HTTP $status" +
+                        (code?.let { " (API error $it)" } ?: ""))
                 }
                 if (!connection.contentType.orEmpty().lowercase().contains("application/json")) {
                     throw IOException("CoinMarketCap returned an unexpected content type")
@@ -90,7 +90,7 @@ class CoinMarketCapHistoricalQuotesClient(
         }
         val status = root["status"]?.jsonObject ?: throw IOException("CoinMarketCap response is missing status")
         val errorCode = status["error_code"]?.jsonPrimitive?.contentOrNull
-        if (errorCode != null && errorCode != "0") throw IOException("CoinMarketCap API error: \$errorCode")
+        if (errorCode != null && errorCode != "0") throw IOException("CoinMarketCap API error: $errorCode")
         val data = root["data"]?.jsonObject ?: throw IOException("CoinMarketCap response is missing data")
         val assetObject = data[cmcAssetId.toString()]?.jsonObject ?: data
         val returnedId = assetObject["id"]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
@@ -114,8 +114,8 @@ class CoinMarketCapHistoricalQuotesClient(
             fun number(key: String): Double? {
                 val value = usd[key] ?: return null
                 if (value.toString() == "null") return null
-                val parsed = value.jsonPrimitive.doubleOrNull ?: throw IOException("CoinMarketCap historical \$key is invalid")
-                if (!parsed.isFinite() || parsed < 0.0) throw IOException("CoinMarketCap historical \$key is outside accepted bounds")
+                val parsed = value.jsonPrimitive.doubleOrNull ?: throw IOException("CoinMarketCap historical $key is invalid")
+                if (!parsed.isFinite() || parsed < 0.0) throw IOException("CoinMarketCap historical $key is outside accepted bounds")
                 return parsed
             }
             val price = number("price")?.takeIf { it > 0.0 }
