@@ -111,6 +111,10 @@ class IIEDatabaseTest {
             "PERSONAL_USE_ONLY",
             database.dataSourceDao().getSource("source:routescan")?.permittedUseStatus
         )
+        assertEquals(
+            "ATTRIBUTION_REQUIRED",
+            database.dataSourceDao().getSource("source:alternative-me")?.permittedUseStatus
+        )
         val usdcDeployment = database.assetDeploymentDao().getDeployment("deployment:usdc-ethereum-erc20")
         val usdtDeployment = database.assetDeploymentDao().getDeployment("deployment:usdt-ethereum-erc20")
         assertEquals("network:ethereum-mainnet", usdcDeployment?.networkId)
@@ -433,6 +437,44 @@ class IIEDatabaseTest {
             legacyDb.query(
                 "SELECT name FROM sqlite_master WHERE type = 'index' AND name = " +
                     "'index_asset_research_dossier_snapshots_assetId_generatedAtEpochMs'"
+            ).use { cursor -> assertEquals(true, cursor.moveToFirst()) }
+        } finally {
+            helper.close()
+            context.deleteDatabase(legacyName)
+        }
+    }
+
+    @Test
+    fun migration2To3CreatesGlobalMarketSnapshotSchema() {
+        val legacyName = "iie-v2-global-migration-${UUID.randomUUID()}.db"
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(legacyName)
+                .callback(object : SupportSQLiteOpenHelper.Callback(2) {
+                    override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(
+                        db: androidx.sqlite.db.SupportSQLiteDatabase,
+                        oldVersion: Int,
+                        newVersion: Int
+                    ) = Unit
+                })
+                .build()
+        )
+        try {
+            val legacyDb = helper.writableDatabase
+            IIEDatabaseProvider.MIGRATION_2_3.migrate(legacyDb)
+            legacyDb.query("PRAGMA table_info(global_market_snapshots)").use { cursor ->
+                val columns = mutableSetOf<String>()
+                while (cursor.moveToNext()) columns += cursor.getString(1)
+                assertEquals(
+                    setOf("snapshotId", "sourceId", "snapshotType", "observedAtEpochMs",
+                        "retrievedAtEpochMs", "quality", "payloadJson", "payloadSha256"),
+                    columns
+                )
+            }
+            legacyDb.query(
+                "SELECT name FROM sqlite_master WHERE type = 'index' AND name = " +
+                    "'index_global_market_snapshots_sourceId_snapshotType_retrievedAtEpochMs'"
             ).use { cursor -> assertEquals(true, cursor.moveToFirst()) }
         } finally {
             helper.close()
