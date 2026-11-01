@@ -316,9 +316,16 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             assets.forEachIndexed { index, asset ->
                 markQuoteLoading(asset.assetId)
                 refreshMarketQuoteNow(asset.assetId, asset.symbol)
-                if ((_dailyMarketHistory.value[asset.assetId]?.size ?: 0) < 2) {
-                    _dashboardRefreshStatus.value = "Actualizando · descargando histórico · ${asset.symbol.uppercase()}"
+                val historicalCoverage = withContext(Dispatchers.IO) {
+                    val paprikaCount = repository.getLatestCoinPaprikaDailyHistory(asset.assetId, limit = 2).size
+                    val cmcCount = repository.getLatestCoinMarketCapDailyHistory(asset.assetId, limit = 2).size
+                    paprikaCount >= 2 && cmcCount >= 2
+                }
+                if (!historicalCoverage) {
+                    _dashboardRefreshStatus.value = "Actualizando · comprobando históricos independientes · ${asset.symbol.uppercase()}"
                     downloadDailyMarketHistoryNow(asset.assetId, asset.symbol)
+                    loadDailyMarketHistory(asset.assetId)
+                    loadCoinMarketCapDailyHistory(asset.assetId)
                 }
                 _dashboardRefreshStatus.value = "Actualizando ${index + 1}/${assets.size} · ${asset.symbol.uppercase()}"
             }
