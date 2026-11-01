@@ -95,6 +95,8 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
     val watchlist by viewModel.watchlist.collectAsState()
     val catalogStatus by viewModel.catalogStatus.collectAsState()
     val marketQuotes by viewModel.marketQuotes.collectAsState()
+    val coinMarketCapQuotes by viewModel.coinMarketCapQuotes.collectAsState()
+    val dashboardRefreshStatus by viewModel.dashboardRefreshStatus.collectAsState()
     val marketHistorySync by viewModel.marketHistorySync.collectAsState()
     val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
     var selectedAsset by remember { mutableStateOf<Asset?>(null) }
@@ -112,7 +114,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
     }
 
     LaunchedEffect(destination, assets) {
-        if (destination == "Mercados") {
+        if (destination == "Mercados" || destination == "Resumen") {
             assets.forEach { asset ->
                 viewModel.loadLatestMarketQuote(asset.assetId)
                 viewModel.loadDailyMarketHistory(asset.assetId)
@@ -196,54 +198,18 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                 when (destination) {
                     "Ajustes" -> CoinMarketCapSettingsScreen()
                     "Resumen" -> {
-                        DashboardHero(
-                            assetCount = assets.size,
-                            watchedCount = watchlist.size,
+                        InvestorDashboard(
+                            assets = assets,
+                            watchlist = watchlist,
+                            quotes = coinMarketCapQuotes,
+                            history = dailyHistoryByAsset,
                             catalogStatus = catalogStatus,
-                            onExplore = { destination = "Mercados" }
+                            refreshStatus = dashboardRefreshStatus,
+                            onExplore = { destination = "Mercados" },
+                            onRefresh = { viewModel.refreshAllMarketQuotes(assets) },
+                            onAssetClick = { selectedAsset = it },
+                            onToggleWatchlist = { viewModel.toggleWatchlist(it) }
                         )
-                        Spacer(Modifier.height(20.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            MetricCard(
-                                label = "Activos",
-                                value = assets.size.toString(),
-                                modifier = Modifier.weight(1f)
-                            )
-                            MetricCard(
-                                label = "En seguimiento",
-                                value = watchlist.size.toString(),
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        Spacer(Modifier.height(18.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Explorar universo", style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold)
-                            TextButton(onClick = { destination = "Mercados" }) {
-                                Text("Ver todos")
-                            }
-                        }
-                        if (assets.isEmpty()) {
-                            EmptyState("El catálogo todavía no contiene activos.")
-                        } else {
-                            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                items(assets.take(6), key = { it.assetId }) { asset ->
-                                    AssetRow(
-                                        asset = asset,
-                                        isWatched = asset.assetId in watchlist,
-                                        onClick = { selectedAsset = asset },
-                                        onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
-                                    )
-                                }
-                            }
-                        }
                     }
                     "Mercados", "Seguimiento" -> {
                         if (destination == "Mercados") {
@@ -365,6 +331,140 @@ private fun MarketAssetRow(
             }
             if (historySync?.isLoading == true) Text("Actualizando histórico…", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+@Composable
+private fun InvestorDashboard(
+    assets: List<Asset>,
+    watchlist: Set<String>,
+    quotes: Map<String, MarketQuoteUiState>,
+    history: Map<String, List<CoinPaprikaHistoricalPoint>>,
+    catalogStatus: String,
+    refreshStatus: String?,
+    onExplore: () -> Unit,
+    onRefresh: () -> Unit,
+    onAssetClick: (Asset) -> Unit,
+    onToggleWatchlist: (String) -> Unit
+) {
+    val coveredCaps = assets.mapNotNull { asset -> quotes[asset.assetId]?.marketCapUsd?.takeIf { it.isFinite() && it > 0.0 } }
+    val coveredCapTotal = coveredCaps.sum()
+    val capCoverage = coveredCaps.size
+    val historyCoverage = assets.count { (history[it.assetId]?.size ?: 0) >= 2 }
+    val volatilityValues = assets.mapNotNull { historicalVolatilityPercent(history[it.assetId].orEmpty()) }.sorted()
+    val medianVolatility = volatilityValues.takeIf { it.isNotEmpty() }?.let {
+        if (it.size % 2 == 1) it[it.size / 2] else (it[it.size / 2 - 1] + it[it.size / 2]) / 2.0
+    }
+    val movers = assets.mapNotNull { asset ->
+        val points = history[asset.assetId].orEmpty().sortedBy { it.timestampEpochMs }
+        if (points.size < 2 || points.first().priceUsd <= 0.0) null
+        else asset to ((points.last().priceUsd / points.first().priceUsd) - 1.0) * 100.0
+    }.filter { it.second.isFinite() }.sortedByDescending { kotlin.math.abs(it.second) }.take(4)
+    val followedAssets = assets.filter { it.assetId in watchlist }.take(5)
+
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        item {
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF14252B))) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("INVESTMENT INTELLIGENCE", style = MaterialTheme.typography.labelSmall, color = Color(0xFF8FA99F), fontWeight = FontWeight.Bold)
+                        Surface(color = Color(0xFF203D35), shape = RoundedCornerShape(50)) {
+                            Text("INVESTOR TERMINAL", Modifier.padding(horizontal = 10.dp, vertical = 6.dp), color = Color(0xFF8CE2BC), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    Text("El mercado, bajo\nuna mirada analítica.", style = MaterialTheme.typography.headlineMedium, color = Color(0xFFF1F7F4), fontWeight = FontWeight.Bold)
+                    Text("Datos observados, cobertura explícita y señales que merecen investigación. Sin puntuaciones ni recomendaciones artificiales.", style = MaterialTheme.typography.bodyMedium, color = Color(0xFFB4C6C0))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        HeroStat(Modifier.weight(1f), assets.size.toString(), "ACTIVOS EN UNIVERSO")
+                        HeroStat(Modifier.weight(1f), watchlist.size.toString(), "EN SEGUIMIENTO")
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = onExplore) { Text("EXPLORAR MERCADOS  →", color = Color(0xFF75E0B2), fontWeight = FontWeight.Bold) }
+                        TextButton(onClick = onRefresh, enabled = refreshStatus?.startsWith("Actualizando") != true) {
+                            Text(if (refreshStatus?.startsWith("Actualizando") == true) "ACTUALIZANDO…" else "↻ ACTUALIZAR DATOS", color = Color(0xFF75E0B2), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    Text(refreshStatus ?: catalogStatus, style = MaterialTheme.typography.labelSmall, color = Color(0xFF91A69F))
+                }
+            }
+        }
+        item {
+            Text("PANORAMA DEL UNIVERSO", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricCard("Capitalización cubierta", formatCompactUsd(coveredCapTotal.takeIf { capCoverage > 0 }), Modifier.weight(1f))
+                MetricCard("Cobertura CMC", "$capCoverage / ${assets.size}", Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricCard("Volatilidad realizada mediana", medianVolatility?.let { String.format(java.util.Locale.US, "%.1f%%", it) } ?: "Sin datos suficientes", Modifier.weight(1f))
+                MetricCard("Históricos disponibles", "$historyCoverage / ${assets.size}", Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(6.dp))
+            Text("La capitalización suma únicamente activos con dato CMC disponible; no representa la capitalización total del mercado. La volatilidad se estima con retornos diarios observados.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("RADAR DE INVESTIGACIÓN", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text("${movers.size} señales", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.height(4.dp))
+            if (movers.isEmpty()) {
+                EmptyState("Aún no hay suficientes puntos históricos para identificar movimientos. Descarga el histórico desde la ficha de cada activo.")
+            } else {
+                movers.forEach { (asset, change) ->
+                    Card(Modifier.fillMaxWidth().padding(bottom = 7.dp).clickable { onAssetClick(asset) }, shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B25))) {
+                        Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(asset.name, fontWeight = FontWeight.SemiBold)
+                                Text("${asset.symbol.uppercase()} · período histórico disponible", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(String.format(java.util.Locale.US, "%+.2f%%", change), fontWeight = FontWeight.Bold, color = if (change >= 0.0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+                Text("Los movimientos son alertas descriptivas para investigar, no señales de compra o venta.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("SEGUIMIENTO", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                TextButton(onClick = onExplore) { Text("Ver universo") }
+            }
+            if (followedAssets.isEmpty()) EmptyState("Todavía no sigues activos. Añádelos desde Mercados.")
+            else followedAssets.forEach { asset -> AssetRow(asset, true, { onAssetClick(asset) }, { onToggleWatchlist(asset.assetId) }) }
+        }
+        item {
+            Text("ESTADO DE LOS DATOS", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B25))) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Capitalización con evidencia: $capCoverage de ${assets.size} activos", style = MaterialTheme.typography.bodyMedium)
+                    Text("Histórico local: $historyCoverage de ${assets.size} activos", style = MaterialTheme.typography.bodyMedium)
+                    Text(catalogStatus, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+private fun historicalVolatilityPercent(points: List<CoinPaprikaHistoricalPoint>): Double? {
+    val ordered = points.sortedBy { it.timestampEpochMs }
+    val returns = ordered.zipWithNext { previous, next ->
+        if (previous.priceUsd > 0.0) next.priceUsd / previous.priceUsd - 1.0 else Double.NaN
+    }.filter { it.isFinite() }
+    if (returns.size < 7) return null
+    val mean = returns.average()
+    val variance = returns.sumOf { (it - mean) * (it - mean) } / (returns.size - 1)
+    return (kotlin.math.sqrt(variance) * kotlin.math.sqrt(365.0) * 100.0).takeIf { it.isFinite() }
+}
+
+private fun formatCompactUsd(value: Double?): String {
+    if (value == null || !value.isFinite()) return "Sin datos"
+    return when {
+        value >= 1_000_000_000_000.0 -> "$" + String.format(java.util.Locale.US, "%.2f T", value / 1_000_000_000_000.0)
+        value >= 1_000_000_000.0 -> "$" + String.format(java.util.Locale.US, "%.2f B", value / 1_000_000_000.0)
+        value >= 1_000_000.0 -> "$" + String.format(java.util.Locale.US, "%.2f M", value / 1_000_000.0)
+        else -> "$" + String.format(java.util.Locale.US, "%,.0f", value)
     }
 }
 
