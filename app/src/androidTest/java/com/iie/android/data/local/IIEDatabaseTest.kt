@@ -3,6 +3,8 @@ package com.iie.android.data.local
 import android.content.Context
 import android.database.sqlite.SQLiteConstraintException
 import androidx.room.Room
+import androidx.sqlite.db.SupportSQLiteOpenHelper
+import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.iie.android.data.local.entity.AssetEntity
@@ -43,6 +45,57 @@ class IIEDatabaseTest {
     fun closeDatabase() {
         database.close()
         context.deleteDatabase(databaseName)
+    }
+
+
+    @Test
+    fun migration1To2PreservesExistingAssetsAndCreatesSnapshotSchema() {
+        val legacyName = "iie-v1-migration-${UUID.randomUUID()}.db"
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(legacyName)
+                .callback(object : SupportSQLiteOpenHelper.Callback(1) {
+                    override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                        db.execSQL("CREATE TABLE assets (assetId TEXT NOT NULL PRIMARY KEY)")
+                        db.execSQL("INSERT INTO assets (assetId) VALUES ('asset-preserved')")
+                    }
+                    override fun onUpgrade(
+                        db: androidx.sqlite.db.SupportSQLiteDatabase,
+                        oldVersion: Int,
+                        newVersion: Int
+                    ) = Unit
+                })
+                .build()
+        )
+        try {
+            val legacyDb = helper.writableDatabase
+            IIEDatabaseProvider.MIGRATION_1_2.migrate(legacyDb)
+
+            legacyDb.query("SELECT assetId FROM assets WHERE assetId = 'asset-preserved'").use { cursor ->
+                assertEquals(true, cursor.moveToFirst())
+                assertEquals("asset-preserved", cursor.getString(0))
+            }
+            legacyDb.query("PRAGMA table_info(asset_research_dossier_snapshots)").use { cursor ->
+                val columns = mutableSetOf<String>()
+                while (cursor.moveToNext()) columns += cursor.getString(1)
+                assertEquals(
+                    setOf("snapshotId", "assetId", "generatedAtEpochMs", "schemaVersion",
+                        "evidenceStatus", "payloadJson", "payloadSha256"),
+                    columns
+                )
+            }
+            legacyDb.query("PRAGMA foreign_key_list(asset_research_dossier_snapshots)").use { cursor ->
+                assertEquals(true, cursor.moveToFirst())
+                assertEquals("assets", cursor.getString(2))
+            }
+            legacyDb.query(
+                "SELECT name FROM sqlite_master WHERE type = 'index' AND name = " +
+                    "'index_asset_research_dossier_snapshots_assetId_generatedAtEpochMs'"
+            ).use { cursor -> assertEquals(true, cursor.moveToFirst()) }
+        } finally {
+            helper.close()
+            context.deleteDatabase(legacyName)
+        }
     }
 
     @Test
