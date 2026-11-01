@@ -36,6 +36,8 @@ data class FundamentalValuationInput(
     val priceReference: ValuationPriceReference,
     val valuationTimestampEpochMs: Long,
     val marketTimestampEpochMs: Long,
+    /** Explicitly justified temporal tolerance; zero requires the same timestamp. */
+    val maximumTimestampSkewMs: Long,
     val sameEconomicObjectAndUnit: Boolean,
     val liquidityAndDepthReviewed: Boolean,
     val executionCostsIncluded: Boolean,
@@ -78,8 +80,9 @@ object FundamentalValuationEngine {
         if (input.valuationTimestampEpochMs <= 0L || input.marketTimestampEpochMs <= 0L) {
             reasons += "COMPARABLE_TIMESTAMP_MISSING"
         }
+        if (input.maximumTimestampSkewMs < 0L) reasons += "TIMESTAMP_SKEW_TOLERANCE_INVALID"
         if (input.valuationTimestampEpochMs > 0L && input.marketTimestampEpochMs > 0L &&
-            input.valuationTimestampEpochMs != input.marketTimestampEpochMs
+            kotlin.math.abs(input.valuationTimestampEpochMs - input.marketTimestampEpochMs) > input.maximumTimestampSkewMs
         ) reasons += "VALUATION_AND_MARKET_TIMESTAMPS_DIFFER"
         if (reasons.isNotEmpty()) return result(ValuationClassification.INSUFFICIENT_EVIDENCE)
 
