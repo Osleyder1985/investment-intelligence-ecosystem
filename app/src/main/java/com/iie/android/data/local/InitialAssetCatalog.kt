@@ -157,7 +157,8 @@ class InitialAssetCatalog(
         const val COINPAPRIKA_SOURCE_KEY = "coinpaprika-api-v1"
         const val COINMARKETCAP_SOURCE_ID = "source:coinmarketcap"
         const val COINMARKETCAP_SOURCE_KEY = "coinmarketcap-api-v3"
-        const val ALTERNATIVE_ME_SOURCE_ID = "source:alternative-me"\n        const val ALTERNATIVE_ME_SOURCE_KEY = "alternative-me-fng-v1"\n        const val ROUTESCAN_SOURCE_ID = "source:routescan"
+        const val ALTERNATIVE_ME_SOURCE_ID = "source:alternative-me"
+        const val ALTERNATIVE_ME_SOURCE_KEY = "alternative-me-fng-v1"\n        const val ROUTESCAN_SOURCE_ID = "source:routescan"
         const val ROUTESCAN_SOURCE_KEY = "routescan-evm-api-v1"
 
         val assets = listOf(
