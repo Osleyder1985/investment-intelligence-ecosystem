@@ -33,7 +33,7 @@ data class FearGreedIndex(
     val retrievedAtEpochMs: Long
 )
 
-private abstract class BoundedJsonHttpClient(
+abstract class BoundedJsonHttpClient(
     private val connectTimeoutMs: Int,
     private val readTimeoutMs: Int,
     private val maxResponseBytes: Int
