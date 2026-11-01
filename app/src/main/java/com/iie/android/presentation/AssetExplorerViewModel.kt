@@ -96,7 +96,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                     val deployments = repository.observeDeployments(assetId).first()
                     val provenance = repository.observeProvenance(assetId).first()
                     val quoteRecord = repository.getLatestCoinPaprikaQuote(assetId)
-                    val quote = quoteRecord?.first?.toUiState(quoteRecord.second)
+                    val quote = quoteRecord?.let { (observation, attribution) -> observation.toUiState(attribution) }
                     val history = repository.getLatestCoinPaprikaDailyHistory(assetId, limit = 365)
                     dossierBuilder.build(
                         asset = asset,
