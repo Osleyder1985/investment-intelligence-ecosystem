@@ -1,7 +1,6 @@
 package com.iie.android.data.market
 
 import kotlin.math.sqrt
-import kotlin.math.ln
 
 /**
  * Risk statistics derived from observed daily close prices.
@@ -26,11 +25,17 @@ class HistoricalRiskAnalyzer(
     }
 
     fun analyze(points: List<CoinPaprikaHistoricalPoint>): AssetRiskMetrics {
+        // A timestamp with conflicting prices is ambiguous: discard the entire bucket
+        // rather than letting input order decide which observation survives.
         val ordered = points.asSequence()
             .filter { it.priceUsd.isFinite() && it.priceUsd > 0.0 && it.timestampEpochMs > 0L }
-            .distinctBy { it.timestampEpochMs }
+            .groupBy { it.timestampEpochMs }
+            .values
+            .mapNotNull { sameTimestamp ->
+                val first = sameTimestamp.first()
+                first.takeIf { sameTimestamp.all { point -> point.priceUsd == first.priceUsd } }
+            }
             .sortedBy { it.timestampEpochMs }
-            .toList()
 
         val dailyReturns = ordered.zipWithNext().mapNotNull { (previous, current) ->
             val elapsed = current.timestampEpochMs - previous.timestampEpochMs
