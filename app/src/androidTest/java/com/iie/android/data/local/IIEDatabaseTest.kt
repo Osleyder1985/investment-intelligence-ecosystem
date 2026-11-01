@@ -547,6 +547,31 @@ class IIEDatabaseTest {
     }
 
     @Test
+    fun latestPersistedDailyHistoryIsReadInDescendingOrderAndRemainsAssetScoped() = runBlocking {
+        val now = 1_800_000_000_000L
+        DemoAssetSeeder(database) { now }.seed()
+        val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
+        val usdc = listOf(
+            CoinPaprikaHistoricalPoint("usdc-usd-coin", now - 172_800_000L, 1.0001, 100.0, 45_000.0, now),
+            CoinPaprikaHistoricalPoint("usdc-usd-coin", now - 86_400_000L, 0.9999, 110.0, 44_900.0, now)
+        )
+        val usdt = listOf(
+            CoinPaprikaHistoricalPoint("usdt-tether", now - 86_400_000L, 1.0002, 90.0, 110_000.0, now)
+        )
+        repository.persistCoinPaprikaDailyHistory("asset:usd-coin", "USDC", usdc)
+        repository.persistCoinPaprikaDailyHistory("asset:tether", "USDT", usdt)
+
+        val loadedUsdc = repository.getLatestCoinPaprikaDailyHistory("asset:usd-coin", limit = 10)
+        val loadedUsdt = repository.getLatestCoinPaprikaDailyHistory("asset:tether", limit = 10)
+
+        assertEquals(2, loadedUsdc.size)
+        assertEquals(listOf(now - 86_400_000L, now - 172_800_000L), loadedUsdc.map { it.timestampEpochMs })
+        assertEquals(setOf("usdc-usd-coin"), loadedUsdc.map { it.providerId }.toSet())
+        assertEquals(1, loadedUsdt.size)
+        assertEquals(setOf("usdt-tether"), loadedUsdt.map { it.providerId }.toSet())
+    }
+
+    @Test
     fun coinPaprikaDailyHistoryRejectsWrongProviderAndFutureTimestamp() = runBlocking {
         val now = 1_800_000_000_000L
         DemoAssetSeeder(database) { now }.seed()
