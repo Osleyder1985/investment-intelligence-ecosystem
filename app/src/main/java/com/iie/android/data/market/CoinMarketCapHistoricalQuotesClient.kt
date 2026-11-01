@@ -189,6 +189,31 @@ class CoinMarketCapHistoricalQuotesClient(
             } finally { connection.disconnect() }
         }
 
+    /**
+     * Performs a deliberately small live entitlement probe against the Basic-compatible
+     * historical quotes endpoint. Requests at most seven daily BTC snapshots.
+     */
+    suspend fun probeHistoricalAccess(
+        apiKey: String,
+        retrievedAtEpochMs: Long = System.currentTimeMillis()
+    ): List<CoinPaprikaHistoricalPoint> {
+        require(retrievedAtEpochMs > 0L)
+        val yesterdayUtc = Instant.ofEpochMilli(retrievedAtEpochMs)
+            .atZone(java.time.ZoneOffset.UTC).toLocalDate().minusDays(1)
+        val start = yesterdayUtc.minusDays(6)
+        val points = fetchDaily(
+            cmcAssetId = 1L,
+            apiKey = apiKey,
+            start = start,
+            end = yesterdayUtc,
+            retrievedAtEpochMs = retrievedAtEpochMs
+        )
+        if (points.isEmpty()) {
+            throw IOException("CoinMarketCap aceptó la consulta, pero no devolvió snapshots históricos de BTC en los últimos siete días completos.")
+        }
+        return points
+    }
+
     internal fun parse(payload: String, cmcAssetId: Long, retrievedAtEpochMs: Long,
         start: LocalDate, end: LocalDate): List<CoinPaprikaHistoricalPoint> {
         val root = try { Json.parseToJsonElement(payload).jsonObject } catch (error: Exception) {
