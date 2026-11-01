@@ -668,8 +668,8 @@ private fun MarketSparkline(
         .asSequence()
         .filter { it.priceUsd.isFinite() && it.priceUsd > 0.0 }
         .sortedBy { it.timestampEpochMs }
-        .takeLast(30)
         .toList()
+        .takeLast(30)
     if (ordered.size < 2) return
 
     val prices = ordered.map { it.priceUsd }
