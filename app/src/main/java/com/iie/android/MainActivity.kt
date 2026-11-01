@@ -202,7 +202,9 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                 Spacer(Modifier.height(22.dp))
 
                 when (destination) {
-                    "Ajustes" -> CoinMarketCapSettingsScreen()
+                    "Ajustes" -> CoinMarketCapSettingsScreen(
+                        onCredentialSaved = { viewModel.refreshAllMarketQuotes(assets) }
+                    )
                     "Resumen" -> {
                         InvestorDashboard(
                             assets = assets,
