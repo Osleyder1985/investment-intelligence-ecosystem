@@ -230,7 +230,7 @@ class RoomAssetRepository(
             cachedCoinMarketCapMatches(cached, expectedProviderId, expectedSymbol)
         ) return cached
 
-        val quote = client.fetchLatestQuote(apiKey, expectedSymbol)
+        val quote = client.fetchLatestQuote(apiKey, expectedSymbol, expectedProviderId = expectedProviderId)
         require(quote.providerId == expectedProviderId) {
             "CoinMarketCap response ID does not match the confirmed asset mapping"
         }
