@@ -614,7 +614,6 @@ private fun AssetDetailDialog(
         .collectAsState(initial = emptyList())
     val marketQuotes by viewModel.marketQuotes.collectAsState()
     val marketQuote = marketQuotes[asset.assetId]
-    val headlineQuote = marketQuote ?: coinMarketCapQuotes[asset.assetId]
     val coinMarketCapQuotes by viewModel.coinMarketCapQuotes.collectAsState()
     val coinMarketCapQuote = coinMarketCapQuotes[asset.assetId]
     val historySyncStates by viewModel.marketHistorySync.collectAsState()
@@ -671,7 +670,7 @@ private fun AssetDetailDialog(
                             style = MaterialTheme.typography.headlineMedium,
                             color = Color(0xFFF0F7F3), fontWeight = FontWeight.Bold
                         )
-                        Text((headlineQuote?.let { if (marketQuote != null) "CoinPaprika" else "CoinMarketCap" } ?: "MERCADO") + " · " + (headlineQuote?.freshnessStatus ?: "SIN DATOS"),
+                        Text((if (marketQuote != null) "CoinPaprika" else "MERCADO") + " · " + (marketQuote?.freshnessStatus ?: "SIN DATOS"),
                             style = MaterialTheme.typography.labelMedium, color = Color(0xFF8DDFB8))
                         TextButton(onClick = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) },
                             enabled = marketQuote?.isLoading != true) {
