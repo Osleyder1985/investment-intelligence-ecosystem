@@ -38,14 +38,17 @@ class CoinMarketCapAuthenticatedClient(
     fun fetchLatestQuote(
         apiKey: String,
         expectedSymbol: String,
-        retrievedAtEpochMs: Long = System.currentTimeMillis()
+        retrievedAtEpochMs: Long = System.currentTimeMillis(),
+        expectedProviderId: Long? = null
     ): CoinMarketCapAuthenticatedQuote {
         require(apiKey.isNotBlank()) { "CoinMarketCap API key is not configured" }
         require(expectedSymbol.matches(Regex("[A-Za-z0-9]{2,12}")))
         require(retrievedAtEpochMs > 0L)
+        require(expectedProviderId == null || expectedProviderId > 0L)
 
         val symbol = expectedSymbol.uppercase()
-        val url = URL("$BASE_URL/v3/cryptocurrency/quotes/latest?symbol=$symbol&convert=USD")
+        val selector = expectedProviderId?.let { "id=$it" } ?: "symbol=$symbol"
+        val url = URL("$BASE_URL/v3/cryptocurrency/quotes/latest?$selector&convert=USD")
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = connectTimeoutMs
@@ -82,7 +85,7 @@ class CoinMarketCapAuthenticatedClient(
                 }
                 output.toString(Charsets.UTF_8.name())
             }
-            return parse(payload, symbol, retrievedAtEpochMs)
+            return parse(payload, symbol, retrievedAtEpochMs, expectedProviderId)
         } finally {
             connection.disconnect()
         }
@@ -91,7 +94,8 @@ class CoinMarketCapAuthenticatedClient(
     internal fun parse(
         payload: String,
         expectedSymbol: String,
-        retrievedAtEpochMs: Long
+        retrievedAtEpochMs: Long,
+        expectedProviderId: Long? = null
     ): CoinMarketCapAuthenticatedQuote {
         val root = try {
             Json.parseToJsonElement(payload).jsonObject
@@ -111,8 +115,12 @@ class CoinMarketCapAuthenticatedClient(
         } ?: throw IOException("CoinMarketCap response is missing quote data")
 
         val matches = data.filter { element ->
-            element.jsonObject["symbol"]?.jsonPrimitive?.contentOrNull
+            val item = element.jsonObject
+            val symbolMatches = item["symbol"]?.jsonPrimitive?.contentOrNull
                 ?.equals(expectedSymbol, ignoreCase = true) == true
+            val idMatches = expectedProviderId == null ||
+                item["id"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() == expectedProviderId
+            symbolMatches && idMatches
         }
         if (matches.size != 1) {
             throw IOException(
