@@ -45,6 +45,8 @@ data class TokenomicsResearchSection(
     val circulatingSupply: ResearchEvidence<Double>,
     val totalSupply: ResearchEvidence<Double>,
     val maxSupply: ResearchEvidence<Double>,
+    val marketCapUsd: ResearchEvidence<Double>,
+    val fullyDilutedMarketCapUsd: ResearchEvidence<Double>,
     val annualInflationPercent: ResearchEvidence<Double>,
     val emissionSchedule: ResearchEvidence<String>,
     val unlockEvents: List<ResearchEvidence<String>>
