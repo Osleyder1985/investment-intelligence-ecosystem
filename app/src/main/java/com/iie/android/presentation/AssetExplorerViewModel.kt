@@ -17,6 +17,8 @@ import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.QuoteFreshnessEvaluator
 import org.json.JSONObject
 import com.iie.android.data.repository.RoomAssetRepository
+import com.iie.android.data.repository.GlobalMarketOverviewRepository
+import com.iie.android.data.repository.GlobalMarketDashboardData
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetDeploymentSummary
 import com.iie.android.domain.model.AssetObservationProvenance
@@ -49,6 +51,9 @@ import java.util.UUID
 class AssetExplorerViewModel(application: Application) : AndroidViewModel(application) {
     private val database = IIEDatabaseProvider.get(application)
     private val repository = RoomAssetRepository(database)
+    private val globalMarketRepository = GlobalMarketOverviewRepository(database)
+    private val _globalMarket = MutableStateFlow(GlobalMarketDashboardData(null, null))
+    val globalMarket: StateFlow<GlobalMarketDashboardData> = _globalMarket.asStateFlow()
     private val coinPaprikaClient = CoinPaprikaTickerClient()
     private val coinMarketCapClient = CoinMarketCapKeylessClient()
     private val coinPaprikaHistoryClient = CoinPaprikaHistoricalTickerClient()
@@ -95,6 +100,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             try {
                 withContext(Dispatchers.IO) { InitialAssetCatalog(database).synchronize() }
                 _catalogStatus.value = "Catálogo inicial sincronizado · identidades y proveedores separados"
+                _globalMarket.value = withContext(Dispatchers.IO) { globalMarketRepository.loadLatest() }
             } catch (error: Exception) {
                 _catalogStatus.value =
                     "No se pudo inicializar el catálogo local: ${error.message ?: "error desconocido"}"
@@ -288,13 +294,22 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             return
         }
         viewModelScope.launch {
+            _dashboardRefreshStatus.value = "Actualizando métricas globales…"
+            val globalResult = withContext(Dispatchers.IO) { globalMarketRepository.refresh() }
+            _globalMarket.value = withContext(Dispatchers.IO) { globalMarketRepository.loadLatest() }
+            val globalStatus = when {
+                globalResult.globalUpdated && globalResult.sentimentUpdated -> "Mercado global y sentimiento actualizados"
+                globalResult.globalUpdated -> "Mercado global actualizado · sentimiento no disponible"
+                globalResult.sentimentUpdated -> "Sentimiento actualizado · mercado global no disponible"
+                else -> "No se pudieron actualizar métricas globales; se conservan los últimos datos guardados"
+            }
             _dashboardRefreshStatus.value = "Actualizando 0/${assets.size} activos…"
             assets.forEachIndexed { index, asset ->
                 markQuoteLoading(asset.assetId)
                 refreshMarketQuoteNow(asset.assetId, asset.symbol)
                 _dashboardRefreshStatus.value = "Actualizando ${index + 1}/${assets.size} · ${asset.symbol.uppercase()}"
             }
-            _dashboardRefreshStatus.value = "Actualización finalizada · ${assets.size} activos revisados."
+            _dashboardRefreshStatus.value = "Actualización finalizada · ${assets.size} activos revisados. · $globalStatus"
         }
     }
 
