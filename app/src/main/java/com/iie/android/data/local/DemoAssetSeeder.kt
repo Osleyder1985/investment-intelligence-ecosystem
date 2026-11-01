@@ -35,6 +35,22 @@ class DemoAssetSeeder(
                 )
             }
 
+            if (database.dataSourceDao().getSource(COINPAPRIKA_SOURCE_ID) == null) {
+                database.dataSourceDao().insertSource(
+                    DataSourceEntity(
+                        sourceId = COINPAPRIKA_SOURCE_ID,
+                        sourceKey = COINPAPRIKA_SOURCE_KEY,
+                        displayName = "CoinPaprika API",
+                        providerType = "MARKET_DATA_PROVIDER",
+                        homepageUrl = "https://coinpaprika.com",
+                        termsUrl = "https://coinpaprika.com/terms-api",
+                        attributionText = "Powered by CoinPaprika",
+                        permittedUseStatus = "PERSONAL_USE_ONLY",
+                        registeredAtEpochMs = seededAt
+                    )
+                )
+            }
+
             networks.forEach { network ->
                 if (database.networkDao().getNetwork(network.networkId) == null) {
                     database.networkDao().insertNetwork(network)
@@ -52,7 +68,7 @@ class DemoAssetSeeder(
                     database.assetDeploymentDao().insertDeployment(deployment)
                 }
             }
-            identifiers.forEach { identifier ->
+            (identifiers + coinPaprikaIdentifiers).forEach { identifier ->
                 if (database.assetIdentifierDao().findIdentifier(
                         identifier.sourceId, identifier.namespace, identifier.identifierValue
                     ) == null
@@ -90,12 +106,20 @@ class DemoAssetSeeder(
         const val SOURCE_ID = "source:iie-demo-fixture"
         const val SOURCE_KEY = "iie-local-demo-fixture-v1"
         const val OBSERVATION_TYPE = "IDENTITY_FIXTURE"
+        const val COINPAPRIKA_SOURCE_ID = "source:coinpaprika"
+        const val COINPAPRIKA_SOURCE_KEY = "coinpaprika-api-v1"
 
         val assets = listOf(
             AssetEntity("asset:bitcoin", "demo:bitcoin:native", "Bitcoin", "BTC", "CRYPTO_ASSET", "DEMO_UNVERIFIED", 0L, 0L),
             AssetEntity("asset:ethereum", "demo:ethereum:native", "Ethereum", "ETH", "CRYPTO_ASSET", "DEMO_UNVERIFIED", 0L, 0L),
             AssetEntity("asset:solana", "demo:solana:native", "Solana", "SOL", "CRYPTO_ASSET", "DEMO_UNVERIFIED", 0L, 0L),
-            AssetEntity("asset:usd-coin", "demo:usd-coin:unresolved", "USD Coin", "USDC", "CRYPTO_ASSET", "DEMO_UNVERIFIED", 0L, 0L)
+            AssetEntity("asset:usd-coin", "demo:usd-coin:unresolved", "USD Coin", "USDC", "CRYPTO_ASSET", "DEMO_UNVERIFIED", 0L, 0L),
+            AssetEntity("asset:tether", "demo:tether:unresolved", "Tether", "USDT", "CRYPTO_ASSET", "DEMO_UNVERIFIED", 0L, 0L)
+        )
+
+        val coinPaprikaIdentifiers = listOf(
+            AssetIdentifierEntity("identifier:coinpaprika:usdc", "coinpaprika:usdc-usd-coin", "asset:usd-coin", COINPAPRIKA_SOURCE_ID, "coinpaprika", "usdc-usd-coin", null, null, "PROVIDER_ID_CONFIRMED"),
+            AssetIdentifierEntity("identifier:coinpaprika:usdt", "coinpaprika:usdt-tether", "asset:tether", COINPAPRIKA_SOURCE_ID, "coinpaprika", "usdt-tether", null, null, "PROVIDER_ID_CONFIRMED")
         )
 
         val networks = listOf(
@@ -114,7 +138,8 @@ class DemoAssetSeeder(
             AssetIdentifierEntity("identifier:bitcoin", "demo:identifier:bitcoin", "asset:bitcoin", SOURCE_ID, "iie-demo-fixture", "bitcoin", null, null, "DEMO_ONLY"),
             AssetIdentifierEntity("identifier:ethereum", "demo:identifier:ethereum", "asset:ethereum", SOURCE_ID, "iie-demo-fixture", "ethereum", null, null, "DEMO_ONLY"),
             AssetIdentifierEntity("identifier:solana", "demo:identifier:solana", "asset:solana", SOURCE_ID, "iie-demo-fixture", "solana", null, null, "DEMO_ONLY"),
-            AssetIdentifierEntity("identifier:usd-coin", "demo:identifier:usd-coin", "asset:usd-coin", SOURCE_ID, "iie-demo-fixture", "usd-coin", null, null, "DEMO_ONLY")
+            AssetIdentifierEntity("identifier:usd-coin", "demo:identifier:usd-coin", "asset:usd-coin", SOURCE_ID, "iie-demo-fixture", "usd-coin", null, null, "DEMO_ONLY"),
+            AssetIdentifierEntity("identifier:tether", "demo:identifier:tether", "asset:tether", SOURCE_ID, "iie-demo-fixture", "tether", null, null, "DEMO_ONLY")
         )
     }
 }

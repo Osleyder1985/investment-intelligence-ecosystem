@@ -44,6 +44,9 @@ import com.iie.android.domain.model.ObservationPayloadValidation
 import com.iie.android.domain.model.ObservationQualityEvaluation
 import com.iie.android.presentation.AssetExplorerViewModel
 import com.iie.android.presentation.EvidenceEvaluationUiState
+import com.iie.android.presentation.MarketQuoteUiState
+import com.iie.android.presentation.MarketHistorySyncUiState
+import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import java.text.DateFormat
 import java.util.Date
 
@@ -175,9 +178,17 @@ private fun AssetDetailDialog(
     val provenance by viewModel.observeProvenance(asset.assetId)
         .collectAsState(initial = emptyList())
     val evidenceState by viewModel.evidenceEvaluation.collectAsState()
+    val marketQuotes by viewModel.marketQuotes.collectAsState()
+    val marketQuote = marketQuotes[asset.assetId]
+    val historySyncStates by viewModel.marketHistorySync.collectAsState()
+    val historySync = historySyncStates[asset.assetId]
+    val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
+    val dailyHistory = dailyHistoryByAsset[asset.assetId].orEmpty()
 
     LaunchedEffect(asset.assetId) {
         viewModel.evaluateLatestEvidence(asset.assetId)
+        viewModel.loadLatestMarketQuote(asset.assetId)
+        viewModel.loadDailyMarketHistory(asset.assetId)
     }
 
     AlertDialog(
@@ -206,6 +217,27 @@ private fun AssetDetailDialog(
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Text("Cotización de mercado · USD", fontWeight = FontWeight.SemiBold)
+                MarketQuoteDetails(
+                    quote = marketQuote,
+                    onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) }
+                )
+
+                if (asset.symbol == "USDC" || asset.symbol == "USDT") {
+                    Spacer(Modifier.height(10.dp))
+                    Text("Histórico diario · CoinPaprika", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Importa hasta un año de puntos diarios de precio, volumen y capitalización. No son velas OHLCV ni precios ejecutables.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    MarketHistorySyncDetails(
+                        state = historySync,
+                        onDownload = { viewModel.downloadDailyMarketHistory(asset.assetId, asset.symbol) }
+                    )
+                    MarketHistoryPoints(points = dailyHistory)
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -248,6 +280,85 @@ private fun AssetDetailDialog(
             TextButton(onClick = onDismiss) { Text("Cerrar") }
         }
     )
+}
+
+
+@Composable
+private fun MarketQuoteDetails(
+    quote: MarketQuoteUiState?,
+    onRefresh: () -> Unit
+) {
+    val formatter = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+    when {
+        quote?.priceUsd != null -> {
+            Text(
+                "$" + String.format(java.util.Locale.US, "%.8f", quote.priceUsd) + " USD",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text("Proveedor: CoinPaprika · ID: ${quote.providerId}", style = MaterialTheme.typography.bodySmall)
+            quote.providerUpdatedAtEpochMs?.let {
+                Text("Actualizado por el proveedor: ${formatter.format(Date(it))}", style = MaterialTheme.typography.bodySmall)
+            }
+            quote.retrievedAtEpochMs?.let {
+                Text("Recuperado y guardado localmente: ${formatter.format(Date(it))}", style = MaterialTheme.typography.bodySmall)
+            }
+            Text(quote.attribution ?: "Powered by CoinPaprika", style = MaterialTheme.typography.bodySmall)
+            Text("Frescura local: ${quote.freshnessStatus} · ${quote.freshnessReason}", style = MaterialTheme.typography.bodySmall)
+            Text("Política operativa local: FRESH hasta 10 min; STALE hasta 60 min; EXPIRED después. No certifica exactitud del precio.", style = MaterialTheme.typography.bodySmall)
+            Text("Caché local: intervalo mínimo de 10 minutos entre consultas por activo.", style = MaterialTheme.typography.bodySmall)
+        }
+        else -> Text("No hay cotización guardada para este activo.", style = MaterialTheme.typography.bodySmall)
+    }
+    if (quote?.error != null) {
+        Text("Error de actualización: ${quote.error}", color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall)
+    }
+    TextButton(onClick = onRefresh, enabled = quote?.isLoading != true) {
+        Text(if (quote?.isLoading == true) "Consultando proveedor…" else "Actualizar cotización")
+    }
+}
+
+
+@Composable
+private fun MarketHistorySyncDetails(
+    state: MarketHistorySyncUiState?,
+    onDownload: () -> Unit
+) {
+    state?.message?.let {
+        Text(it, style = MaterialTheme.typography.bodySmall)
+    }
+    if (state?.error != null) {
+        Text(
+            "Error de histórico: ${state.error}",
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+    TextButton(onClick = onDownload, enabled = state?.isLoading != true) {
+        Text(if (state?.isLoading == true) "Descargando e importando…" else "Descargar último año")
+    }
+}
+
+
+@Composable
+private fun MarketHistoryPoints(points: List<CoinPaprikaHistoricalPoint>) {
+    val dateFormatter = DateFormat.getDateInstance(DateFormat.MEDIUM)
+    Spacer(Modifier.height(8.dp))
+    Text("Últimos puntos almacenados", fontWeight = FontWeight.Medium)
+    if (points.isEmpty()) {
+        Text("Todavía no hay puntos históricos guardados.", style = MaterialTheme.typography.bodySmall)
+    } else {
+        points.take(10).forEach { point ->
+            val date = dateFormatter.format(Date(point.timestampEpochMs))
+            val price = String.format(java.util.Locale.US, "%.8f", point.priceUsd)
+            Text("$date · $price USD", style = MaterialTheme.typography.bodySmall)
+            Text(
+                "Vol. 24 h: ${point.volume24hUsd?.let { String.format(java.util.Locale.US, "%.2f", it) } ?: "N/D"} · Cap.: ${point.marketCapUsd?.let { String.format(java.util.Locale.US, "%.2f", it) } ?: "N/D"}",
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+    }
 }
 
 @Composable

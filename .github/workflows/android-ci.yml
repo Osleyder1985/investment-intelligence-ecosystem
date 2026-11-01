@@ -8,13 +8,11 @@ on:
       - "settings.gradle.kts"
       - "gradle.properties"
       - ".github/workflows/android-ci.yml"
-  push:
-    branches:
-      - "feat/android-*"
+      - ".github/workflows/android-release.yml"
 
-# Push and pull_request events for the same branch share one CI concurrency group.
+# A newer commit on this PR supersedes its previous validation run.
 concurrency:
-  group: android-ci-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: android-ci-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
