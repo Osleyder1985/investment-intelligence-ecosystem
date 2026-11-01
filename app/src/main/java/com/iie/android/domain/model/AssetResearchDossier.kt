@@ -57,3 +57,6 @@ data class ResearchQuoteInput(
     val retrievedAtEpochMs: Long?,
     val freshnessStatus: String
 )
+
+/** Daily market point facts decoupled from provider adapter types. */
+data class ResearchMarketHistoryPoint(val timestampEpochMs: Long, val priceUsd: Double)
