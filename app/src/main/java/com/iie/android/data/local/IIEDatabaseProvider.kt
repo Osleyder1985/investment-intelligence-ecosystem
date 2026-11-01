@@ -27,6 +27,13 @@ object IIEDatabaseProvider {
             database.execSQL("CREATE INDEX IF NOT EXISTS index_asset_research_dossier_snapshots_assetId_generatedAtEpochMs ON asset_research_dossier_snapshots (assetId, generatedAtEpochMs)")
         }
     }
+    internal val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS global_market_snapshots (snapshotId TEXT NOT NULL PRIMARY KEY, sourceId TEXT NOT NULL, snapshotType TEXT NOT NULL, observedAtEpochMs INTEGER NOT NULL, retrievedAtEpochMs INTEGER NOT NULL, quality TEXT NOT NULL, payloadJson TEXT NOT NULL, payloadSha256 TEXT NOT NULL)")
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_global_market_snapshots_sourceId_snapshotType_retrievedAtEpochMs ON global_market_snapshots (sourceId, snapshotType, retrievedAtEpochMs)")
+        }
+    }
+
     @Volatile
     private var instance: IIEDatabase? = null
 
@@ -36,6 +43,6 @@ object IIEDatabaseProvider {
                 context.applicationContext,
                 IIEDatabase::class.java,
                 "iie-local.db"
-            ).addMigrations(MIGRATION_1_2).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
         }
 }

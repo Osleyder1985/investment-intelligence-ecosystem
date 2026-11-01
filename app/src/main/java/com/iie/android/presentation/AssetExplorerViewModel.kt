@@ -17,6 +17,8 @@ import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.QuoteFreshnessEvaluator
 import org.json.JSONObject
 import com.iie.android.data.repository.RoomAssetRepository
+import com.iie.android.data.repository.GlobalMarketOverviewRepository
+import com.iie.android.data.repository.GlobalMarketDashboardData
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetDeploymentSummary
 import com.iie.android.domain.model.AssetObservationProvenance
@@ -49,6 +51,9 @@ import java.util.UUID
 class AssetExplorerViewModel(application: Application) : AndroidViewModel(application) {
     private val database = IIEDatabaseProvider.get(application)
     private val repository = RoomAssetRepository(database)
+    private val globalMarketRepository = GlobalMarketOverviewRepository(database)
+    private val _globalMarket = MutableStateFlow(GlobalMarketDashboardData(null, null))
+    val globalMarket: StateFlow<GlobalMarketDashboardData> = _globalMarket.asStateFlow()
     private val coinPaprikaClient = CoinPaprikaTickerClient()
     private val coinMarketCapClient = CoinMarketCapKeylessClient()
     private val coinPaprikaHistoryClient = CoinPaprikaHistoricalTickerClient()
@@ -60,6 +65,9 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
 
     private val _marketQuotes = MutableStateFlow<Map<String, MarketQuoteUiState>>(emptyMap())
     val marketQuotes: StateFlow<Map<String, MarketQuoteUiState>> = _marketQuotes.asStateFlow()
+
+    private val _dashboardRefreshStatus = MutableStateFlow<String?>(null)
+    val dashboardRefreshStatus: StateFlow<String?> = _dashboardRefreshStatus.asStateFlow()
 
     private val _coinMarketCapQuotes = MutableStateFlow<Map<String, MarketQuoteUiState>>(emptyMap())
     val coinMarketCapQuotes: StateFlow<Map<String, MarketQuoteUiState>> = _coinMarketCapQuotes.asStateFlow()
@@ -92,6 +100,9 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             try {
                 withContext(Dispatchers.IO) { InitialAssetCatalog(database).synchronize() }
                 _catalogStatus.value = "Catálogo inicial sincronizado · identidades y proveedores separados"
+                _globalMarket.value = withContext(Dispatchers.IO) { globalMarketRepository.loadLatest() }
+                withContext(Dispatchers.IO) { globalMarketRepository.refresh() }
+                _globalMarket.value = withContext(Dispatchers.IO) { globalMarketRepository.loadLatest() }
             } catch (error: Exception) {
                 _catalogStatus.value =
                     "No se pudo inicializar el catálogo local: ${error.message ?: "error desconocido"}"
@@ -114,11 +125,11 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                     val cmcQuote = cmcQuoteRecord?.let { (observation, attribution) -> observation.toUiState(attribution) }
                     val tokenomicsEvidence = cmcQuoteRecord?.let { (observation, _) ->
                         val payload = JSONObject(observation.valueJson)
-                        val circulating = payload.nullableNonNegativeDouble("circulatingSupply")
-                        val total = payload.nullableNonNegativeDouble("totalSupply")
-                        val maximum = payload.nullableNonNegativeDouble("maxSupply")
-                        val marketCap = payload.nullableNonNegativeDouble("marketCapUsd")
-                        val fullyDilutedMarketCap = payload.nullableNonNegativeDouble("fullyDilutedMarketCapUsd")
+                        val circulating = payload.nullableNonNegativeFiniteDouble("circulatingSupply")
+                        val total = payload.nullableNonNegativeFiniteDouble("totalSupply")
+                        val maximum = payload.nullableNonNegativeFiniteDouble("maxSupply")
+                        val marketCap = payload.nullableNonNegativeFiniteDouble("marketCapUsd")
+                        val fullyDilutedMarketCap = payload.nullableNonNegativeFiniteDouble("fullyDilutedMarketCapUsd")
                         val relationIssues = com.iie.android.domain.model.ResearchEvidenceQualityGate
                             .validateSupplyRelations(circulating, total, maximum)
                         fun supplyEvidence(field: String, value: Double?): ResearchEvidence<Double> =
@@ -274,48 +285,79 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     }
 
     fun refreshMarketQuote(assetId: String, symbol: String) {
+        markQuoteLoading(assetId)
+        viewModelScope.launch { refreshMarketQuoteNow(assetId, symbol) }
+    }
+
+    fun refreshAllMarketQuotes(assets: List<Asset>) {
+        if (_dashboardRefreshStatus.value?.startsWith("Actualizando") == true) return
+        if (assets.isEmpty()) {
+            _dashboardRefreshStatus.value = "No hay activos en el universo para actualizar."
+            return
+        }
+        viewModelScope.launch {
+            _dashboardRefreshStatus.value = "Actualizando métricas globales…"
+            val globalResult = withContext(Dispatchers.IO) { globalMarketRepository.refresh() }
+            _globalMarket.value = withContext(Dispatchers.IO) { globalMarketRepository.loadLatest() }
+            val globalStatus = when {
+                globalResult.globalUpdated && globalResult.sentimentUpdated -> "Mercado global y sentimiento actualizados"
+                globalResult.globalUpdated -> "Mercado global actualizado · sentimiento no disponible"
+                globalResult.sentimentUpdated -> "Sentimiento actualizado · mercado global no disponible"
+                else -> "No se pudieron actualizar métricas globales; se conservan los últimos datos guardados"
+            }
+            _dashboardRefreshStatus.value = "Actualizando 0/${assets.size} activos…"
+            assets.forEachIndexed { index, asset ->
+                markQuoteLoading(asset.assetId)
+                refreshMarketQuoteNow(asset.assetId, asset.symbol)
+                if ((_dailyMarketHistory.value[asset.assetId]?.size ?: 0) < 2) {
+                    _dashboardRefreshStatus.value = "Actualizando · descargando histórico · ${asset.symbol.uppercase()}"
+                    downloadDailyMarketHistoryNow(asset.assetId, asset.symbol)
+                }
+                _dashboardRefreshStatus.value = "Actualizando ${index + 1}/${assets.size} · ${asset.symbol.uppercase()}"
+            }
+            _dashboardRefreshStatus.value = "Actualización finalizada · ${assets.size} activos revisados. · $globalStatus"
+        }
+    }
+
+    private fun markQuoteLoading(assetId: String) {
         _marketQuotes.value = _marketQuotes.value + (assetId to
             (_marketQuotes.value[assetId] ?: MarketQuoteUiState()).copy(isLoading = true, error = null))
         _coinMarketCapQuotes.value = _coinMarketCapQuotes.value + (assetId to
             (_coinMarketCapQuotes.value[assetId] ?: MarketQuoteUiState()).copy(isLoading = true, error = null))
-        viewModelScope.launch {
-            try {
-                val observation = withContext(Dispatchers.IO) {
-                    repository.fetchAndPersistCoinPaprikaQuote(assetId, symbol, coinPaprikaClient)
-                }
-                val attribution = withContext(Dispatchers.IO) {
-                    repository.getLatestCoinPaprikaQuote(assetId)?.second ?: "CoinPaprika"
-                }
-                val state = observation.toUiState(attribution)
-                _marketQuotes.value = _marketQuotes.value + (assetId to state)
-            } catch (error: Exception) {
-                val previous = _marketQuotes.value[assetId] ?: MarketQuoteUiState()
-                _marketQuotes.value = _marketQuotes.value + (assetId to previous.copy(
-                    isLoading = false,
-                    error = error.message ?: "No se pudo actualizar la cotización"
-                ))
-            }
+    }
 
-            try {
-                val cmcObservation = withContext(Dispatchers.IO) {
-                    repository.fetchAndPersistCoinMarketCapQuote(
-                        assetId = assetId,
-                        expectedSymbol = symbol,
-                        client = coinMarketCapClient
-                    )
-                }
-                val attribution = withContext(Dispatchers.IO) {
-                    repository.getLatestCoinMarketCapQuote(assetId)?.second ?: "CoinMarketCap"
-                }
-                _coinMarketCapQuotes.value = _coinMarketCapQuotes.value +
-                    (assetId to cmcObservation.toUiState(attribution))
-            } catch (error: Exception) {
-                val previous = _coinMarketCapQuotes.value[assetId] ?: MarketQuoteUiState()
-                _coinMarketCapQuotes.value = _coinMarketCapQuotes.value + (assetId to previous.copy(
-                    isLoading = false,
-                    error = error.message ?: "No se pudo actualizar CoinMarketCap"
-                ))
+    private suspend fun refreshMarketQuoteNow(assetId: String, symbol: String) {
+        try {
+            val observation = withContext(Dispatchers.IO) {
+                repository.fetchAndPersistCoinPaprikaQuote(assetId, symbol, coinPaprikaClient)
             }
+            val attribution = withContext(Dispatchers.IO) {
+                repository.getLatestCoinPaprikaQuote(assetId)?.second ?: "CoinPaprika"
+            }
+            _marketQuotes.value = _marketQuotes.value + (assetId to observation.toUiState(attribution))
+        } catch (error: Exception) {
+            val previous = _marketQuotes.value[assetId] ?: MarketQuoteUiState()
+            _marketQuotes.value = _marketQuotes.value + (assetId to previous.copy(
+                isLoading = false,
+                error = error.message ?: "No se pudo actualizar la cotización"
+            ))
+        }
+
+        try {
+            val observation = withContext(Dispatchers.IO) {
+                repository.fetchAndPersistCoinMarketCapQuote(assetId, symbol, coinMarketCapClient)
+            }
+            val attribution = withContext(Dispatchers.IO) {
+                repository.getLatestCoinMarketCapQuote(assetId)?.second ?: "CoinMarketCap"
+            }
+            _coinMarketCapQuotes.value = _coinMarketCapQuotes.value +
+                (assetId to observation.toUiState(attribution))
+        } catch (error: Exception) {
+            val previous = _coinMarketCapQuotes.value[assetId] ?: MarketQuoteUiState()
+            _coinMarketCapQuotes.value = _coinMarketCapQuotes.value + (assetId to previous.copy(
+                isLoading = false,
+                error = error.message ?: "No se pudo actualizar CoinMarketCap"
+            ))
         }
     }
 
@@ -398,42 +440,48 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
         if (current.isLoading) return
         _marketHistorySync.value = _marketHistorySync.value +
             (assetId to current.copy(isLoading = true, error = null, message = "Preparando descarga…"))
-        viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    val end = LocalDate.now(ZoneOffset.UTC)
-                    val start = end.minusYears(1)
-                    repository.downloadAndPersistCoinPaprikaDailyHistory(
-                        assetId = assetId,
-                        expectedSymbol = symbol,
-                        start = start,
-                        end = end,
-                        fetcher = coinPaprikaHistoryClient
-                    )
-                }
-                loadDailyMarketHistory(assetId)
-                _marketHistorySync.value = _marketHistorySync.value + (assetId to MarketHistorySyncUiState(
-                    isLoading = false,
-                    pointsReceived = result.pointsReceived,
-                    pointsInserted = result.pointsInserted,
-                    pointsAlreadyPresent = result.pointsAlreadyPresent,
-                    message = "Histórico diario importado: ${result.pointsInserted} nuevos; ${result.pointsAlreadyPresent} ya existían."
-                ))
-            } catch (error: Exception) {
-                val previous = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
-                _marketHistorySync.value = _marketHistorySync.value + (assetId to previous.copy(
-                    isLoading = false,
-                    error = error.message ?: "No se pudo descargar el histórico",
-                    message = "La importación no se completó."
-                ))
+        viewModelScope.launch { downloadDailyMarketHistoryNow(assetId, symbol) }
+    }
+
+    private suspend fun downloadDailyMarketHistoryNow(assetId: String, symbol: String) {
+        val current = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
+        if (current.isLoading && current.message != "Preparando descarga…" && current.message != "Descargando desde el dashboard…") return
+        _marketHistorySync.value = _marketHistorySync.value +
+            (assetId to current.copy(isLoading = true, error = null, message = "Descargando desde el dashboard…"))
+        try {
+            val result = withContext(Dispatchers.IO) {
+                val end = LocalDate.now(ZoneOffset.UTC)
+                val start = end.minusYears(1)
+                repository.downloadAndPersistCoinPaprikaDailyHistory(
+                    assetId = assetId,
+                    expectedSymbol = symbol,
+                    start = start,
+                    end = end,
+                    fetcher = coinPaprikaHistoryClient
+                )
             }
+            loadDailyMarketHistory(assetId)
+            _marketHistorySync.value = _marketHistorySync.value + (assetId to MarketHistorySyncUiState(
+                isLoading = false,
+                pointsReceived = result.pointsReceived,
+                pointsInserted = result.pointsInserted,
+                pointsAlreadyPresent = result.pointsAlreadyPresent,
+                message = "Histórico diario importado: ${result.pointsInserted} nuevos; ${result.pointsAlreadyPresent} ya existían."
+            ))
+        } catch (error: Exception) {
+            val previous = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
+            _marketHistorySync.value = _marketHistorySync.value + (assetId to previous.copy(
+                isLoading = false,
+                error = error.message ?: "No se pudo descargar el histórico",
+                message = "La importación no se completó."
+            ))
         }
     }
-    private fun JSONObject.nullableNonNegativeDouble(key: String): Double? {
-        if (isNull(key)) return null
-        val value = getDouble(key)
-        require(value.isFinite() && value >= 0.0) { "CoinMarketCap $key is outside accepted bounds" }
-        return value
+
+    private fun JSONObject.nullableNonNegativeFiniteDouble(key: String): Double? {
+        if (!has(key) || isNull(key)) return null
+        val value = optDouble(key, Double.NaN)
+        return value.takeIf { it.isFinite() && it >= 0.0 }
     }
 
     private fun Pair<com.iie.android.data.local.entity.AssetObservationEntity, String>.toUiState(): MarketQuoteUiState =
@@ -443,20 +491,23 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
         attribution: String
     ): MarketQuoteUiState {
         val json = JSONObject(valueJson)
+        fun optionalNonNegative(key: String): Double? =
+            json.optDouble(key, Double.NaN).takeIf { it.isFinite() && it >= 0.0 }
+        val providerUpdated = json.optLong("providerUpdatedAtEpochMs").takeIf { it > 0L }
+        val freshness = quoteFreshnessEvaluator.evaluate(providerUpdated, System.currentTimeMillis())
         return MarketQuoteUiState(
-            priceUsd = json.getDouble("price"),
-            providerUpdatedAtEpochMs = json.getLong("providerUpdatedAtEpochMs"),
+            priceUsd = json.optDouble("price", Double.NaN).takeIf { it.isFinite() && it > 0.0 },
+            providerUpdatedAtEpochMs = providerUpdated,
             retrievedAtEpochMs = retrievedAtEpochMs,
             attribution = attribution,
-            providerId = json.getString("providerId"),
-            freshnessStatus = quoteFreshnessEvaluator.evaluate(
-                json.optLong("providerUpdatedAtEpochMs").takeIf { it > 0L },
-                System.currentTimeMillis()
-            ).status.name,
-            freshnessReason = quoteFreshnessEvaluator.evaluate(
-                json.optLong("providerUpdatedAtEpochMs").takeIf { it > 0L },
-                System.currentTimeMillis()
-            ).reason,
+            providerId = json.optString("providerId").takeIf { it.isNotBlank() },
+            marketCapUsd = optionalNonNegative("marketCapUsd"),
+            fullyDilutedMarketCapUsd = optionalNonNegative("fullyDilutedMarketCapUsd"),
+            circulatingSupply = optionalNonNegative("circulatingSupply"),
+            totalSupply = optionalNonNegative("totalSupply"),
+            maxSupply = optionalNonNegative("maxSupply"),
+            freshnessStatus = freshness.status.name,
+            freshnessReason = freshness.reason,
             isLoading = false
         )
     }
@@ -488,6 +539,11 @@ data class MarketQuoteUiState(
     val retrievedAtEpochMs: Long? = null,
     val attribution: String? = null,
     val providerId: String? = null,
+    val marketCapUsd: Double? = null,
+    val fullyDilutedMarketCapUsd: Double? = null,
+    val circulatingSupply: Double? = null,
+    val totalSupply: Double? = null,
+    val maxSupply: Double? = null,
     val freshnessStatus: String = "UNKNOWN",
     val freshnessReason: String = "Frescura no evaluada",
     val isLoading: Boolean = false,

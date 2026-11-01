@@ -63,6 +63,22 @@ class InitialAssetCatalog(
                 )
             }
 
+            if (database.dataSourceDao().getSource(ALTERNATIVE_ME_SOURCE_ID) == null) {
+                database.dataSourceDao().insertSource(
+                    DataSourceEntity(
+                        sourceId = ALTERNATIVE_ME_SOURCE_ID,
+                        sourceKey = ALTERNATIVE_ME_SOURCE_KEY,
+                        displayName = "Alternative.me Fear & Greed Index",
+                        providerType = "SENTIMENT_DATA_PROVIDER",
+                        homepageUrl = "https://alternative.me/crypto/fear-and-greed-index/",
+                        termsUrl = "https://alternative.me/crypto/fear-and-greed-index/",
+                        attributionText = "Fear & Greed Index provided by Alternative.me",
+                        permittedUseStatus = "ATTRIBUTION_REQUIRED",
+                        registeredAtEpochMs = synchronizedAt
+                    )
+                )
+            }
+
             if (database.dataSourceDao().getSource(ROUTESCAN_SOURCE_ID) == null) {
                 database.dataSourceDao().insertSource(
                     DataSourceEntity(
@@ -141,6 +157,8 @@ class InitialAssetCatalog(
         const val COINPAPRIKA_SOURCE_KEY = "coinpaprika-api-v1"
         const val COINMARKETCAP_SOURCE_ID = "source:coinmarketcap"
         const val COINMARKETCAP_SOURCE_KEY = "coinmarketcap-api-v3"
+        const val ALTERNATIVE_ME_SOURCE_ID = "source:alternative-me"
+        const val ALTERNATIVE_ME_SOURCE_KEY = "alternative-me-fng-v1"
         const val ROUTESCAN_SOURCE_ID = "source:routescan"
         const val ROUTESCAN_SOURCE_KEY = "routescan-evm-api-v1"
 
