@@ -100,7 +100,7 @@ class AssetResearchDossierBuilder {
         if (firstPrice == null || secondPrice == null || firstTime == null || secondTime == null ||
             firstTime <= 0L || secondTime <= 0L
         ) return QuoteComparisonResult("NOT_COMPARABLE", null, null)
-        if (first.freshnessStatus != "FRESH" || second.freshnessStatus != "FRESH" ||
+        if (first?.freshnessStatus != "FRESH" || second?.freshnessStatus != "FRESH" ||
             kotlin.math.abs(firstTime - secondTime) > input.maxTimestampSkewMs
         ) return QuoteComparisonResult("NOT_COMPARABLE", null, null)
         val mean = (firstPrice + secondPrice) / 2.0
