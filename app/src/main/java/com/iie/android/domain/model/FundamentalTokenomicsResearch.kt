@@ -103,7 +103,7 @@ object ResearchEvidenceQualityGate {
             licenseStatus == ResearchLicenseStatus.PROHIBITED
         ) {
             reasons += "LICENSE_PROHIBITS_USE"
-        } else if (permittedUse !in setOf("APPROVED_FOR_INTENDED_USE", "ATTRIBUTION_REQUIRED")) {
+        } else if (permittedUse !in setOf("APPROVED_FOR_INTENDED_USE", "ATTRIBUTION_REQUIRED", "PERSONAL_USE_ONLY")) {
             reasons += "PERMITTED_USE_STATUS_UNRECOGNIZED"
         }
         if (licenseStatus == ResearchLicenseStatus.UNKNOWN ||
