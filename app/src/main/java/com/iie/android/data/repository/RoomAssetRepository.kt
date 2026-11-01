@@ -583,6 +583,8 @@ class RoomAssetRepository(
                     .joinToString("") { "%02x".format(it) }
                 if (payload.optString("schema") != "iie.market-history-daily.v1" ||
                     payload.optString("sourceId") != sourceId || observation.sourceId != sourceId ||
+                    observation.observationType != MARKET_HISTORY_DAILY_OBSERVATION_TYPE ||
+                    observation.status != "ACCEPTED" ||
                     payload.optString("providerId") != identifier.identifierValue ||
                     !payload.optString("symbol").equals(asset.symbol, true) ||
                     payload.optString("interval") != "1d" || payload.optString("quoteCurrency") != "USD" ||
@@ -590,6 +592,9 @@ class RoomAssetRepository(
                 val price = payload.optDouble("priceUsd", Double.NaN)
                 val timestamp = payload.optLong("providerTimestampEpochMs", -1L)
                 val retrieved = payload.optLong("retrievedAtEpochMs", -1L)
+                if (timestamp != observation.observedAtEpochMs ||
+                    retrieved != observation.retrievedAtEpochMs ||
+                    retrieved < timestamp || retrieved > nowEpochMs()) return@mapNotNull null
                 val volume = if (payload.isNull("volume24hUsd")) null else payload.optDouble("volume24hUsd", Double.NaN)
                 val marketCap = if (payload.isNull("marketCapUsd")) null else payload.optDouble("marketCapUsd", Double.NaN)
                 if (!price.isFinite() || price <= 0.0 || timestamp <= 0L || retrieved < timestamp ||
