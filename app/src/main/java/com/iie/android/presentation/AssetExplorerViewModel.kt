@@ -24,6 +24,9 @@ import com.iie.android.domain.model.AssetResearchDossier
 import com.iie.android.domain.model.ResearchQuoteInput
 import com.iie.android.domain.model.ResearchMarketHistoryPoint
 import com.iie.android.domain.model.ResearchQuoteComparisonInput
+import com.iie.android.domain.model.ResearchEvidence
+import com.iie.android.domain.model.ResearchFieldStatus
+import com.iie.android.domain.model.TokenomicsResearchSection
 import com.iie.android.domain.quality.AssetResearchDossierBuilder
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -106,6 +109,57 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                     val quote = quoteRecord?.let { (observation, attribution) -> observation.toUiState(attribution) }
                     val cmcQuoteRecord = repository.getLatestCoinMarketCapQuote(assetId)
                     val cmcQuote = cmcQuoteRecord?.let { (observation, attribution) -> observation.toUiState(attribution) }
+                    val tokenomicsEvidence = cmcQuoteRecord?.let { (observation, _) ->
+                        val payload = JSONObject(observation.valueJson)
+                        val circulating = payload.nullableNonNegativeDouble("circulatingSupply")
+                        val total = payload.nullableNonNegativeDouble("totalSupply")
+                        val maximum = payload.nullableNonNegativeDouble("maxSupply")
+                        val relationIssues = com.iie.android.domain.model.ResearchEvidenceQualityGate
+                            .validateSupplyRelations(circulating, total, maximum)
+                        fun supplyEvidence(field: String, value: Double?): ResearchEvidence<Double> =
+                            ResearchEvidence(
+                                fieldKey = field,
+                                value = value,
+                                status = when {
+                                    value == null -> ResearchFieldStatus.UNKNOWN
+                                    relationIssues.isNotEmpty() -> ResearchFieldStatus.CONFLICTED
+                                    else -> ResearchFieldStatus.KNOWN
+                                },
+                                sourceId = CoinMarketCapAuthenticatedClient.SOURCE_ID,
+                                sourceName = "CoinMarketCap",
+                                sourceUrl = "https://coinmarketcap.com/",
+                                licenseReference = CoinMarketCapAuthenticatedClient.TERMS_URL,
+                                permittedUseStatus = "PERSONAL_USE_ONLY",
+                                observedAtEpochMs = observation.observedAtEpochMs,
+                                retrievedAtEpochMs = observation.retrievedAtEpochMs,
+                                qualityStatus = "PROVIDER_SCHEMA_VALIDATED",
+                                notes = relationIssues
+                            )
+                        val unknownNumber = ResearchEvidence<Double>(
+                            fieldKey = "annual_inflation_percent", value = null,
+                            status = ResearchFieldStatus.UNKNOWN,
+                            sourceId = null, sourceName = null, sourceUrl = null,
+                            licenseReference = null, permittedUseStatus = "UNKNOWN",
+                            observedAtEpochMs = null, retrievedAtEpochMs = null,
+                            qualityStatus = "NOT_PROVIDED_BY_QUOTE_ENDPOINT"
+                        )
+                        val unknownText = ResearchEvidence<String>(
+                            fieldKey = "emission_schedule", value = null,
+                            status = ResearchFieldStatus.UNKNOWN,
+                            sourceId = null, sourceName = null, sourceUrl = null,
+                            licenseReference = null, permittedUseStatus = "UNKNOWN",
+                            observedAtEpochMs = null, retrievedAtEpochMs = null,
+                            qualityStatus = "NOT_PROVIDED_BY_QUOTE_ENDPOINT"
+                        )
+                        TokenomicsResearchSection(
+                            circulatingSupply = supplyEvidence("circulating_supply", circulating),
+                            totalSupply = supplyEvidence("total_supply", total),
+                            maxSupply = supplyEvidence("max_supply", maximum),
+                            annualInflationPercent = unknownNumber,
+                            emissionSchedule = unknownText,
+                            unlockEvents = emptyList()
+                        )
+                    }
                     val history = repository.getLatestCoinPaprikaDailyHistory(assetId, limit = 365)
                     dossierBuilder.build(
                         asset = asset,
@@ -127,7 +181,8 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                             secondaryQuote = cmcQuote?.let { ResearchQuoteInput(it.priceUsd, it.attribution, it.providerUpdatedAtEpochMs, it.retrievedAtEpochMs, it.freshnessStatus) },
                             primaryObservationId = quoteRecord?.first?.observationId,
                             secondaryObservationId = cmcQuoteRecord?.first?.observationId
-                        )
+                        ),
+                        tokenomicsEvidence = tokenomicsEvidence
                     )
                 }
                 withContext(Dispatchers.IO) {
@@ -300,6 +355,13 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             }
         }
     }
+    private fun JSONObject.nullableNonNegativeDouble(key: String): Double? {
+        if (isNull(key)) return null
+        val value = getDouble(key)
+        require(value.isFinite() && value >= 0.0) { "CoinMarketCap $key is outside accepted bounds" }
+        return value
+    }
+
     private fun Pair<com.iie.android.data.local.entity.AssetObservationEntity, String>.toUiState(): MarketQuoteUiState =
         first.toUiState(second)
 
