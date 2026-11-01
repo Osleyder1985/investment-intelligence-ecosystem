@@ -35,6 +35,9 @@ interface AssetDeploymentDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertDeployment(deployment: AssetDeploymentEntity)
 
+    @androidx.room.Update
+    suspend fun updateDeployment(deployment: AssetDeploymentEntity)
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertDeployments(deployments: List<AssetDeploymentEntity>)
 }
