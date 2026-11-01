@@ -9,7 +9,7 @@ import com.iie.android.data.market.CoinMarketCapAuthenticatedClient
 import com.iie.android.data.market.CoinPaprikaQuote
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.CoinPaprikaDailyHistoryFetcher
-import com.iie.android.data.market.RoutescanTokenSupplyClient
+import com.iie.android.data.market.RoutescanTokenSupplyFetcher
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.security.MessageDigest
@@ -131,7 +131,7 @@ class RoomAssetRepository(
     suspend fun fetchAndPersistRoutescanTokenSupply(
         assetId: String,
         deploymentId: String,
-        client: RoutescanTokenSupplyClient
+        client: RoutescanTokenSupplyFetcher
     ): AssetObservationEntity {
         val sourceId = "source:routescan"
         val source = database.dataSourceDao().getSource(sourceId)
@@ -219,6 +219,9 @@ class RoomAssetRepository(
         val sourceId = "source:routescan"
         val deployment = database.assetDeploymentDao().getDeployment(deploymentId) ?: return null
         if (deployment.assetId != assetId || deployment.representationKind != "ERC20") return null
+        val source = database.dataSourceDao().getSource(sourceId) ?: return null
+        if (source.permittedUseStatus != "PERSONAL_USE_ONLY") return null
+        val asset = database.assetDao().getAsset(assetId) ?: return null
         val observation = database.assetObservationDao().getLatestForSource(
             assetId = assetId,
             observationType = ROUTESCAN_TOKEN_SUPPLY_OBSERVATION_TYPE,
@@ -229,7 +232,8 @@ class RoomAssetRepository(
         val contractAddress = deployment.reference ?: return null
         return observation.takeIf {
             it.deploymentId == deploymentId &&
-                cachedRoutescanSupplyMatches(it, chainId, contractAddress)
+                cachedRoutescanSupplyMatches(it, chainId, contractAddress) &&
+                    JSONObject(it.valueJson).optString("assetSymbol").equals(asset.symbol, true)
         }
     }
 
