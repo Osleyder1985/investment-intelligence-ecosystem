@@ -101,6 +101,8 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                 withContext(Dispatchers.IO) { InitialAssetCatalog(database).synchronize() }
                 _catalogStatus.value = "Catálogo inicial sincronizado · identidades y proveedores separados"
                 _globalMarket.value = withContext(Dispatchers.IO) { globalMarketRepository.loadLatest() }
+                withContext(Dispatchers.IO) { globalMarketRepository.refresh() }
+                _globalMarket.value = withContext(Dispatchers.IO) { globalMarketRepository.loadLatest() }
             } catch (error: Exception) {
                 _catalogStatus.value =
                     "No se pudo inicializar el catálogo local: ${error.message ?: "error desconocido"}"
