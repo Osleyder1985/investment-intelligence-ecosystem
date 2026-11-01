@@ -44,6 +44,32 @@ class HistoricalRiskAnalyzerTest {
         assertNotNull(result.annualizedVolatilityPercent)
     }
 
+    @Test fun keepsIdenticalTimestampDuplicatesButRejectsConflictingPricesDeterministically() {
+        val start = 1_700_000_000_000L
+        val identicalDuplicate = listOf(
+            CoinPaprikaHistoricalPoint("btc-bitcoin", start, 100.0, null, null, start),
+            CoinPaprikaHistoricalPoint("btc-bitcoin", start + day, 110.0, null, null, start),
+            CoinPaprikaHistoricalPoint("btc-bitcoin", start + day, 110.0, null, null, start)
+        )
+        val identicalResult = analyzer.analyze(identicalDuplicate)
+        assertEquals(2, identicalResult.observations)
+        assertEquals(1, identicalResult.dailyReturns)
+
+        val conflictingDuplicate = listOf(
+            CoinPaprikaHistoricalPoint("btc-bitcoin", start, 100.0, null, null, start),
+            CoinPaprikaHistoricalPoint("btc-bitcoin", start + day, 110.0, null, null, start),
+            CoinPaprikaHistoricalPoint("btc-bitcoin", start + day, 111.0, null, null, start),
+            CoinPaprikaHistoricalPoint("btc-bitcoin", start + 2 * day, 120.0, null, null, start)
+        )
+        val forward = analyzer.analyze(conflictingDuplicate)
+        val reversed = analyzer.analyze(conflictingDuplicate.reversed())
+        assertEquals(2, forward.observations)
+        assertEquals(0, forward.dailyReturns)
+        assertEquals(forward.observations, reversed.observations)
+        assertEquals(forward.dailyReturns, reversed.dailyReturns)
+        assertEquals(forward.maximumDrawdownPercent!!, reversed.maximumDrawdownPercent!!, 0.0)
+    }
+
     @Test fun rejectsInvalidPricesAndReturnsUnknownRiskForInsufficientHistory() {
         val result = analyzer.analyze(listOf(
             CoinPaprikaHistoricalPoint("btc-bitcoin", 1L, -1.0, null, null, 1L),
