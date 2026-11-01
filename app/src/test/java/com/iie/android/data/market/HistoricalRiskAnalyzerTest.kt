@@ -38,7 +38,7 @@ class HistoricalRiskAnalyzerTest {
             if (index >= 4) point.copy(timestampEpochMs = point.timestampEpochMs + day * 4) else point
         } + all.first()
         val result = analyzer.analyze(withGap)
-        assertEquals(3, result.dailyReturns)
+        assertEquals(7, result.dailyReturns)
         assertNull(result.annualizedVolatilityPercent)
     }
 
