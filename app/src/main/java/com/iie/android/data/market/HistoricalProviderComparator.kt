@@ -11,7 +11,9 @@ data class HistoricalProviderComparisonResult(
     val latestTimestampEpochMs: Long?,
     val coinPaprikaPriceUsd: Double?,
     val coinMarketCapPriceUsd: Double?,
-    val latestSymmetricDivergencePercent: Double?
+    val latestSymmetricDivergencePercent: Double?,
+    val coinPaprikaRetrievedAtEpochMs: Long?,
+    val coinMarketCapRetrievedAtEpochMs: Long?
 )
 
 data class HistoricalProviderSeriesQuality(
@@ -78,9 +80,29 @@ class HistoricalProviderComparator {
             latestTimestampEpochMs = latestTimestamp,
             coinPaprikaPriceUsd = paprikaPrice,
             coinMarketCapPriceUsd = cmcPrice,
-            latestSymmetricDivergencePercent = divergence
+            latestSymmetricDivergencePercent = divergence,
+            coinPaprikaRetrievedAtEpochMs = latestTimestamp?.let {
+                latestRetrievedAt(coinPaprika, "source:coinpaprika", it, paprikaPrice)
+            },
+            coinMarketCapRetrievedAtEpochMs = latestTimestamp?.let {
+                latestRetrievedAt(coinMarketCap, "source:coinmarketcap", it, cmcPrice)
+            }
         )
     }
+
+    private fun latestRetrievedAt(
+        points: List<CoinPaprikaHistoricalPoint>,
+        sourceId: String,
+        timestamp: Long,
+        price: Double?
+    ): Long? = points.asSequence()
+        .filter {
+            it.sourceId == sourceId &&
+                it.timestampEpochMs == timestamp &&
+                price != null && it.priceUsd == price &&
+                it.retrievedAtEpochMs >= timestamp
+        }
+        .maxOfOrNull { it.retrievedAtEpochMs }
 
     private fun unambiguousByTimestamp(
         points: List<CoinPaprikaHistoricalPoint>,
