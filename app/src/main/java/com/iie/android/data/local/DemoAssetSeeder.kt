@@ -118,6 +118,9 @@ class DemoAssetSeeder(
         )
 
         val coinPaprikaIdentifiers = listOf(
+            AssetIdentifierEntity("identifier:coinpaprika:btc", "coinpaprika:btc-bitcoin", "asset:bitcoin", COINPAPRIKA_SOURCE_ID, "coinpaprika", "btc-bitcoin", null, null, "PROVIDER_ID_CONFIRMED"),
+            AssetIdentifierEntity("identifier:coinpaprika:eth", "coinpaprika:eth-ethereum", "asset:ethereum", COINPAPRIKA_SOURCE_ID, "coinpaprika", "eth-ethereum", null, null, "PROVIDER_ID_CONFIRMED"),
+            AssetIdentifierEntity("identifier:coinpaprika:sol", "coinpaprika:sol-solana", "asset:solana", COINPAPRIKA_SOURCE_ID, "coinpaprika", "sol-solana", null, null, "PROVIDER_ID_CONFIRMED"),
             AssetIdentifierEntity("identifier:coinpaprika:usdc", "coinpaprika:usdc-usd-coin", "asset:usd-coin", COINPAPRIKA_SOURCE_ID, "coinpaprika", "usdc-usd-coin", null, null, "PROVIDER_ID_CONFIRMED"),
             AssetIdentifierEntity("identifier:coinpaprika:usdt", "coinpaprika:usdt-tether", "asset:tether", COINPAPRIKA_SOURCE_ID, "coinpaprika", "usdt-tether", null, null, "PROVIDER_ID_CONFIRMED")
         )

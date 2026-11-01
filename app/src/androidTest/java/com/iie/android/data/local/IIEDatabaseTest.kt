@@ -376,6 +376,42 @@ class IIEDatabaseTest {
 
 
     @Test
+    fun coinPaprikaMapsBtcEthAndSolToConfirmedProviderIds() = runBlocking {
+        DemoAssetSeeder(database) { 300L }.seed()
+        val expected = mapOf(
+            "asset:bitcoin" to ("btc-bitcoin" to "BTC"),
+            "asset:ethereum" to ("eth-ethereum" to "ETH"),
+            "asset:solana" to ("sol-solana" to "SOL")
+        )
+
+        expected.forEach { (assetId, mapping) ->
+            val (providerId, symbol) = mapping
+            val identifier = database.assetIdentifierDao()
+                .findForAsset(assetId, "source:coinpaprika", "coinpaprika")
+            assertNotNull("Missing CoinPaprika mapping for $symbol", identifier)
+            assertEquals(providerId, identifier?.identifierValue)
+            assertEquals("PROVIDER_ID_CONFIRMED", identifier?.verificationStatus)
+        }
+    }
+
+    @Test
+    fun repeatedSeederPreservesAllCoinPaprikaProviderMappings() = runBlocking {
+        DemoAssetSeeder(database) { 100L }.seed()
+        DemoAssetSeeder(database) { 200L }.seed()
+
+        assertEquals("btc-bitcoin", database.assetIdentifierDao()
+            .findForAsset("asset:bitcoin", "source:coinpaprika", "coinpaprika")?.identifierValue)
+        assertEquals("eth-ethereum", database.assetIdentifierDao()
+            .findForAsset("asset:ethereum", "source:coinpaprika", "coinpaprika")?.identifierValue)
+        assertEquals("sol-solana", database.assetIdentifierDao()
+            .findForAsset("asset:solana", "source:coinpaprika", "coinpaprika")?.identifierValue)
+        assertEquals("usdc-usd-coin", database.assetIdentifierDao()
+            .findForAsset("asset:usd-coin", "source:coinpaprika", "coinpaprika")?.identifierValue)
+        assertEquals("usdt-tether", database.assetIdentifierDao()
+            .findForAsset("asset:tether", "source:coinpaprika", "coinpaprika")?.identifierValue)
+    }
+
+    @Test
     fun marketQuoteObservationsRemainSeparateForUsdcAndUsdt() = runBlocking {
         DemoAssetSeeder(database) { 1_800_000_000_000L }.seed()
         val sourceId = "source:coinpaprika"
