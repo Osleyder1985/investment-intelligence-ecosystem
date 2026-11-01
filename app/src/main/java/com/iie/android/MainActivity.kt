@@ -62,6 +62,7 @@ import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.GlobalMarketMetrics
 import com.iie.android.data.market.FearGreedIndex
 import com.iie.android.data.market.HistoricalRiskAnalyzer
+import com.iie.android.data.market.HistoricalProviderComparator
 import java.text.DateFormat
 import java.util.Date
 
@@ -494,6 +495,50 @@ private fun InvestorDashboard(
             }
             Spacer(Modifier.height(6.dp))
             Text("Capitalización: solo activos cubiertos por CMC; no es el total del mercado. Riesgo: una serie canónica completa por activo, priorizada por cobertura y frescura; nunca se mezclan ni promedian proveedores. Fuentes canónicas: CMC $canonicalCmcCoverage · CoinPaprika $canonicalPaprikaCoverage.",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        item {
+            val comparator = remember { HistoricalProviderComparator() }
+            val comparisons = assets.mapNotNull { asset ->
+                comparator.compare(
+                    history[asset.assetId].orEmpty(),
+                    coinMarketCapHistory[asset.assetId].orEmpty()
+                ).takeIf { it.matchedObservations > 0 }?.let { asset to it }
+            }
+            val divergences = comparisons.mapNotNull { it.second.latestSymmetricDivergencePercent }.sorted()
+            val medianDivergence = divergences.takeIf { it.isNotEmpty() }?.let {
+                if (it.size % 2 == 1) it[it.size / 2] else (it[it.size / 2 - 1] + it[it.size / 2]) / 2.0
+            }
+            val highestDivergence = comparisons.maxByOrNull {
+                it.second.latestSymmetricDivergencePercent ?: Double.NEGATIVE_INFINITY
+            }
+            Text("CALIDAD DE DATOS · CONTRASTE ENTRE PROVEEDORES", style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricCard("Activos comparables", "${comparisons.size} / ${assets.size}", Modifier.weight(1f))
+                MetricCard("Divergencia mediana", medianDivergence?.let {
+                    String.format(java.util.Locale.US, "%.3f%%", it)
+                } ?: "Sin pares exactos", Modifier.weight(1f))
+            }
+            if (highestDivergence != null) {
+                Spacer(Modifier.height(8.dp))
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF111B25))) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("MAYOR DIVERGENCIA OBSERVADA", style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                        Text("${highestDivergence.first.name} · ${String.format(java.util.Locale.US, "%.3f%%",
+                            highestDivergence.second.latestSymmetricDivergencePercent ?: 0.0)}",
+                            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("${highestDivergence.second.matchedObservations} timestamps UTC coincidentes",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            } else {
+                EmptyState("Todavía no existen timestamps UTC idénticos entre ambos proveedores. No se calcula ni se infiere una divergencia a partir de fechas aproximadas.")
+            }
+            Text("La comparación exige el mismo activo canónico, USD y timestamp UTC exacto. La divergencia simétrica compara las dos cotizaciones observadas; no se promedian precios ni se interpreta como oportunidad de arbitraje.",
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         item {
@@ -1233,28 +1278,27 @@ private fun HistoricalProviderComparison(
     coinPaprika: List<CoinPaprikaHistoricalPoint>,
     coinMarketCap: List<CoinPaprikaHistoricalPoint>
 ) {
-    val paprikaByDay = coinPaprika.associateBy { Math.floorDiv(it.timestampEpochMs, 86_400_000L) }
-    val cmcByDay = coinMarketCap.associateBy { Math.floorDiv(it.timestampEpochMs, 86_400_000L) }
-    val commonDays = paprikaByDay.keys.intersect(cmcByDay.keys)
-    val latestDay = commonDays.maxOrNull()
-    val divergence = latestDay?.let { day ->
-        val a = paprikaByDay[day]?.priceUsd
-        val b = cmcByDay[day]?.priceUsd
-        if (a != null && b != null && a > 0.0 && b > 0.0) {
-            200.0 * kotlin.math.abs(a - b) / (a + b)
-        } else null
+    val result = remember(coinPaprika, coinMarketCap) {
+        HistoricalProviderComparator().compare(coinPaprika, coinMarketCap)
     }
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Text("Contraste histórico independiente", fontWeight = FontWeight.SemiBold)
         Text("CoinPaprika: ${coinPaprika.size} puntos · CoinMarketCap: ${coinMarketCap.size} puntos",
             style = MaterialTheme.typography.bodySmall)
-        Text("Fechas UTC coincidentes: ${commonDays.size}",
+        Text("Timestamps UTC exactamente coincidentes: ${result.matchedObservations}",
             style = MaterialTheme.typography.bodySmall)
-        Text(divergence?.let { "Divergencia simétrica en la fecha común más reciente: ${String.format(java.util.Locale.US, "%.3f", it)}%" }
-            ?: "Divergencia no calculable: faltan fechas coincidentes o precios válidos.",
+        Text(result.latestSymmetricDivergencePercent?.let {
+            "Divergencia simétrica en la última observación común: ${String.format(java.util.Locale.US, "%.3f", it)}%"
+        } ?: "Divergencia no calculable: no hay timestamps UTC exactos y precios válidos en ambas fuentes.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("Las series permanecen separadas. No se promedian ni se sustituyen precios entre proveedores.",
+        result.latestTimestampEpochMs?.let { timestamp ->
+            Text("Instante UTC: ${DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM, java.util.Locale.US).format(Date(timestamp))}",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("CoinPaprika: ${result.coinPaprikaPriceUsd} USD · CoinMarketCap: ${result.coinMarketCapPriceUsd} USD",
+                style = MaterialTheme.typography.bodySmall)
+        }
+        Text("Solo se emparejan el mismo activo, moneda USD y timestamp UTC exacto. Las series permanecen separadas; no se promedian ni se sustituyen precios entre proveedores.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
