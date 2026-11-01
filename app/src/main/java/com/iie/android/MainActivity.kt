@@ -21,6 +21,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -70,56 +73,206 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
     val watchlist by viewModel.watchlist.collectAsState()
     val catalogStatus by viewModel.catalogStatus.collectAsState()
     var selectedAsset by remember { mutableStateOf<Asset?>(null) }
+    var destination by remember { mutableStateOf("Resumen") }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxSize().padding(20.dp)) {
-            Text(
-                "Investment Intelligence Ecosystem",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(6.dp))
-            Text("Explorador de criptoactivos", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(12.dp))
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    "MODO DEMOSTRACIÓN · Datos locales de ejemplo; no son datos de mercado ni recomendaciones.",
-                    Modifier.padding(12.dp),
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(catalogStatus, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = query,
-                onValueChange = viewModel::updateSearchQuery,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Buscar por nombre o símbolo") },
-                singleLine = true
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                "${assets.size} activos · ${watchlist.size} en seguimiento",
-                style = MaterialTheme.typography.labelLarge
-            )
-            Spacer(Modifier.height(8.dp))
-            if (assets.isEmpty()) {
-                Text("No hay activos que coincidan con la búsqueda.")
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(assets, key = { it.assetId }) { asset ->
-                        AssetRow(
-                            asset = asset,
-                            isWatched = asset.assetId in watchlist,
-                            onClick = { selectedAsset = asset },
-                            onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
+    val visibleAssets = when (destination) {
+        "Seguimiento" -> assets.filter { it.assetId in watchlist }
+        else -> assets
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Scaffold(
+            bottomBar = {
+                NavigationBar {
+                    listOf("Resumen", "Mercados", "Seguimiento").forEach { item ->
+                        NavigationBarItem(
+                            selected = destination == item,
+                            onClick = { destination = item },
+                            icon = {
+                                Text(
+                                    when (item) {
+                                        "Resumen" -> "⌂"
+                                        "Mercados" -> "◈"
+                                        else -> "☆"
+                                    },
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            },
+                            label = { Text(item) }
                         )
+                    }
+                }
+            }
+        ) { innerPadding ->
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "IIE  /  INTELLIGENCE",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            when (destination) {
+                                "Resumen" -> "Centro de inversión"
+                                "Mercados" -> "Universo de activos"
+                                else -> "Tu seguimiento"
+                            },
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Text(
+                            "LOCAL",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            "ENTORNO DE DEMOSTRACIÓN",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Spacer(Modifier.height(5.dp))
+                        Text(
+                            "El catálogo incluye datos locales de demostración. Las cotizaciones solo se muestran cuando se consultan al proveedor; no se generan señales ni recomendaciones.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            catalogStatus,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+
+                when (destination) {
+                    "Resumen" -> {
+                        Text("VISTA GENERAL", style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            MetricCard(
+                                label = "Activos",
+                                value = assets.size.toString(),
+                                modifier = Modifier.weight(1f)
+                            )
+                            MetricCard(
+                                label = "En seguimiento",
+                                value = watchlist.size.toString(),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Spacer(Modifier.height(18.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Explorar universo", style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold)
+                            TextButton(onClick = { destination = "Mercados" }) {
+                                Text("Ver todos")
+                            }
+                        }
+                        if (assets.isEmpty()) {
+                            EmptyState("El catálogo todavía no contiene activos.")
+                        } else {
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(assets.take(6), key = { it.assetId }) { asset ->
+                                    AssetRow(
+                                        asset = asset,
+                                        isWatched = asset.assetId in watchlist,
+                                        onClick = { selectedAsset = asset },
+                                        onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    "Mercados", "Seguimiento" -> {
+                        if (destination == "Mercados") {
+                            OutlinedTextField(
+                                value = query,
+                                onValueChange = viewModel::updateSearchQuery,
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Buscar por nombre o símbolo") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            Spacer(Modifier.height(12.dp))
+                        } else {
+                            Text(
+                                "Activos guardados para consultar más tarde.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(12.dp))
+                        }
+                        Text(
+                            "${visibleAssets.size} activos",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        if (visibleAssets.isEmpty()) {
+                            EmptyState(
+                                if (destination == "Seguimiento") {
+                                    "Todavía no sigues ningún activo. Añádelo desde Mercados."
+                                } else {
+                                    "No hay activos que coincidan con la búsqueda."
+                                }
+                            )
+                        } else {
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(visibleAssets, key = { it.assetId }) { asset ->
+                                    AssetRow(
+                                        asset = asset,
+                                        isWatched = asset.assetId in watchlist,
+                                        onClick = { selectedAsset = asset },
+                                        onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -138,30 +291,39 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
 }
 
 @Composable
-private fun AssetRow(
-    asset: Asset,
-    isWatched: Boolean,
-    onClick: () -> Unit,
-    onToggleWatchlist: () -> Unit
-) {
-    Card(shape = RoundedCornerShape(12.dp)) {
-        Row(
-            Modifier.fillMaxWidth().padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(
-                Modifier.weight(1f).clickable(onClick = onClick).padding(vertical = 2.dp)
-            ) {
-                Text(asset.name, fontWeight = FontWeight.SemiBold)
-                Text(asset.identityStatus, style = MaterialTheme.typography.bodySmall)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(asset.symbol, fontWeight = FontWeight.Bold)
-                TextButton(onClick = onToggleWatchlist) {
-                    Text(if (isWatched) "Siguiendo" else "+ Seguir")
-                }
-            }
+private fun MetricCard(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+            Text(value, style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold)
         }
+    }
+}
+
+@Composable
+private fun EmptyState(message: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    ) {
+        Text(
+            message,
+            modifier = Modifier.padding(18.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
