@@ -59,6 +59,8 @@ object AssetResearchDossierSnapshotCodec {
                     .put("circulatingSupply", encodeDoubleEvidence(section.circulatingSupply))
                     .put("totalSupply", encodeDoubleEvidence(section.totalSupply))
                     .put("maxSupply", encodeDoubleEvidence(section.maxSupply))
+                    .put("marketCapUsd", encodeDoubleEvidence(section.marketCapUsd))
+                    .put("fullyDilutedMarketCapUsd", encodeDoubleEvidence(section.fullyDilutedMarketCapUsd))
                     .put("annualInflationPercent", encodeDoubleEvidence(section.annualInflationPercent))
                     .put("emissionSchedule", encodeStringEvidence(section.emissionSchedule))
                     .put("unlockEvents", JSONArray().apply {
@@ -114,6 +116,8 @@ object AssetResearchDossierSnapshotCodec {
                 circulatingSupply = decodeDoubleEvidence(json.getJSONObject("circulatingSupply")),
                 totalSupply = decodeDoubleEvidence(json.getJSONObject("totalSupply")),
                 maxSupply = decodeDoubleEvidence(json.getJSONObject("maxSupply")),
+                marketCapUsd = decodeDoubleEvidence(json.getJSONObject("marketCapUsd")),
+                fullyDilutedMarketCapUsd = decodeDoubleEvidence(json.getJSONObject("fullyDilutedMarketCapUsd")),
                 annualInflationPercent = decodeDoubleEvidence(json.getJSONObject("annualInflationPercent")),
                 emissionSchedule = decodeStringEvidence(json.getJSONObject("emissionSchedule")),
                 unlockEvents = (0 until json.getJSONArray("unlockEvents").length()).map { index ->
