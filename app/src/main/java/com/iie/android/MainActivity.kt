@@ -59,6 +59,8 @@ import com.iie.android.presentation.MarketQuoteUiState
 import com.iie.android.presentation.MarketHistorySyncUiState
 import com.iie.android.presentation.RoutescanTokenSupplyUiState
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
+import com.iie.android.data.market.GlobalMarketMetrics
+import com.iie.android.data.market.FearGreedIndex
 import java.text.DateFormat
 import java.util.Date
 
@@ -97,6 +99,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
     val marketQuotes by viewModel.marketQuotes.collectAsState()
     val coinMarketCapQuotes by viewModel.coinMarketCapQuotes.collectAsState()
     val dashboardRefreshStatus by viewModel.dashboardRefreshStatus.collectAsState()
+    val globalMarket by viewModel.globalMarket.collectAsState()
     val marketHistorySync by viewModel.marketHistorySync.collectAsState()
     val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
     var selectedAsset by remember { mutableStateOf<Asset?>(null) }
@@ -203,6 +206,8 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                             watchlist = watchlist,
                             quotes = coinMarketCapQuotes,
                             history = dailyHistoryByAsset,
+                            globalMetrics = globalMarket.globalMetrics,
+                            fearGreed = globalMarket.fearGreed,
                             catalogStatus = catalogStatus,
                             refreshStatus = dashboardRefreshStatus,
                             onExplore = { destination = "Mercados" },
@@ -340,6 +345,8 @@ private fun InvestorDashboard(
     watchlist: Set<String>,
     quotes: Map<String, MarketQuoteUiState>,
     history: Map<String, List<CoinPaprikaHistoricalPoint>>,
+    globalMetrics: GlobalMarketMetrics?,
+    fearGreed: FearGreedIndex?,
     catalogStatus: String,
     refreshStatus: String?,
     onExplore: () -> Unit,
@@ -386,6 +393,55 @@ private fun InvestorDashboard(
                     }
                     Text(refreshStatus ?: catalogStatus, style = MaterialTheme.typography.labelSmall, color = Color(0xFF91A69F))
                 }
+            }
+        }
+        item {
+            Text("MERCADO GLOBAL · COINPAPRIKA", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            if (globalMetrics == null) {
+                EmptyState("Las métricas globales aún no están guardadas. Usa Actualizar datos para consultar la fuente.")
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    MetricCard("Capitalización global", formatCompactUsd(globalMetrics.marketCapUsd), Modifier.weight(1f))
+                    MetricCard("Volumen 24 h", formatCompactUsd(globalMetrics.volume24hUsd), Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    MetricCard("Dominancia BTC", String.format(java.util.Locale.US, "%.2f%%", globalMetrics.bitcoinDominancePercent), Modifier.weight(1f))
+                    MetricCard("Criptomonedas activas", String.format(java.util.Locale.US, "%,d", globalMetrics.activeCryptocurrencies), Modifier.weight(1f))
+                }
+                val capChange = globalMetrics.marketCapChange24hPercent
+                val volumeChange = globalMetrics.volumeChange24hPercent
+                Text(
+                    "Cambio 24 h · capitalización: ${capChange?.let { String.format(java.util.Locale.US, "%+.2f%%", it) } ?: "N/D"} · volumen: ${volumeChange?.let { String.format(java.util.Locale.US, "%+.2f%%", it) } ?: "N/D"}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "CoinPaprika · dato del proveedor: ${DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(globalMetrics.providerUpdatedAtEpochMs))}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        item {
+            Text("SENTIMIENTO DEL MERCADO", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            if (fearGreed == null) {
+                EmptyState("Fear & Greed todavía no está disponible. Se mostrará cuando Alternative.me responda.")
+            } else {
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B25))) {
+                    Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Fear & Greed Index", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(fearGreed.classification, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Fuente: Alternative.me · actualización diaria", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Fecha del índice: ${DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(fearGreed.providerUpdatedAtEpochMs))}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text("${fearGreed.value}/100", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Text("Indicador de sentimiento, no una señal autónoma de inversión. Alternative.me exige atribución visible junto al dato.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         item {
