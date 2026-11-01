@@ -345,12 +345,15 @@ class RoomAssetRepository(
         ).mapNotNull { observation ->
             try {
                 val payload = JSONObject(observation.valueJson)
+                val actualDigest = MessageDigest.getInstance("SHA-256")
+                    .digest(observation.valueJson.toByteArray(Charsets.UTF_8))
+                    .joinToString("") { "%02x".format(it) }
                 if (payload.optString("schema") != "iie.market-history-daily.v1" ||
                     payload.optString("providerId") != identifier.identifierValue ||
                     !payload.optString("symbol").equals(asset.symbol, ignoreCase = true) ||
                     payload.optString("interval") != "1d" ||
                     payload.optString("quoteCurrency") != "USD" ||
-                    observation.payloadSha256.isNullOrBlank()
+                    observation.payloadSha256 != actualDigest
                 ) return@mapNotNull null
                 val price = payload.optDouble("priceUsd", Double.NaN)
                 val timestamp = payload.optLong("providerTimestampEpochMs", -1L)
