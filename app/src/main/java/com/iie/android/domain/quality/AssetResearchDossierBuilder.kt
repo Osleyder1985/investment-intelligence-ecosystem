@@ -53,7 +53,7 @@ class AssetResearchDossierBuilder {
             market = MarketResearchSection(
                 quoteStatus = if (validQuote != null) ResearchFieldStatus.KNOWN else ResearchFieldStatus.UNKNOWN,
                 priceUsd = validQuote,
-                provider = quote?.attribution,
+                provider = quote?.provider,
                 providerUpdatedAtEpochMs = quote?.providerUpdatedAtEpochMs,
                 retrievedAtEpochMs = quote?.retrievedAtEpochMs,
                 freshnessStatus = quote?.freshnessStatus ?: "UNKNOWN",
