@@ -717,8 +717,8 @@ private fun MarketQuoteComparison(
     }
     val timeDifference = kotlin.math.abs(paprikaTime - cmcTime)
     if (timeDifference > 5 * 60 * 1000L ||
-        coinPaprika.freshnessStatus != "FRESH" ||
-        coinMarketCap.freshnessStatus != "FRESH"
+        coinPaprika?.freshnessStatus != "FRESH" ||
+        coinMarketCap?.freshnessStatus != "FRESH"
     ) {
         Text(
             "Comparación: NO COMPARABLE · cotizaciones no suficientemente sincronizadas o frescas.",
