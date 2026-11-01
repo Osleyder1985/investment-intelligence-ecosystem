@@ -19,6 +19,34 @@ class CoinMarketCapHistoricalQuotesClientTest {
       ]}
     }"""
 
+
+    @Test fun parsesKeyInfoUsageWithoutExposingCredentialMaterial() {
+        val validator = CoinMarketCapApiKeyValidator()
+        val result = validator.parseKeyInfo(
+            """{
+              "status":{"error_code":0},
+              "data":{
+                "plan":{"credit_limit_monthly":15000},
+                "usage":{"current_month":{"credits_left":14980}}
+              }
+            }"""
+        )
+        assertEquals(15_000L, result.monthlyCreditLimit)
+        assertEquals(14_980L, result.monthlyCreditsLeft)
+    }
+
+    @Test fun rejectsInvalidKeyInfoAndMalformedQuotaMetadata() {
+        val validator = CoinMarketCapApiKeyValidator()
+        assertThrows(java.io.IOException::class.java) {
+            validator.parseKeyInfo("""{"status":{"error_code":1001},"data":{}}""")
+        }
+        assertThrows(java.io.IOException::class.java) {
+            validator.parseKeyInfo(
+                """{"status":{"error_code":0},"data":{"plan":{"credit_limit_monthly":"unknown"}}}"""
+            )
+        }
+    }
+
     @Test fun parsesDailyQuotesAndPreservesCmcSourceIdentity() {
         val points = client.parse(payload, 1L, retrieved, start, end)
         assertEquals(2, points.size)
