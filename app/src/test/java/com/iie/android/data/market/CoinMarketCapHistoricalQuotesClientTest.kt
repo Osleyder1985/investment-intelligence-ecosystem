@@ -72,6 +72,16 @@ class CoinMarketCapHistoricalQuotesClientTest {
         assertEquals(retrieved, points.first().retrievedAtEpochMs)
     }
 
+    @Test fun parsesActualV3ResponseMapKeyedByNumericAssetId() {
+        val v3Payload = """{"status":{"error_code":0},"data":{"1":{"id":1,"name":"Bitcoin","symbol":"BTC","quotes":[
+            {"timestamp":"2026-10-01T00:00:00.000Z","quote":{"USD":{"price":65000.0,"volume_24h":12000000000.0,"market_cap":1200000000000.0}}}
+        ]}}}"""
+        val points = client.parse(v3Payload, 1L, retrieved, start, end)
+        assertEquals(1, points.size)
+        assertEquals("1", points.single().providerId)
+        assertEquals(65_000.0, points.single().priceUsd, 0.0)
+    }
+
     @Test fun preservesMissingOptionalMetricsAsNull() {
         val points = client.parse(
             """{"status":{"error_code":0},"data":{"id":1,"quotes":[
