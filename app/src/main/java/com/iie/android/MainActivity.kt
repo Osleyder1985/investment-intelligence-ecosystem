@@ -658,8 +658,12 @@ private fun ResearchDossierDetails(dossier: AssetResearchDossier?) {
                 evidence.marketCapUsd,
                 evidence.fullyDilutedMarketCapUsd
             ).forEach { field ->
-                val valueText = field.value?.let {
-                    String.format(java.util.Locale.US, "%,.8f", it)
+                val valueText = field.value?.let { value ->
+                    when (field.fieldKey) {
+                        "marketCapUsd", "fullyDilutedMarketCapUsd" ->
+                            "\$" + String.format(java.util.Locale.US, "%,.2f", value) + " USD"
+                        else -> String.format(java.util.Locale.US, "%,.8f", value)
+                    }
                 } ?: field.status.name
                 Text(
                     "${field.fieldKey}: $valueText · ${field.status}",
