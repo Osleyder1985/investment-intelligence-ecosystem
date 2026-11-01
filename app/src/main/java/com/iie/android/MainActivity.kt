@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -613,6 +614,7 @@ private fun AssetDetailDialog(
         .collectAsState(initial = emptyList())
     val marketQuotes by viewModel.marketQuotes.collectAsState()
     val marketQuote = marketQuotes[asset.assetId]
+    val headlineQuote = marketQuote ?: coinMarketCapQuotes[asset.assetId]
     val coinMarketCapQuotes by viewModel.coinMarketCapQuotes.collectAsState()
     val coinMarketCapQuote = coinMarketCapQuotes[asset.assetId]
     val historySyncStates by viewModel.marketHistorySync.collectAsState()
@@ -669,7 +671,7 @@ private fun AssetDetailDialog(
                             style = MaterialTheme.typography.headlineMedium,
                             color = Color(0xFFF0F7F3), fontWeight = FontWeight.Bold
                         )
-                        Text("CoinPaprika · " + (marketQuote?.freshnessStatus ?: "SIN DATOS"),
+                        Text((headlineQuote?.let { if (marketQuote != null) "CoinPaprika" else "CoinMarketCap" } ?: "MERCADO") + " · " + (headlineQuote?.freshnessStatus ?: "SIN DATOS"),
                             style = MaterialTheme.typography.labelMedium, color = Color(0xFF8DDFB8))
                         TextButton(onClick = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) },
                             enabled = marketQuote?.isLoading != true) {
