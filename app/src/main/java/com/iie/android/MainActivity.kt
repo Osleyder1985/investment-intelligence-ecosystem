@@ -1317,6 +1317,11 @@ private fun HistoricalProviderComparison(
     val cmcQuality = remember(coinMarketCap) {
         comparator.quality(coinMarketCap, "source:coinmarketcap")
     }
+    val utcFormatter = remember {
+        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm 'UTC'", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Text("Contraste histórico independiente", fontWeight = FontWeight.SemiBold)
         Text("CoinPaprika: ${coinPaprika.size} puntos · CoinMarketCap: ${coinMarketCap.size} puntos",
@@ -1329,7 +1334,7 @@ private fun HistoricalProviderComparison(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         result.latestTimestampEpochMs?.let { timestamp ->
-            Text("Instante UTC: ${DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM, java.util.Locale.US).format(Date(timestamp))}",
+            Text("Instante UTC: ${utcFormatter.format(Date(timestamp))}",
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("CoinPaprika: ${result.coinPaprikaPriceUsd} USD · CoinMarketCap: ${result.coinMarketCapPriceUsd} USD",
                 style = MaterialTheme.typography.bodySmall)
