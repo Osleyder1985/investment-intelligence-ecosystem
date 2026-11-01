@@ -47,6 +47,22 @@ class InitialAssetCatalog(
                 )
             }
 
+            if (database.dataSourceDao().getSource(COINMARKETCAP_SOURCE_ID) == null) {
+                database.dataSourceDao().insertSource(
+                    DataSourceEntity(
+                        sourceId = COINMARKETCAP_SOURCE_ID,
+                        sourceKey = COINMARKETCAP_SOURCE_KEY,
+                        displayName = "CoinMarketCap API",
+                        providerType = "MARKET_DATA_PROVIDER",
+                        homepageUrl = "https://coinmarketcap.com",
+                        termsUrl = "https://coinmarketcap.com/terms/",
+                        attributionText = "Data provided by CoinMarketCap",
+                        permittedUseStatus = "PERSONAL_USE_ONLY",
+                        registeredAtEpochMs = synchronizedAt
+                    )
+                )
+            }
+
             networks.forEach { network ->
                 val existing = database.networkDao().getNetwork(network.networkId)
                 if (existing == null) {
@@ -107,6 +123,8 @@ class InitialAssetCatalog(
         const val DEMO_OBSERVATION_TYPE = "IDENTITY_FIXTURE"
         const val COINPAPRIKA_SOURCE_ID = "source:coinpaprika"
         const val COINPAPRIKA_SOURCE_KEY = "coinpaprika-api-v1"
+        const val COINMARKETCAP_SOURCE_ID = "source:coinmarketcap"
+        const val COINMARKETCAP_SOURCE_KEY = "coinmarketcap-api-v3"
 
         val assets = listOf(
             AssetEntity("asset:bitcoin", "crypto:bitcoin", "Bitcoin", "BTC", "CRYPTO_ASSET", "RESOLVED", 0L, 0L),
@@ -133,7 +151,12 @@ class InitialAssetCatalog(
             AssetIdentifierEntity("identifier:coinpaprika:eth", "coinpaprika:eth-ethereum", "asset:ethereum", COINPAPRIKA_SOURCE_ID, "coinpaprika", "eth-ethereum", null, null, "PROVIDER_ID_CONFIRMED"),
             AssetIdentifierEntity("identifier:coinpaprika:sol", "coinpaprika:sol-solana", "asset:solana", COINPAPRIKA_SOURCE_ID, "coinpaprika", "sol-solana", null, null, "PROVIDER_ID_CONFIRMED"),
             AssetIdentifierEntity("identifier:coinpaprika:usdc", "coinpaprika:usdc-usd-coin", "asset:usd-coin", COINPAPRIKA_SOURCE_ID, "coinpaprika", "usdc-usd-coin", null, null, "PROVIDER_ID_CONFIRMED"),
-            AssetIdentifierEntity("identifier:coinpaprika:usdt", "coinpaprika:usdt-tether", "asset:tether", COINPAPRIKA_SOURCE_ID, "coinpaprika", "usdt-tether", null, null, "PROVIDER_ID_CONFIRMED")
+            AssetIdentifierEntity("identifier:coinpaprika:usdt", "coinpaprika:usdt-tether", "asset:tether", COINPAPRIKA_SOURCE_ID, "coinpaprika", "usdt-tether", null, null, "PROVIDER_ID_CONFIRMED"),
+            AssetIdentifierEntity("identifier:coinmarketcap:btc", "coinmarketcap:1", "asset:bitcoin", COINMARKETCAP_SOURCE_ID, "coinmarketcap", "1", null, null, "PROVIDER_ID_CONFIRMED"),
+            AssetIdentifierEntity("identifier:coinmarketcap:eth", "coinmarketcap:1027", "asset:ethereum", COINMARKETCAP_SOURCE_ID, "coinmarketcap", "1027", null, null, "PROVIDER_ID_CONFIRMED"),
+            AssetIdentifierEntity("identifier:coinmarketcap:sol", "coinmarketcap:5426", "asset:solana", COINMARKETCAP_SOURCE_ID, "coinmarketcap", "5426", null, null, "PROVIDER_ID_CONFIRMED"),
+            AssetIdentifierEntity("identifier:coinmarketcap:usdc", "coinmarketcap:3408", "asset:usd-coin", COINMARKETCAP_SOURCE_ID, "coinmarketcap", "3408", null, null, "PROVIDER_ID_CONFIRMED"),
+            AssetIdentifierEntity("identifier:coinmarketcap:usdt", "coinmarketcap:825", "asset:tether", COINMARKETCAP_SOURCE_ID, "coinmarketcap", "825", null, null, "PROVIDER_ID_CONFIRMED")
         )
     }
 }
