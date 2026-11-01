@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -288,8 +289,6 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                                             historySync = marketHistorySync[asset.assetId],
                                             isWatched = asset.assetId in watchlist,
                                             onClick = { selectedAsset = asset },
-                                            onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) },
-                                            onDownloadHistory = { viewModel.downloadDailyMarketHistory(asset.assetId, asset.symbol) },
                                             onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
                                         )
                                     } else {
@@ -328,96 +327,43 @@ private fun MarketAssetRow(
     historySync: MarketHistorySyncUiState?,
     isWatched: Boolean,
     onClick: () -> Unit,
-    onRefresh: () -> Unit,
-    onDownloadHistory: () -> Unit,
     onToggleWatchlist: () -> Unit
 ) {
     val latestTwo = history.sortedByDescending { it.timestampEpochMs }.take(2)
     val dailyChange = if (latestTwo.size == 2 && latestTwo[1].priceUsd > 0.0) {
         ((latestTwo[0].priceUsd / latestTwo[1].priceUsd) - 1.0) * 100.0
     } else null
-    Card(
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF111B25))
-    ) {
-        Column(Modifier.fillMaxWidth().padding(18.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(Modifier.weight(1f).clickable(onClick = onClick)) {
-                    Text(asset.name, fontWeight = FontWeight.SemiBold)
-                    Text(asset.symbol, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B25))) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(asset.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
+                    Text(asset.symbol.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        quote?.priceUsd?.let {
-                            "$" + String.format(java.util.Locale.US, "%.8f", it)
-                        } ?: "Sin cotización",
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        quote?.freshnessStatus ?: "SIN DATOS",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(quote?.priceUsd?.let { "$" + String.format(java.util.Locale.US, "%,.6f", it) } ?: "Cotización no disponible",
+                        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text(when { quote?.isLoading == true -> "ACTUALIZANDO"; quote?.freshnessStatus == "FRESH" -> "PRECIO ACTUALIZADO"; quote?.freshnessStatus != null -> quote.freshnessStatus; else -> "SIN DATOS DE MERCADO" },
+                        style = MaterialTheme.typography.labelSmall, color = if (quote?.freshnessStatus == "FRESH") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            if (history.size >= 2) {
-                MarketSparkline(history)
-            }
-            Spacer(Modifier.height(6.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    dailyChange?.let {
-                        "Variación entre puntos diarios: " +
-                            String.format(java.util.Locale.US, "%+.2f%%", it)
-                    } ?: "Variación diaria: histórico insuficiente",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (dailyChange == null) MaterialTheme.colorScheme.onSurfaceVariant
-                    else if (dailyChange >= 0.0) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.error
-                )
-                TextButton(onClick = onToggleWatchlist) {
-                    Text(if (isWatched) "Siguiendo" else "+ Seguir")
+            if (history.size >= 2) MarketSparkline(history, chartHeight = 54.dp) else {
+                Surface(Modifier.fillMaxWidth().height(38.dp), color = Color(0xFF17232E), shape = RoundedCornerShape(10.dp)) {
+                    Box(contentAlignment = Alignment.Center) { Text("Histórico insuficiente para mostrar tendencia", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
             }
-            if (quote?.attribution != null) {
-                Text(
-                    "Fuente: ${quote.attribution} · Frescura: ${quote.freshnessReason}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("CAMBIO ENTRE PUNTOS DISPONIBLES", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(dailyChange?.let { String.format(java.util.Locale.US, "%+.2f%%", it) } ?: "No disponible", fontWeight = FontWeight.SemiBold,
+                        color = when { dailyChange == null -> MaterialTheme.colorScheme.onSurfaceVariant; dailyChange >= 0.0 -> MaterialTheme.colorScheme.primary; else -> MaterialTheme.colorScheme.error })
+                }
+                TextButton(onClick = onToggleWatchlist) { Text(if (isWatched) "★ Siguiendo" else "+ Seguir") }
             }
-            if (quote?.error != null) {
-                Text(
-                    "Error: ${quote.error}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-            Text(
-                "Histórico diario: " + history.size + " puntos guardados",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            historySync?.message?.let { Text(it, style = MaterialTheme.typography.labelSmall) }
-            historySync?.error?.let {
-                Text(it, style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error)
-            }
-            TextButton(onClick = onDownloadHistory, enabled = historySync?.isLoading != true) {
-                Text(if (historySync?.isLoading == true) "Descargando histórico…" else "Descargar histórico diario")
-            }
-            TextButton(onClick = onRefresh, enabled = quote?.isLoading != true) {
-                Text(if (quote?.isLoading == true) "Actualizando…" else "Actualizar cotización")
-            }
+            if (historySync?.isLoading == true) Text("Actualizando histórico…", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
