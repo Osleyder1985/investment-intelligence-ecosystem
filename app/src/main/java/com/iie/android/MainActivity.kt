@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -58,7 +59,7 @@ class MainActivity : ComponentActivity() {
         )[AssetExplorerViewModel::class.java]
 
         setContent {
-            MaterialTheme { AssetExplorerScreen(explorerViewModel) }
+            MaterialTheme(colorScheme = darkColorScheme(\n                primary = androidx.compose.ui.graphics.Color(0xFF79D6C3),\n                background = androidx.compose.ui.graphics.Color(0xFF0B1117),\n                surface = androidx.compose.ui.graphics.Color(0xFF141E27),\n                surfaceVariant = androidx.compose.ui.graphics.Color(0xFF1D2A35),\n                secondaryContainer = androidx.compose.ui.graphics.Color(0xFF203C3A)\n            )) { AssetExplorerScreen(explorerViewModel) }
         }
     }
 }
@@ -69,59 +70,214 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
     val assets by viewModel.assets.collectAsState()
     val watchlist by viewModel.watchlist.collectAsState()
     val catalogStatus by viewModel.catalogStatus.collectAsState()
+    val marketQuotes by viewModel.marketQuotes.collectAsState()
     var selectedAsset by remember { mutableStateOf<Asset?>(null) }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxSize().padding(20.dp)) {
-            Text(
-                "Investment Intelligence Ecosystem",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(6.dp))
-            Text("Explorador de criptoactivos", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(12.dp))
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    "MODO DEMOSTRACIÓN · Datos locales de ejemplo; no son datos de mercado ni recomendaciones.",
-                    Modifier.padding(12.dp),
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(catalogStatus, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = query,
-                onValueChange = viewModel::updateSearchQuery,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Buscar por nombre o símbolo") },
-                singleLine = true
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                "${assets.size} activos · ${watchlist.size} en seguimiento",
-                style = MaterialTheme.typography.labelLarge
-            )
-            Spacer(Modifier.height(8.dp))
-            if (assets.isEmpty()) {
-                Text("No hay activos que coincidan con la búsqueda.")
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(assets, key = { it.assetId }) { asset ->
-                        AssetRow(
-                            asset = asset,
-                            isWatched = asset.assetId in watchlist,
-                            onClick = { selectedAsset = asset },
-                            onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
+    LaunchedEffect(assets) {
+        assets.take(6).forEach { viewModel.loadLatestMarketQuote(it.assetId) }
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = 20.dp, top = 22.dp, end = 20.dp, bottom = 28.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            "IIE / INTELLIGENCE",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(5.dp))
+                        Text(
+                            "Market overview",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "Centro de inteligencia de activos digitales",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Text(
+                            "LOCAL",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
+            }
+            item {
+                Card(
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                        Text(
+                            "ESTADO DEL SISTEMA",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Datos bajo control. Decisiones pendientes de evidencia.",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "El catálogo y la watchlist se almacenan localmente. Las cotizaciones solo aparecen cuando se recuperan del proveedor y superan las validaciones disponibles.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            catalogStatus,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    MetricTile(
+                        modifier = Modifier.weight(1f),
+                        value = assets.size.toString(),
+                        label = "Activos visibles"
+                    )
+                    MetricTile(
+                        modifier = Modifier.weight(1f),
+                        value = watchlist.size.toString(),
+                        label = "En seguimiento"
+                    )
+                    MetricTile(
+                        modifier = Modifier.weight(1f),
+                        value = marketQuotes.values.count { it.priceUsd != null }.toString(),
+                        label = "Con cotización"
+                    )
+                }
+            }
+            item {
+                Text(
+                    "WATCHLIST & MERCADO",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            items(assets.filter { it.assetId in watchlist }.ifEmpty { assets.take(3) },
+                key = { "market-${it.assetId}" }) { asset ->
+                val quote = marketQuotes[asset.assetId]
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { selectedAsset = asset },
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(asset.symbol, fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium)
+                            Text(asset.name, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall)
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                quote?.priceUsd?.let {
+                                    "$" + String.format(java.util.Locale.US, "%.6f", it)
+                                } ?: "Cotización no disponible",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                quote?.let { "CoinPaprika · ${it.freshnessStatus}" }
+                                    ?: "Abre el activo para consultar el mercado",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        TextButton(
+                            onClick = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) },
+                            enabled = quote?.isLoading != true
+                        ) {
+                            Text(if (quote?.isLoading == true) "Cargando" else "Actualizar")
+                        }
+                    }
+                }
+            }
+            item {
+                Text(
+                    "UNIVERSO DE ACTIVOS",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = viewModel::updateSearchQuery,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    label = { Text("Buscar activo por nombre o símbolo") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp)
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    "Selecciona un activo para consultar identidad, redes, cotización, histórico y procedencia.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (assets.isEmpty()) {
+                item {
+                    Text(
+                        "No hay activos que coincidan con la búsqueda.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                items(assets, key = { it.assetId }) { asset ->
+                    AssetRow(
+                        asset = asset,
+                        isWatched = asset.assetId in watchlist,
+                        onClick = { selectedAsset = asset },
+                        onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
+                    )
+                }
+            }
+            item {
+                Text(
+                    "TRANSPARENCIA · No se muestran puntuaciones, señales ni rentabilidades simuladas. El motor de análisis y decisión aún no está implementado.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -134,6 +290,24 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
             onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) },
             onDismiss = { selectedAsset = null }
         )
+    }
+}
+
+@Composable
+private fun MetricTile(modifier: Modifier = Modifier, value: String, label: String) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+            Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(3.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
