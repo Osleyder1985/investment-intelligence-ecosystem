@@ -3,7 +3,7 @@ package com.iie.android.data.market
 import kotlin.math.sqrt
 
 /**
- * Risk statistics derived from observed daily close prices.
+ * Risk statistics derived from observed daily price snapshots.
  * Historical VaR/expected shortfall are unavailable until a minimum sample exists.
  */
 data class AssetRiskMetrics(
