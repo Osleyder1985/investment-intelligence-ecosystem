@@ -7,6 +7,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.iie.android.data.local.DemoAssetSeeder
 import com.iie.android.data.local.IIEDatabaseProvider
+import com.iie.android.data.local.AssetResearchDossierSnapshotCodec
+import com.iie.android.data.local.entity.AssetResearchDossierSnapshotEntity
 import com.iie.android.data.market.CoinPaprikaTickerClient
 import com.iie.android.data.market.CoinPaprikaHistoricalTickerClient
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
@@ -36,6 +38,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.ZoneOffset
+import java.util.UUID
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AssetExplorerViewModel(application: Application) : AndroidViewModel(application) {
@@ -116,9 +119,41 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                         generatedAtEpochMs = System.currentTimeMillis()
                     )
                 }
+                withContext(Dispatchers.IO) {
+                    val payload = AssetResearchDossierSnapshotCodec.encode(dossier)
+                    database.researchDossierSnapshotDao().insert(
+                        AssetResearchDossierSnapshotEntity(
+                            snapshotId = "dossier-snapshot:${UUID.randomUUID()}",
+                            assetId = assetId,
+                            generatedAtEpochMs = dossier.generatedAtEpochMs,
+                            schemaVersion = AssetResearchDossierSnapshotCodec.SCHEMA_VERSION,
+                            evidenceStatus = dossier.overallEvidenceStatus,
+                            payloadJson = payload,
+                            payloadSha256 = AssetResearchDossierSnapshotCodec.sha256(payload)
+                        )
+                    )
+                }
                 _researchDossiers.value = _researchDossiers.value + (assetId to dossier)
             } catch (error: Exception) {
                 _catalogStatus.value = "No se pudo generar el expediente: ${error.message ?: "error desconocido"}"
+            }
+        }
+    }
+
+    /** Restores the latest immutable local dossier snapshot after process recreation. */
+    fun loadLatestResearchDossier(assetId: String) {
+        viewModelScope.launch {
+            try {
+                val dossier = withContext(Dispatchers.IO) {
+                    database.researchDossierSnapshotDao().getLatestForAsset(assetId)?.let {
+                        AssetResearchDossierSnapshotCodec.decode(it)
+                    }
+                }
+                if (dossier != null && dossier.assetId == assetId) {
+                    _researchDossiers.value = _researchDossiers.value + (assetId to dossier)
+                }
+            } catch (error: Exception) {
+                _catalogStatus.value = "No se pudo recuperar el expediente guardado: ${error.message ?: "error desconocido"}"
             }
         }
     }
