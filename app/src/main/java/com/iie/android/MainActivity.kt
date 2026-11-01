@@ -61,6 +61,7 @@ import com.iie.android.presentation.RoutescanTokenSupplyUiState
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.GlobalMarketMetrics
 import com.iie.android.data.market.FearGreedIndex
+import com.iie.android.data.market.HistoricalRiskAnalyzer
 import java.text.DateFormat
 import java.util.Date
 
@@ -458,6 +459,59 @@ private fun InvestorDashboard(
             }
             Spacer(Modifier.height(6.dp))
             Text("La capitalización suma únicamente activos con dato CMC disponible; no representa la capitalización total del mercado. La volatilidad se estima con retornos diarios observados.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        item {
+            val riskAnalyzer = remember { HistoricalRiskAnalyzer() }
+            val riskByAsset = assets.mapNotNull { asset ->
+                val metrics = riskAnalyzer.analyze(history[asset.assetId].orEmpty())
+                if (metrics.observations < 2) null else asset to metrics
+            }
+            val volatilityCoverage = riskByAsset.count { it.second.annualizedVolatilityPercent != null }
+            val tailCoverage = riskByAsset.count { it.second.historicalVar95Percent != null }
+            val highestVolatility = riskByAsset.filter { it.second.annualizedVolatilityPercent != null }
+                .sortedByDescending { it.second.annualizedVolatilityPercent }.take(4)
+            val worstDrawdowns = riskByAsset.filter { it.second.maximumDrawdownPercent != null }
+                .sortedByDescending { it.second.maximumDrawdownPercent }.take(4)
+            Text("ANÁLISIS DE RIESGO · HISTÓRICO", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricCard("Volatilidad calculable", "$volatilityCoverage / ${assets.size}", Modifier.weight(1f))
+                MetricCard("VaR 95% calculable", "$tailCoverage / ${assets.size}", Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(8.dp))
+            if (riskByAsset.isEmpty()) {
+                EmptyState("No hay histórico diario suficiente para calcular riesgo. Actualiza los datos y descarga históricos.")
+            } else {
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B25))) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("MAYOR VOLATILIDAD ANUALIZADA", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (highestVolatility.isEmpty()) Text("Muestra insuficiente: se requieren al menos 7 retornos diarios consecutivos.")
+                        highestVolatility.forEach { (asset, metrics) ->
+                            Row(Modifier.fillMaxWidth().clickable { onAssetClick(asset) }, horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("${asset.name} · ${metrics.dailyReturns} retornos", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                                Text(String.format(java.util.Locale.US, "%.1f%%", metrics.annualizedVolatilityPercent), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text("MAYOR CAÍDA DESDE MÁXIMOS (DRAWDOWN)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        worstDrawdowns.forEach { (asset, metrics) ->
+                            Row(Modifier.fillMaxWidth().clickable { onAssetClick(asset) }, horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(asset.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                                Text(String.format(java.util.Locale.US, "%.1f%%", metrics.maximumDrawdownPercent), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                        val representative = riskByAsset.firstOrNull { it.second.historicalVar95Percent != null }
+                        Text(
+                            representative?.let { (asset, metrics) ->
+                                "Cola histórica 95% · ${asset.symbol.uppercase()}: VaR diario ${String.format(java.util.Locale.US, "%.2f%%", metrics.historicalVar95Percent)} · pérdida media de cola (ES) ${String.format(java.util.Locale.US, "%.2f%%", metrics.historicalExpectedShortfall95Percent)}"
+                            } ?: "VaR y pérdida esperada de cola (ES) no disponibles: se requieren al menos 30 retornos diarios consecutivos.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Text("Volatilidad anualizada con desviación estándar muestral y √365. Drawdown: caída máxima desde un pico observado. VaR/ES: cola histórica diaria al 95%; no son pérdidas máximas ni pronósticos. Métricas por activo, no riesgo ponderado de cartera.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
