@@ -44,6 +44,13 @@ class CoinMarketCapAuthenticatedClientTest {
     }
 
     @Test
+    fun rejectsNumericProviderIdMismatch() {
+        assertThrows(IOException::class.java) {
+            client.parse(payload(bitcoin()), "BTC", 1_798_000_000_000L, expectedProviderId = 1027L)
+        }
+    }
+
+    @Test
     fun rejectsMissingSymbolInsteadOfGuessing() {
         assertThrows(IOException::class.java) {
             client.parse(payload(bitcoin().replace("\"BTC\"", "\"OTHER\"")), "BTC", 1_798_000_000_000L)
