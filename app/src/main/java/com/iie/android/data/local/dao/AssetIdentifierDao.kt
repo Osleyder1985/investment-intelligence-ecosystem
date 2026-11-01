@@ -33,6 +33,13 @@ interface AssetIdentifierDao {
         identifierValue: String
     ): AssetIdentifierEntity?
 
+    @Query("""
+        SELECT * FROM asset_identifiers
+        WHERE assetId = :assetId AND sourceId = :sourceId AND namespace = :namespace
+        LIMIT 1
+    """)
+    suspend fun findForAsset(assetId: String, sourceId: String, namespace: String): AssetIdentifierEntity?
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertIdentifier(identifier: AssetIdentifierEntity)
 
