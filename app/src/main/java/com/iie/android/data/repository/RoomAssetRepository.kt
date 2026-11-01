@@ -537,8 +537,13 @@ class RoomAssetRepository(
                 .digest(identity.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
             val digest = MessageDigest.getInstance("SHA-256")
                 .digest(payload.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+            val observationPrefix = if (sourceId == "source:coinpaprika") {
+                "observation:coinpaprika-history:"
+            } else {
+                "observation:market-history:"
+            }
             AssetObservationEntity(
-                observationId = "observation:market-history:$idHash",
+                observationId = "$observationPrefix$idHash",
                 assetId = assetId,
                 deploymentId = null,
                 sourceId = sourceId,
@@ -663,88 +668,13 @@ class RoomAssetRepository(
         assetId: String,
         expectedSymbol: String,
         points: List<CoinPaprikaHistoricalPoint>
-    ): Int {
-        require(points.size <= 500) { "Historical batch exceeds the configured point limit" }
-        if (points.isEmpty()) return 0
-        val sourceId = "source:coinpaprika"
-        val source = database.dataSourceDao().getSource(sourceId)
-            ?: error("CoinPaprika source is not registered")
-        check(source.permittedUseStatus == "PERSONAL_USE_ONLY") {
-            "CoinPaprika source is not enabled for this app's personal-use scope"
-        }
-        val asset = database.assetDao().getAsset(assetId)
-            ?: error("Cannot persist history for an unknown IIE asset")
-        require(asset.symbol.equals(expectedSymbol, ignoreCase = true)) {
-            "Expected symbol does not match the canonical asset"
-        }
-        val identifier = database.assetIdentifierDao().findForAsset(
-            assetId = assetId, sourceId = sourceId, namespace = "coinpaprika"
-        ) ?: error("No CoinPaprika provider identifier is mapped to this asset")
-        check(identifier.verificationStatus == "PROVIDER_ID_CONFIRMED") {
-            "CoinPaprika provider identifier is not confirmed"
-        }
-        val now = nowEpochMs()
-        require(now > 0L) { "Invalid local retrieval clock" }
-        require(points.map { it.timestampEpochMs }.distinct().size == points.size) {
-            "Historical batch contains duplicate timestamps"
-        }
-        require(points.all { point ->
-            point.sourceId == sourceId &&
-                point.providerId == identifier.identifierValue &&
-                point.retrievedAtEpochMs in 1L..now &&
-                point.timestampEpochMs > 0L &&
-                point.timestampEpochMs <= point.retrievedAtEpochMs &&
-                point.priceUsd.isFinite() && point.priceUsd > 0.0 &&
-                (point.volume24hUsd == null || (point.volume24hUsd.isFinite() && point.volume24hUsd >= 0.0)) &&
-                (point.marketCapUsd == null || (point.marketCapUsd.isFinite() && point.marketCapUsd >= 0.0))
-        }) { "Historical batch contains an invalid or mismatched point" }
-
-        val observations = points.distinctBy { it.timestampEpochMs }.map { point ->
-            val payload = JSONObject()
-                .put("schema", "iie.market-history-daily.v1")
-                .put("sourceId", point.sourceId)
-                .put("providerId", point.providerId)
-                .put("symbol", asset.symbol.uppercase())
-                .put("interval", "1d")
-                .put("quoteCurrency", "USD")
-                .put("priceUsd", point.priceUsd)
-                .put("volume24hUsd", point.volume24hUsd ?: JSONObject.NULL)
-                .put("marketCapUsd", point.marketCapUsd ?: JSONObject.NULL)
-                .put("providerTimestampEpochMs", point.timestampEpochMs)
-                .put("retrievedAtEpochMs", point.retrievedAtEpochMs)
-                .toString()
-            val identity = listOf(
-                sourceId, assetId, point.providerId, point.timestampEpochMs.toString(),
-                "1d", "USD", "iie.market-history-daily.v1"
-            ).joinToString("|")
-            val idHash = MessageDigest.getInstance("SHA-256")
-                .digest(identity.toByteArray(Charsets.UTF_8))
-                .joinToString("") { "%02x".format(it) }
-            val digest = MessageDigest.getInstance("SHA-256")
-                .digest(payload.toByteArray(Charsets.UTF_8))
-                .joinToString("") { "%02x".format(it) }
-            AssetObservationEntity(
-                observationId = "observation:coinpaprika-history:$idHash",
-                assetId = assetId,
-                deploymentId = null,
-                sourceId = sourceId,
-                observationType = MARKET_HISTORY_DAILY_OBSERVATION_TYPE,
-                observedAtEpochMs = point.timestampEpochMs,
-                retrievedAtEpochMs = point.retrievedAtEpochMs,
-                status = "ACCEPTED",
-                quality = "PROVIDER_SCHEMA_VALIDATED",
-                valueSchemaVersion = 1,
-                valueJson = payload,
-                payloadSha256 = digest,
-                licenseReference = source.termsUrl
-            )
-        }
-        return database.withTransaction {
-            database.assetObservationDao()
-                .insertHistoricalObservationsIfAbsent(observations)
-                .count { it != -1L }
-        }
-    }
+    ): Int = persistDailyHistoryForConfirmedSource(
+        assetId = assetId,
+        expectedSymbol = expectedSymbol,
+        sourceId = "source:coinpaprika",
+        namespace = "coinpaprika",
+        points = points
+    )
 
     suspend fun downloadAndPersistCoinPaprikaDailyHistory(
         assetId: String,
