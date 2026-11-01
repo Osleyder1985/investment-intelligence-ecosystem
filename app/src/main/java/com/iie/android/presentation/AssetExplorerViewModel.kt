@@ -125,11 +125,11 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                     val cmcQuote = cmcQuoteRecord?.let { (observation, attribution) -> observation.toUiState(attribution) }
                     val tokenomicsEvidence = cmcQuoteRecord?.let { (observation, _) ->
                         val payload = JSONObject(observation.valueJson)
-                        val circulating = payload.nullableNonNegativeDouble("circulatingSupply")
-                        val total = payload.nullableNonNegativeDouble("totalSupply")
-                        val maximum = payload.nullableNonNegativeDouble("maxSupply")
-                        val marketCap = payload.nullableNonNegativeDouble("marketCapUsd")
-                        val fullyDilutedMarketCap = payload.nullableNonNegativeDouble("fullyDilutedMarketCapUsd")
+                        val circulating = payload.nullableNonNegativeFiniteDouble("circulatingSupply")
+                        val total = payload.nullableNonNegativeFiniteDouble("totalSupply")
+                        val maximum = payload.nullableNonNegativeFiniteDouble("maxSupply")
+                        val marketCap = payload.nullableNonNegativeFiniteDouble("marketCapUsd")
+                        val fullyDilutedMarketCap = payload.nullableNonNegativeFiniteDouble("fullyDilutedMarketCapUsd")
                         val relationIssues = com.iie.android.domain.model.ResearchEvidenceQualityGate
                             .validateSupplyRelations(circulating, total, maximum)
                         fun supplyEvidence(field: String, value: Double?): ResearchEvidence<Double> =
@@ -482,6 +482,34 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
         if (!has(key) || isNull(key)) return null
         val value = optDouble(key, Double.NaN)
         return value.takeIf { it.isFinite() && it >= 0.0 }
+    }
+
+    private fun Pair<com.iie.android.data.local.entity.AssetObservationEntity, String>.toUiState(): MarketQuoteUiState =
+        first.toUiState(second)
+
+    private fun com.iie.android.data.local.entity.AssetObservationEntity.toUiState(
+        attribution: String
+    ): MarketQuoteUiState {
+        val json = JSONObject(valueJson)
+        fun optionalNonNegative(key: String): Double? =
+            json.optDouble(key, Double.NaN).takeIf { it.isFinite() && it >= 0.0 }
+        val providerUpdated = json.optLong("providerUpdatedAtEpochMs").takeIf { it > 0L }
+        val freshness = quoteFreshnessEvaluator.evaluate(providerUpdated, System.currentTimeMillis())
+        return MarketQuoteUiState(
+            priceUsd = json.optDouble("price", Double.NaN).takeIf { it.isFinite() && it > 0.0 },
+            providerUpdatedAtEpochMs = providerUpdated,
+            retrievedAtEpochMs = retrievedAtEpochMs,
+            attribution = attribution,
+            providerId = json.optString("providerId").takeIf { it.isNotBlank() },
+            marketCapUsd = optionalNonNegative("marketCapUsd"),
+            fullyDilutedMarketCapUsd = optionalNonNegative("fullyDilutedMarketCapUsd"),
+            circulatingSupply = optionalNonNegative("circulatingSupply"),
+            totalSupply = optionalNonNegative("totalSupply"),
+            maxSupply = optionalNonNegative("maxSupply"),
+            freshnessStatus = freshness.status.name,
+            freshnessReason = freshness.reason,
+            isLoading = false
+        )
     }
 
     fun updateSearchQuery(value: String) {
