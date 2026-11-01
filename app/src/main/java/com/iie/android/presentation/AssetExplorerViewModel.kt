@@ -9,6 +9,7 @@ import com.iie.android.data.local.DemoAssetSeeder
 import com.iie.android.data.local.IIEDatabaseProvider
 import com.iie.android.data.market.CoinPaprikaTickerClient
 import com.iie.android.data.market.CoinPaprikaHistoricalTickerClient
+import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.QuoteFreshnessEvaluator
 import org.json.JSONObject
 import com.iie.android.data.repository.RoomAssetRepository
@@ -43,6 +44,9 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
 
     private val _marketHistorySync = MutableStateFlow<Map<String, MarketHistorySyncUiState>>(emptyMap())
     val marketHistorySync: StateFlow<Map<String, MarketHistorySyncUiState>> = _marketHistorySync.asStateFlow()
+
+    private val _dailyMarketHistory = MutableStateFlow<Map<String, List<CoinPaprikaHistoricalPoint>>>(emptyMap())
+    val dailyMarketHistory: StateFlow<Map<String, List<CoinPaprikaHistoricalPoint>>> = _dailyMarketHistory.asStateFlow()
 
     private val query = MutableStateFlow("")
     val searchQuery: StateFlow<String> = query.asStateFlow()
@@ -163,6 +167,22 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    fun loadDailyMarketHistory(assetId: String) {
+        viewModelScope.launch {
+            try {
+                val points = withContext(Dispatchers.IO) {
+                    repository.getLatestCoinPaprikaDailyHistory(assetId, limit = 30)
+                }
+                _dailyMarketHistory.value = _dailyMarketHistory.value + (assetId to points)
+            } catch (error: Exception) {
+                _marketHistorySync.value = _marketHistorySync.value + (assetId to
+                    (_marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()).copy(
+                        error = error.message ?: "No se pudo leer el histórico local"
+                    ))
+            }
+        }
+    }
+
     fun downloadDailyMarketHistory(assetId: String, symbol: String) {
         val current = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
         if (current.isLoading) return
@@ -181,6 +201,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                         fetcher = coinPaprikaHistoryClient
                     )
                 }
+                loadDailyMarketHistory(assetId)
                 _marketHistorySync.value = _marketHistorySync.value + (assetId to MarketHistorySyncUiState(
                     isLoading = false,
                     pointsReceived = result.pointsReceived,
