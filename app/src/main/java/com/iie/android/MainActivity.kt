@@ -295,49 +295,102 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
 
 @Composable
 private fun MarketAssetRow(
-    asset: Asset,
-    quote: MarketQuoteUiState?,
-    history: List<CoinPaprikaHistoricalPoint>,
-    historySync: MarketHistorySyncUiState?,
-    isWatched: Boolean,
-    onClick: () -> Unit,
-    onToggleWatchlist: () -> Unit
+    asset: Asset, quote: MarketQuoteUiState?, history: List<CoinPaprikaHistoricalPoint>,
+    historySync: MarketHistorySyncUiState?, isWatched: Boolean,
+    onClick: () -> Unit, onToggleWatchlist: () -> Unit
 ) {
-    val latestTwo = history.sortedByDescending { it.timestampEpochMs }.take(2)
-    val dailyChange = if (latestTwo.size == 2 && latestTwo[1].priceUsd > 0.0) {
-        ((latestTwo[0].priceUsd / latestTwo[1].priceUsd) - 1.0) * 100.0
-    } else null
-    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B25))) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    val ordered = history.filter { it.priceUsd.isFinite() && it.priceUsd > 0.0 }.sortedBy { it.timestampEpochMs }
+    val first = ordered.firstOrNull()
+    val last = ordered.lastOrNull()
+    val change = if (first != null && last != null && first.timestampEpochMs < last.timestampEpochMs)
+        ((last.priceUsd / first.priceUsd) - 1.0) * 100.0 else null
+    val span = if (first != null && last != null) {
+        val days = ((last.timestampEpochMs - first.timestampEpochMs) / 86_400_000L).toInt()
+        if (days <= 0) "menos de 1 día" else days.toString() + " días"
+    } else "sin cobertura"
+    val source = last?.sourceId?.removePrefix("source:")?.uppercase() ?: "no identificada"
+    val freshness = when {
+        quote?.isLoading == true -> "ACTUALIZANDO"
+        quote?.freshnessStatus == "FRESH" -> "COTIZACIÓN RECIENTE"
+        quote?.freshnessStatus != null -> quote.freshnessStatus
+        else -> "SIN COTIZACIÓN"
+    }
+    val freshnessColor = when (quote?.freshnessStatus) {
+        "FRESH" -> IIEDesign.positive
+        null -> IIEDesign.neutral
+        else -> IIEDesign.warning
+    }
+    Card(Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(IIEDesign.Radius.large),
+        colors = CardDefaults.cardColors(containerColor = IIEDesign.surface)) {
+        Column(Modifier.fillMaxWidth().padding(IIEDesign.Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(IIEDesign.Spacing.sm)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(asset.name, color = IIEDesign.textPrimary, fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(asset.symbol.uppercase(), color = IIEDesign.accentSecondary,
+                            style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                        Text("·", color = IIEDesign.textSecondary)
+                        Text(if (isWatched) "EN SEGUIMIENTO" else "NO SEGUIDO",
+                            color = IIEDesign.textSecondary, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(quote?.priceUsd?.takeIf { it.isFinite() && it > 0.0 }?.let {
+                        "$" + String.format(java.util.Locale.US, "%,.6f", it)
+                    } ?: "—", color = IIEDesign.textPrimary, fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge)
+                    Surface(color = IIEDesign.surfaceElevated, shape = RoundedCornerShape(IIEDesign.Radius.pill)) {
+                        Text(freshness, Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                            color = freshnessColor, style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("HISTÓRICO DE PRECIOS", color = IIEDesign.textSecondary,
+                        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    Text(ordered.size.toString() + " observaciones · " + span,
+                        color = IIEDesign.textSecondary, style = MaterialTheme.typography.labelSmall)
+                }
+                if (ordered.size >= 2) MarketSparkline(ordered, chartHeight = 64.dp)
+                else Surface(Modifier.fillMaxWidth().height(48.dp), color = IIEDesign.surfaceElevated,
+                    shape = RoundedCornerShape(IIEDesign.Radius.small)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("Cobertura histórica insuficiente para calcular tendencia",
+                            color = IIEDesign.textSecondary, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(asset.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
-                    Text(asset.symbol.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("VARIACIÓN DEL PERÍODO OBSERVADO", color = IIEDesign.textSecondary,
+                        style = MaterialTheme.typography.labelSmall)
+                    Text(change?.let { String.format(java.util.Locale.US, "%+.2f%%", it) } ?: "No calculable",
+                        color = when {
+                            change == null -> IIEDesign.neutral
+                            change >= 0.0 -> IIEDesign.positive
+                            else -> IIEDesign.negative
+                        }, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text("Fuente histórica: " + source, color = IIEDesign.textSecondary,
+                        style = MaterialTheme.typography.labelSmall)
                 }
-                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(quote?.priceUsd?.let { "\$" + String.format(java.util.Locale.US, "%,.6f", it) } ?: "Cotización no disponible",
-                        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    Text(when { quote?.isLoading == true -> "ACTUALIZANDO"; quote?.freshnessStatus == "FRESH" -> "PRECIO ACTUALIZADO"; quote?.freshnessStatus != null -> quote.freshnessStatus; else -> "SIN DATOS DE MERCADO" },
-                        style = MaterialTheme.typography.labelSmall, color = if (quote?.freshnessStatus == "FRESH") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = onToggleWatchlist) {
+                    Text(if (isWatched) "★ Siguiendo" else "+ Seguir",
+                        color = if (isWatched) IIEDesign.accent else IIEDesign.textPrimary)
                 }
             }
-            if (history.size >= 2) MarketSparkline(history, chartHeight = 54.dp) else {
-                Surface(Modifier.fillMaxWidth().height(38.dp), color = Color(0xFF17232E), shape = RoundedCornerShape(10.dp)) {
-                    Box(contentAlignment = Alignment.Center) { Text("Histórico insuficiente para mostrar tendencia", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("CAMBIO ENTRE PUNTOS DISPONIBLES", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(dailyChange?.let { String.format(java.util.Locale.US, "%+.2f%%", it) } ?: "No disponible", fontWeight = FontWeight.SemiBold,
-                        color = when { dailyChange == null -> MaterialTheme.colorScheme.onSurfaceVariant; dailyChange >= 0.0 -> MaterialTheme.colorScheme.primary; else -> MaterialTheme.colorScheme.error })
-                }
-                TextButton(onClick = onToggleWatchlist) { Text(if (isWatched) "★ Siguiendo" else "+ Seguir") }
-            }
-            if (historySync?.isLoading == true) Text("Actualizando histórico…", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (historySync?.isLoading == true) Text("Sincronizando histórico…",
+                color = IIEDesign.warning, style = MaterialTheme.typography.labelSmall)
+            else if (historySync?.error != null) Text("Error al sincronizar histórico: " + historySync.error,
+                color = IIEDesign.negative, style = MaterialTheme.typography.labelSmall)
+            Text("Abrir expediente del activo  →", color = IIEDesign.accentSecondary,
+                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
         }
     }
 }
