@@ -25,15 +25,16 @@ class CoinMarketCapRoomRestartTest {
         val now = 1_800_000_000_000L
         val start = LocalDate.ofEpochDay(now / 86_400_000L - 2L)
         val end = LocalDate.ofEpochDay(now / 86_400_000L - 1L)
-        var database: IIEDatabase? = null
+        var databaseForCleanup: IIEDatabase? = null
 
         try {
-            database = Room.databaseBuilder(context, IIEDatabase::class.java, databaseName)
+            val initialDatabase = Room.databaseBuilder(context, IIEDatabase::class.java, databaseName)
                 .allowMainThreadQueries()
                 .build()
-            InitialAssetCatalog(database) { now }.synchronize()
+            databaseForCleanup = initialDatabase
+            InitialAssetCatalog(initialDatabase) { now }.synchronize()
 
-            val initialRepository = RoomAssetRepository(database) { now }
+            val initialRepository = RoomAssetRepository(initialDatabase) { now }
             var initialFetchCount = 0
             val initialFetcher = CoinMarketCapDailyHistoryFetcher {
                     cmcAssetId, apiKey, requestedStart, requestedEnd, retrievedAt ->
@@ -79,13 +80,14 @@ class CoinMarketCapRoomRestartTest {
             assertEquals(2, firstSync.pointsInserted)
 
             // Closing and rebuilding Room simulates the database lifecycle across an app restart.
-            database.close()
-            database = null
+            initialDatabase.close()
+            databaseForCleanup = null
 
-            database = Room.databaseBuilder(context, IIEDatabase::class.java, databaseName)
+            val reopenedDatabase = Room.databaseBuilder(context, IIEDatabase::class.java, databaseName)
                 .allowMainThreadQueries()
                 .build()
-            val reopenedRepository = RoomAssetRepository(database) { now + 60_000L }
+            databaseForCleanup = reopenedDatabase
+            val reopenedRepository = RoomAssetRepository(reopenedDatabase) { now + 60_000L }
             val restored = reopenedRepository.getLatestCoinMarketCapDailyHistory(
                 "asset:usd-coin",
                 limit = 10
@@ -119,7 +121,7 @@ class CoinMarketCapRoomRestartTest {
                 limit = 10
             ).size)
         } finally {
-            database?.close()
+            databaseForCleanup?.close()
             context.deleteDatabase(databaseName)
         }
     }
