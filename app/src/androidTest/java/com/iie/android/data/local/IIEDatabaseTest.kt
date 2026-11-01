@@ -687,7 +687,7 @@ class IIEDatabaseTest {
     }
 
     @Test
-    fun usdcAndUsdtHaveIndependentCanonicalIdentitiesAndNoAssumedDeployments() = runBlocking {
+    fun usdcAndUsdtHaveDistinctCanonicalIdentitiesAndOnlyRegisteredEthereumDeployments() = runBlocking {
         InitialAssetCatalog(database) { 250L }.synchronize()
         val usdc = database.assetDao().getAsset("asset:usd-coin")
         val usdt = database.assetDao().getAsset("asset:tether")
@@ -699,8 +699,22 @@ class IIEDatabaseTest {
         assertEquals("Tether", usdt?.name)
         org.junit.Assert.assertNotEquals(usdc?.assetId, usdt?.assetId)
         org.junit.Assert.assertNotEquals(usdc?.canonicalKey, usdt?.canonicalKey)
-        assertEquals(0, database.assetDeploymentDao().observeSummariesForAsset("asset:usd-coin").first().size)
-        assertEquals(0, database.assetDeploymentDao().observeSummariesForAsset("asset:tether").first().size)
+
+        // The catalog registers only the two explicitly identified Ethereum ERC-20
+        // deployments; it must not infer deployments on other networks.
+        val usdcDeployments = database.assetDeploymentDao()
+            .observeSummariesForAsset("asset:usd-coin").first()
+        val usdtDeployments = database.assetDeploymentDao()
+            .observeSummariesForAsset("asset:tether").first()
+        assertEquals(1, usdcDeployments.size)
+        assertEquals("deployment:usdc-ethereum-erc20", usdcDeployments.single().deploymentId)
+        assertEquals("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", usdcDeployments.single().reference)
+        assertEquals(6, usdcDeployments.single().decimals)
+        assertEquals(1, usdtDeployments.size)
+        assertEquals("deployment:usdt-ethereum-erc20", usdtDeployments.single().deploymentId)
+        assertEquals("0xdac17f958d2ee523a2206206994597c13d831ec7", usdtDeployments.single().reference)
+        assertEquals(6, usdtDeployments.single().decimals)
+
         val usdcIdentifier = database.assetIdentifierDao()
             .findForAsset("asset:usd-coin", "source:coinpaprika", "coinpaprika")
         val usdtIdentifier = database.assetIdentifierDao()
