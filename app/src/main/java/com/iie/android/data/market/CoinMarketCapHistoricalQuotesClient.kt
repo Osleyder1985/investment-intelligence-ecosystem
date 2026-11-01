@@ -198,9 +198,7 @@ class CoinMarketCapHistoricalQuotesClient(
         retrievedAtEpochMs: Long = System.currentTimeMillis()
     ): List<CoinPaprikaHistoricalPoint> {
         require(retrievedAtEpochMs > 0L)
-        val yesterdayUtc = Instant.ofEpochMilli(retrievedAtEpochMs)
-            .atZone(java.time.ZoneOffset.UTC).toLocalDate().minusDays(1)
-        val start = yesterdayUtc.minusDays(6)
+        val (start, yesterdayUtc) = historicalProbeWindow(retrievedAtEpochMs)
         val points = fetchDaily(
             cmcAssetId = 1L,
             apiKey = apiKey,
@@ -212,6 +210,13 @@ class CoinMarketCapHistoricalQuotesClient(
             throw IOException("CoinMarketCap aceptó la consulta, pero no devolvió snapshots históricos de BTC en los últimos siete días completos.")
         }
         return points
+    }
+
+    internal fun historicalProbeWindow(retrievedAtEpochMs: Long): Pair<LocalDate, LocalDate> {
+        require(retrievedAtEpochMs > 0L)
+        val yesterdayUtc = Instant.ofEpochMilli(retrievedAtEpochMs)
+            .atZone(java.time.ZoneOffset.UTC).toLocalDate().minusDays(1)
+        return yesterdayUtc.minusDays(6) to yesterdayUtc
     }
 
     internal fun parse(payload: String, cmcAssetId: Long, retrievedAtEpochMs: Long,
