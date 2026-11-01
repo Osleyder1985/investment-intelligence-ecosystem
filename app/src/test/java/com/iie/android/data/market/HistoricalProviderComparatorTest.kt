@@ -80,4 +80,24 @@ class HistoricalProviderComparatorTest {
         assertEquals(110.0, result.coinPaprikaPriceUsd!!, 0.0)
         assertEquals(111.0, result.coinMarketCapPriceUsd!!, 0.0)
     }
+    @Test fun reportsPerProviderCoverageInvalidRowsConflictsAndRetrievalFreshness() {
+        val result = comparator.quality(
+            listOf(
+                point("source:coinpaprika", timestamp, 100.0),
+                point("source:coinpaprika", timestamp + day, Double.NaN),
+                point("source:coinpaprika", timestamp + 2 * day, 120.0),
+                point("source:coinpaprika", timestamp + 2 * day, 121.0),
+                point("source:coinmarketcap", timestamp, 101.0)
+            ),
+            "source:coinpaprika"
+        )
+        assertEquals(4, result.receivedObservations)
+        assertEquals(3, result.validObservations)
+        assertEquals(1, result.invalidObservations)
+        assertEquals(1, result.conflictingTimestamps)
+        assertEquals(1, result.usableTimestamps)
+        assertEquals(timestamp, result.latestTimestampEpochMs ?: -1L)
+        assertEquals(timestamp, result.latestRetrievedAtEpochMs ?: -1L)
+    }
+
 }
