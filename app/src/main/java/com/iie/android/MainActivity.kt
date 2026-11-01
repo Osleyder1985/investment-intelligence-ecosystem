@@ -514,6 +514,7 @@ private fun AssetDetailDialog(
     val researchDossiers by viewModel.researchDossiers.collectAsState()
 
     LaunchedEffect(asset.assetId) {
+        viewModel.loadLatestResearchDossier(asset.assetId)
         viewModel.evaluateLatestEvidence(asset.assetId)
         viewModel.loadLatestMarketQuote(asset.assetId)
         viewModel.loadDailyMarketHistory(asset.assetId)
