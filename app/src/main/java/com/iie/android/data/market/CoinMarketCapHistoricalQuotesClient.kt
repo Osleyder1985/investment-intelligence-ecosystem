@@ -31,7 +31,7 @@ class CoinMarketCapHistoricalQuotesClient(
     private val readTimeoutMs: Int = 15_000,
     private val maxResponseBytes: Int = 4 * 1024 * 1024,
     private val maxPoints: Int = 370
-) {
+) : CoinMarketCapDailyHistoryFetcher {
     init {
         require(connectTimeoutMs in 1..30_000)
         require(readTimeoutMs in 1..30_000)
