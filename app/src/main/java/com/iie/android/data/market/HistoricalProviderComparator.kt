@@ -110,9 +110,11 @@ class HistoricalProviderComparator {
     ): Map<Long, Double> = points.asSequence()
         .filter {
             it.sourceId == expectedSourceId &&
+                it.providerId.isNotBlank() &&
                 it.timestampEpochMs > 0L &&
                 it.priceUsd.isFinite() &&
-                it.priceUsd > 0.0
+                it.priceUsd > 0.0 &&
+                it.retrievedAtEpochMs >= it.timestampEpochMs
         }
         .groupBy { it.timestampEpochMs }
         .mapNotNull { (timestamp, sameTimestamp) ->
