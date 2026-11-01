@@ -505,6 +505,28 @@ private fun InvestorDashboard(
                     coinMarketCapHistory[asset.assetId].orEmpty()
                 ).takeIf { it.matchedObservations > 0 }?.let { asset to it }
             }
+            val paprikaQuality = assets.map { asset ->
+                comparator.quality(history[asset.assetId].orEmpty(), "source:coinpaprika")
+            }
+            val cmcQuality = assets.map { asset ->
+                comparator.quality(coinMarketCapHistory[asset.assetId].orEmpty(), "source:coinmarketcap")
+            }
+            val paprikaSeriesCoverage = paprikaQuality.count { it.usableTimestamps >= 2 }
+            val cmcSeriesCoverage = cmcQuality.count { it.usableTimestamps >= 2 }
+            fun medianRetrievalAgeHours(qualities: List<com.iie.android.data.market.HistoricalProviderSeriesQuality>): Double? {
+                val now = System.currentTimeMillis()
+                val ages = qualities.mapNotNull { it.latestRetrievedAtEpochMs }
+                    .map { ((now - it).coerceAtLeast(0L) / 3_600_000.0) }.sorted()
+                return ages.takeIf { it.isNotEmpty() }?.let {
+                    if (it.size % 2 == 1) it[it.size / 2] else (it[it.size / 2 - 1] + it[it.size / 2]) / 2.0
+                }
+            }
+            val paprikaMedianAge = medianRetrievalAgeHours(paprikaQuality)
+            val cmcMedianAge = medianRetrievalAgeHours(cmcQuality)
+            val ambiguousTimestamps = paprikaQuality.sumOf { it.conflictingTimestamps } +
+                cmcQuality.sumOf { it.conflictingTimestamps }
+            val invalidHistoryRows = paprikaQuality.sumOf { it.invalidObservations } +
+                cmcQuality.sumOf { it.invalidObservations }
             val divergences = comparisons.mapNotNull { it.second.latestSymmetricDivergencePercent }.sorted()
             val medianDivergence = divergences.takeIf { it.isNotEmpty() }?.let {
                 if (it.size % 2 == 1) it[it.size / 2] else (it[it.size / 2 - 1] + it[it.size / 2]) / 2.0
@@ -521,6 +543,13 @@ private fun InvestorDashboard(
                     String.format(java.util.Locale.US, "%.3f%%", it)
                 } ?: "Sin pares exactos", Modifier.weight(1f))
             }
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricCard("CoinPaprika · series válidas", "$paprikaSeriesCoverage / ${assets.size}", Modifier.weight(1f))
+                MetricCard("CMC · series válidas", "$cmcSeriesCoverage / ${assets.size}", Modifier.weight(1f))
+            }
+            Text("Recuperación mediana: CoinPaprika ${paprikaMedianAge?.let { String.format(java.util.Locale.US, "%.1f h", it) } ?: "N/D"} · CMC ${cmcMedianAge?.let { String.format(java.util.Locale.US, "%.1f h", it) } ?: "N/D"} · Filas inválidas: $invalidHistoryRows · timestamps conflictivos: $ambiguousTimestamps",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (highestDivergence != null) {
                 Spacer(Modifier.height(8.dp))
                 Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
@@ -1278,8 +1307,15 @@ private fun HistoricalProviderComparison(
     coinPaprika: List<CoinPaprikaHistoricalPoint>,
     coinMarketCap: List<CoinPaprikaHistoricalPoint>
 ) {
+    val comparator = remember { HistoricalProviderComparator() }
     val result = remember(coinPaprika, coinMarketCap) {
-        HistoricalProviderComparator().compare(coinPaprika, coinMarketCap)
+        comparator.compare(coinPaprika, coinMarketCap)
+    }
+    val paprikaQuality = remember(coinPaprika) {
+        comparator.quality(coinPaprika, "source:coinpaprika")
+    }
+    val cmcQuality = remember(coinMarketCap) {
+        comparator.quality(coinMarketCap, "source:coinmarketcap")
     }
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Text("Contraste histórico independiente", fontWeight = FontWeight.SemiBold)
@@ -1298,6 +1334,10 @@ private fun HistoricalProviderComparison(
             Text("CoinPaprika: ${result.coinPaprikaPriceUsd} USD · CoinMarketCap: ${result.coinMarketCapPriceUsd} USD",
                 style = MaterialTheme.typography.bodySmall)
         }
+        Text("Calidad CoinPaprika: ${paprikaQuality.usableTimestamps} timestamps utilizables · ${paprikaQuality.invalidObservations} filas inválidas · ${paprikaQuality.conflictingTimestamps} timestamps ambiguos.")
+        Text("Calidad CoinMarketCap: ${cmcQuality.usableTimestamps} timestamps utilizables · ${cmcQuality.invalidObservations} filas inválidas · ${cmcQuality.conflictingTimestamps} timestamps ambiguos.")
+        Text("Última recuperación de la observación común: CoinPaprika ${result.coinPaprikaRetrievedAtEpochMs?.let { DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(it)) } ?: "N/D"} · CMC ${result.coinMarketCapRetrievedAtEpochMs?.let { DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(it)) } ?: "N/D"}",
+            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("Solo se emparejan el mismo activo, moneda USD y timestamp UTC exacto. Las series permanecen separadas; no se promedian ni se sustituyen precios entre proveedores.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
