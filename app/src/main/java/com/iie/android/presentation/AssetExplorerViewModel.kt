@@ -18,6 +18,7 @@ import com.iie.android.domain.model.AssetDeploymentSummary
 import com.iie.android.domain.model.AssetObservationProvenance
 import com.iie.android.domain.model.AssetResearchDossier
 import com.iie.android.domain.model.ResearchQuoteInput
+import com.iie.android.domain.model.ResearchMarketHistoryPoint
 import com.iie.android.domain.quality.AssetResearchDossierBuilder
 import kotlinx.coroutines.flow.first
 import com.iie.android.domain.quality.LocalDemoEvidenceEvaluator
@@ -110,7 +111,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                                 freshnessStatus = it.freshnessStatus
                             )
                         },
-                        history = history,
+                        history = history.map { ResearchMarketHistoryPoint(it.timestampEpochMs, it.priceUsd) },
                         provenance = provenance,
                         generatedAtEpochMs = System.currentTimeMillis()
                     )
