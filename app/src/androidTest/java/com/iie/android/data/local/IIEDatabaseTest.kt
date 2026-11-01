@@ -14,6 +14,8 @@ import com.iie.android.domain.model.AssetResearchDossier
 import com.iie.android.domain.model.MarketResearchSection
 import com.iie.android.domain.model.ResearchDeployment
 import com.iie.android.domain.model.ResearchFieldStatus
+import com.iie.android.domain.model.ResearchEvidence
+import com.iie.android.domain.model.TokenomicsResearchSection
 import com.iie.android.data.local.entity.AssetDeploymentEntity
 import com.iie.android.data.local.entity.AssetObservationEntity
 import com.iie.android.data.local.entity.DataSourceEntity
@@ -189,7 +191,49 @@ class IIEDatabaseTest {
                 quoteComparedAtEpochMs = 1150L
             ),
             evidenceCount = 4,
-            generatedAtEpochMs = 1200L
+            generatedAtEpochMs = 1200L,
+            tokenomics = ResearchFieldStatus.KNOWN,
+            tokenomicsEvidence = TokenomicsResearchSection(
+                circulatingSupply = ResearchEvidence(
+                    fieldKey = "circulating_supply", value = 19_500_000.0,
+                    status = ResearchFieldStatus.KNOWN, sourceId = "source:coinmarketcap",
+                    sourceName = "CoinMarketCap", sourceUrl = "https://coinmarketcap.com/",
+                    licenseReference = "https://coinmarketcap.com/api/terms/",
+                    permittedUseStatus = "PERSONAL_USE_ONLY", observedAtEpochMs = 1000L,
+                    retrievedAtEpochMs = 1100L, qualityStatus = "PROVIDER_SCHEMA_VALIDATED"
+                ),
+                totalSupply = ResearchEvidence(
+                    fieldKey = "total_supply", value = 19_500_000.0,
+                    status = ResearchFieldStatus.KNOWN, sourceId = "source:coinmarketcap",
+                    sourceName = "CoinMarketCap", sourceUrl = "https://coinmarketcap.com/",
+                    licenseReference = "https://coinmarketcap.com/api/terms/",
+                    permittedUseStatus = "PERSONAL_USE_ONLY", observedAtEpochMs = 1000L,
+                    retrievedAtEpochMs = 1100L, qualityStatus = "PROVIDER_SCHEMA_VALIDATED"
+                ),
+                maxSupply = ResearchEvidence(
+                    fieldKey = "max_supply", value = 21_000_000.0,
+                    status = ResearchFieldStatus.KNOWN, sourceId = "source:coinmarketcap",
+                    sourceName = "CoinMarketCap", sourceUrl = "https://coinmarketcap.com/",
+                    licenseReference = "https://coinmarketcap.com/api/terms/",
+                    permittedUseStatus = "PERSONAL_USE_ONLY", observedAtEpochMs = 1000L,
+                    retrievedAtEpochMs = 1100L, qualityStatus = "PROVIDER_SCHEMA_VALIDATED"
+                ),
+                annualInflationPercent = ResearchEvidence(
+                    fieldKey = "annual_inflation_percent", value = null,
+                    status = ResearchFieldStatus.UNKNOWN, sourceId = null, sourceName = null,
+                    sourceUrl = null, licenseReference = null, permittedUseStatus = "UNKNOWN",
+                    observedAtEpochMs = null, retrievedAtEpochMs = null,
+                    qualityStatus = "NOT_PROVIDED_BY_QUOTE_ENDPOINT"
+                ),
+                emissionSchedule = ResearchEvidence(
+                    fieldKey = "emission_schedule", value = null,
+                    status = ResearchFieldStatus.UNKNOWN, sourceId = null, sourceName = null,
+                    sourceUrl = null, licenseReference = null, permittedUseStatus = "UNKNOWN",
+                    observedAtEpochMs = null, retrievedAtEpochMs = null,
+                    qualityStatus = "NOT_PROVIDED_BY_QUOTE_ENDPOINT"
+                ),
+                unlockEvents = emptyList()
+            )
         )
         val payload = AssetResearchDossierSnapshotCodec.encode(dossier)
         val entity = AssetResearchDossierSnapshotEntity(
@@ -207,6 +251,9 @@ class IIEDatabaseTest {
         assertEquals(null, restored.deployments.first().reference)
         assertEquals("0xabc", restored.deployments.last().reference)
         assertEquals(null, restored.market.periodReturnPercent)
+        assertEquals(19_500_000.0, restored.tokenomicsEvidence?.circulatingSupply?.value)
+        assertEquals("source:coinmarketcap", restored.tokenomicsEvidence?.maxSupply?.sourceId)
+        assertEquals(ResearchFieldStatus.UNKNOWN, restored.tokenomicsEvidence?.annualInflationPercent?.status)
     }
 
     @Test
