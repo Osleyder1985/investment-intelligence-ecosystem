@@ -1346,7 +1346,7 @@ private fun MarketHistoryPoints(points: List<CoinPaprikaHistoricalPoint>) {
     Spacer(Modifier.height(8.dp))
     Text("Tendencia de precios · últimos 30 puntos diarios", fontWeight = FontWeight.Medium)
     MarketSparkline(points, chartHeight = 112.dp)
-    Text("Representación de precios de cierre diarios; no son velas OHLCV ni precios ejecutables.",
+    Text("Cotizaciones diarias observadas por el proveedor; no se deben interpretar como cierres oficiales, velas OHLCV ni precios ejecutables.",
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(8.dp))
