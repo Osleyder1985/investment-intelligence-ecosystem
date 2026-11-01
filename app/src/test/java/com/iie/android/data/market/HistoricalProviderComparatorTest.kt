@@ -64,6 +64,15 @@ class HistoricalProviderComparatorTest {
         assertNull(result.latestSymmetricDivergencePercent)
     }
 
+    @Test fun rejectsObservationsRetrievedBeforeTheirProviderTimestamp() {
+        val result = comparator.compare(
+            listOf(point("source:coinpaprika", timestamp, 100.0).copy(retrievedAtEpochMs = timestamp - 1L)),
+            listOf(point("source:coinmarketcap", timestamp, 101.0))
+        )
+        assertEquals(0, result.matchedObservations)
+        assertNull(result.latestSymmetricDivergencePercent)
+    }
+
     @Test fun comparesLatestOfSeveralExactTimestampPairs() {
         val result = comparator.compare(
             listOf(
