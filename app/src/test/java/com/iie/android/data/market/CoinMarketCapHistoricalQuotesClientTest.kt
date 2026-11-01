@@ -1,0 +1,68 @@
+package com.iie.android.data.market
+
+import java.time.LocalDate
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
+import org.junit.Test
+
+class CoinMarketCapHistoricalQuotesClientTest {
+    private val client = CoinMarketCapHistoricalQuotesClient()
+    private val start = LocalDate.parse("2026-10-01")
+    private val end = LocalDate.parse("2026-10-02")
+    private val retrieved = 1_798_900_000_000L
+    private val payload = """{
+      "status":{"error_code":0},
+      "data":{"id":1,"quotes":[
+        {"timestamp":"2026-10-02T00:00:00.000Z","quote":{"USD":{"price":2.0,"volume_24h":200.0,"market_cap":2000.0}}},
+        {"timestamp":"2026-10-01T00:00:00.000Z","quote":{"USD":{"price":1.0,"volume_24h":100.0,"market_cap":1000.0}}}
+      ]}
+    }"""
+
+    @Test fun parsesDailyQuotesAndPreservesCmcSourceIdentity() {
+        val points = client.parse(payload, 1L, retrieved, start, end)
+        assertEquals(2, points.size)
+        assertEquals("1", points.first().providerId)
+        assertEquals(CoinMarketCapHistoricalQuotesClient.SOURCE_ID, points.first().sourceId)
+        assertEquals(1.0, points.first().priceUsd, 0.000001)
+        assertEquals(100.0, points.first().volume24hUsd!!, 0.000001)
+        assertEquals(retrieved, points.first().retrievedAtEpochMs)
+    }
+
+    @Test fun preservesMissingOptionalMetricsAsNull() {
+        val points = client.parse(
+            """{"status":{"error_code":0},"data":{"id":1,"quotes":[
+              {"timestamp":"2026-10-01T00:00:00Z","quote":{"USD":{"price":1.0}}}
+            ]}}""", 1L, retrieved, start, end
+        )
+        assertNull(points.single().volume24hUsd)
+        assertNull(points.single().marketCapUsd)
+    }
+
+    @Test fun rejectsProviderErrorsWrongAssetAndDuplicateTimestamps() {
+        assertThrows(java.io.IOException::class.java) {
+            client.parse("""{"status":{"error_code":1002},"data":{}}""", 1L, retrieved, start, end)
+        }
+        assertThrows(java.io.IOException::class.java) {
+            client.parse(payload.replace("\"id\":1", "\"id\":2"), 1L, retrieved, start, end)
+        }
+        val duplicate = payload.replace(
+            "\"timestamp\":\"2026-10-01T00:00:00.000Z\"",
+            "\"timestamp\":\"2026-10-02T00:00:00.000Z\""
+        )
+        assertThrows(java.io.IOException::class.java) {
+            client.parse(duplicate, 1L, retrieved, start, end)
+        }
+    }
+
+    @Test fun rejectsInvalidPricesAndOutOfWindowPoints() {
+        val invalid = payload.replace("\"price\":1.0", "\"price\":0.0")
+        assertThrows(java.io.IOException::class.java) {
+            client.parse(invalid, 1L, retrieved, start, end)
+        }
+        val outside = payload.replace("2026-10-01T00:00:00.000Z", "2026-09-30T00:00:00.000Z")
+        assertThrows(java.io.IOException::class.java) {
+            client.parse(outside, 1L, retrieved, start, end)
+        }
+    }
+}
