@@ -16,7 +16,7 @@ The domain and analytics layers must remain independent of Android UI and persis
 
 ## Current prototype and persistence work
 
-The current explorer UI is still a prototype backed by static demonstration data. It supports search by asset name/symbol and a detail dialog. It is not yet connected to Room.
+The explorer now observes the Room-backed asset repository through a ViewModel. Search is performed against local SQLite data, and the user can add/remove assets from a persistent local watchlist. The first-run catalogue is an explicitly labelled local demo fixture.
 
 A first local persistence layer has been added on a development branch:
 - canonical assets and non-unique ticker symbols;
@@ -27,7 +27,7 @@ A first local persistence layer has been added on a development branch:
 - Room DAOs, database declaration/provider, and a Room-backed asset repository;
 - instrumentation-test source for core identity and persistence constraints.
 
-The data model and test source are pending Android compilation, generated Room schema review, and emulator/device test execution. Their presence does not mean the tests have passed.
+The Room data model, fixture seeder, and explorer integration are on development branches/stacked pull requests. The Android CI run for commit `b201899f4c46c64d5e314aed26b0f9e05c0c8aae` successfully built the debug app, compiled Android test sources, and passed unit tests. The API 35 emulator booted and started instrumentation, but the test runner failed to initialize (`Failed to instantiate test runner class androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner`). The Room instrumentation tests therefore remain unvalidated. Test source and successful compilation are not evidence that those tests passed.
 
 ## Toolchain baseline
 
@@ -60,9 +60,10 @@ See:
 ## Known limitations
 
 - No Gradle Wrapper has been committed yet; local Gradle/Android Studio setup is required.
-- The explorer UI still uses static demo data and is not wired to the repository.
+- The initial catalogue contains only four demo assets; it is not a production-wide asset universe.
 - Production canonicalization/identifier normalization rules are not finalized.
 - No analytical engine or external provider is integrated.
-- No generated Room schema JSON has been verified or committed.
-- Android compilation, instrumentation tests, automated Android CI, and device/emulator verification are pending.
+- The demo fixture does not establish production asset identity; USDC is intentionally left without a network deployment because its representation is multi-chain.
+- The Room schema export was generated and published as CI artifact `room-schema-android` (run #27, artifact 13054179613). The exported version-1 JSON was inspected: seven entities, primary keys, indexes, and foreign keys are present, including the composite observation-to-deployment reference `(deploymentId, assetId)`. The schema JSON is not yet committed.
+- Android CI run #27 booted the API 35 emulator and started instrumentation, but failed before executing the test methods because the AndroidJUnit4 test runner could not be instantiated. This is a test infrastructure/runner initialization failure; it is not evidence of a Room assertion failure. The unit-test task and Android compilation passed.
 - The application ID `com.iie.android` is provisional.

@@ -211,13 +211,14 @@ Such a future service is not part of the first release and must require a separa
 ## 12. Current status and non-claims
 
 At the time of this draft:
-- the Android branch contains a small Jetpack Compose UI prototype with static demo data;
+- the Android development branch contains a Jetpack Compose explorer connected to a Room-backed repository and local watchlist;
 - an initial Room schema, DAOs, database provider, asset repository, and instrumentation-test source have been added on a development branch;
-- the local data model is still draft and has not yet passed Android compilation or instrumentation execution;
-- the explorer UI is not yet connected to Room;
+- the Android CI run for commit `b201899f4c46c64d5e314aed26b0f9e05c0c8aae` successfully built the debug app, compiled Android test sources, and passed unit tests; the API 35 emulator booted, but instrumentation stopped at test-runner initialization (`Failed to instantiate test runner class androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner`), before the test methods ran;
+- the generated Room schema version 1 was published as CI artifact `room-schema-android` and inspected: seven entities, primary keys, indexes, and foreign keys were present, including the composite observation-to-deployment reference `(deploymentId, assetId)`; the JSON is not yet committed;
+- a transactional demo-fixture seeder and persistent watchlist interaction have been added as implementation work;
 - the analytical engine and external provider integration are not yet implemented;
-- a Gradle Wrapper and Android CI are not yet present;
-- no Android build, emulator test, performance benchmark, or security assessment is claimed by this document.
+- a Gradle Wrapper is not yet present; the Android app build, Android-test compilation, and unit-test task passed in CI, but instrumented Room test methods have not yet executed successfully;
+- no successful Room instrumentation run, performance benchmark, or security assessment is claimed by this document.
 
 This is an architecture proposal and implementation baseline, not evidence of implementation, empirical validation, or ISO certification.
 

@@ -11,6 +11,7 @@ import com.iie.android.data.local.entity.AssetObservationEntity
 import com.iie.android.data.local.entity.DataSourceEntity
 import com.iie.android.data.local.entity.NetworkEntity
 import com.iie.android.data.local.entity.WatchlistEntryEntity
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -19,15 +20,18 @@ import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.UUID
 
 @RunWith(AndroidJUnit4::class)
 class IIEDatabaseTest {
     private lateinit var database: IIEDatabase
+    private lateinit var context: Context
+    private val databaseName = "iie-test-${UUID.randomUUID()}.db"
 
     @Before
     fun createDatabase() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        database = Room.inMemoryDatabaseBuilder(context, IIEDatabase::class.java)
+        context = ApplicationProvider.getApplicationContext()
+        database = Room.databaseBuilder(context, IIEDatabase::class.java, databaseName)
             .allowMainThreadQueries()
             .build()
     }
@@ -35,6 +39,7 @@ class IIEDatabaseTest {
     @After
     fun closeDatabase() {
         database.close()
+        context.deleteDatabase(databaseName)
     }
 
     @Test
@@ -174,6 +179,110 @@ class IIEDatabaseTest {
         assertNotNull(entry)
         assertEquals(100L, entry?.addedAtEpochMs)
         assertEquals("first", entry?.note)
+    }
+
+    @Test
+    fun repositoryWatchlistToggleIsAtomicAndAlternatesState() = runBlocking {
+        database.assetDao().insertAsset(
+            asset("asset-toggle", "canonical:toggle", "Toggle Asset", "TGL")
+        )
+        val repository = com.iie.android.data.repository.RoomAssetRepository(database) { 500L }
+
+        assertEquals(true, repository.toggleWatchlist("asset-toggle"))
+        assertNotNull(database.watchlistDao().getEntry("asset-toggle"))
+        assertEquals(false, repository.toggleWatchlist("asset-toggle"))
+        assertEquals(null, database.watchlistDao().getEntry("asset-toggle"))
+    }
+
+    @Test
+    fun searchMatchesAssetNameAndSymbolWithoutAssumingUniqueSymbols() = runBlocking {
+        database.assetDao().insertAssets(
+            listOf(
+                asset("asset-btc", "canonical:btc", "Bitcoin", "BTC"),
+                asset("asset-wrapped-btc", "canonical:wbtc", "Wrapped Bitcoin", "BTC"),
+                asset("asset-eth", "canonical:eth", "Ethereum", "ETH")
+            )
+        )
+
+        val bySymbol = database.assetDao().observeAssets("btc").first()
+        val byName = database.assetDao().observeAssets("ethereum").first()
+
+        assertEquals(2, bySymbol.size)
+        assertEquals("Ethereum", byName.single().name)
+    }
+
+    @Test
+    fun deploymentDetailJoinsCorrectNetworkName() = runBlocking {
+        database.assetDao().insertAsset(
+            asset("asset-btc", "canonical:btc", "Bitcoin", "BTC")
+        )
+        database.networkDao().insertNetwork(
+            NetworkEntity(
+                networkId = "network-btc",
+                networkKey = "bitcoin-mainnet",
+                name = "Bitcoin Mainnet",
+                networkFamily = "UTXO",
+                chainId = null,
+                nativeCurrencySymbol = "BTC"
+            )
+        )
+        database.assetDeploymentDao().insertDeployment(
+            AssetDeploymentEntity(
+                deploymentId = "deployment-btc",
+                deploymentKey = "native:btc",
+                assetId = "asset-btc",
+                networkId = "network-btc",
+                representationKind = "NATIVE",
+                namespace = "native",
+                reference = null,
+                decimals = 8,
+                validFromEpochMs = null,
+                validUntilEpochMs = null
+            )
+        )
+
+        val detail = database.assetDeploymentDao()
+            .observeSummariesForAsset("asset-btc").first().single()
+
+        assertEquals("Bitcoin Mainnet", detail.networkName)
+        assertEquals("NATIVE", detail.representationKind)
+        assertEquals(8, detail.decimals)
+    }
+
+    @Test
+    fun fileBackedDatabaseRetainsCatalogAndWatchlistAfterReopen() = runBlocking {
+        DemoAssetSeeder(database) { 100L }.seed()
+        database.watchlistDao().add(
+            WatchlistEntryEntity("asset:bitcoin", addedAtEpochMs = 150L, note = "persist me")
+        )
+
+        database.close()
+        database = Room.databaseBuilder(context, IIEDatabase::class.java, databaseName)
+            .allowMainThreadQueries()
+            .build()
+
+        assertEquals(4, database.assetDao().countAssets())
+        val entry = database.watchlistDao().getEntry("asset:bitcoin")
+        assertNotNull(entry)
+        assertEquals(150L, entry?.addedAtEpochMs)
+        assertEquals("persist me", entry?.note)
+    }
+
+    @Test
+    fun demoSeederIsIdempotentAndPreservesUserWatchlistData() = runBlocking {
+        DemoAssetSeeder(database) { 100L }.seed()
+        database.watchlistDao().add(
+            WatchlistEntryEntity("asset:bitcoin", addedAtEpochMs = 150L, note = "user note")
+        )
+
+        DemoAssetSeeder(database) { 200L }.seed()
+
+        assertEquals(4, database.assetDao().countAssets())
+        assertNotNull(database.assetDeploymentDao().getDeployment("deployment:bitcoin-native"))
+        val entry = database.watchlistDao().getEntry("asset:bitcoin")
+        assertNotNull(entry)
+        assertEquals(150L, entry?.addedAtEpochMs)
+        assertEquals("user note", entry?.note)
     }
 
     private fun asset(
