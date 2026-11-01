@@ -404,29 +404,14 @@ private fun InvestorDashboard(
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF14252B))) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("INVESTMENT INTELLIGENCE", style = MaterialTheme.typography.labelSmall, color = Color(0xFF8FA99F), fontWeight = FontWeight.Bold)
-                        Surface(color = Color(0xFF203D35), shape = RoundedCornerShape(50)) {
-                            Text("INVESTOR TERMINAL", Modifier.padding(horizontal = 10.dp, vertical = 6.dp), color = Color(0xFF8CE2BC), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    Text("El mercado, bajo\nuna mirada analítica.", style = MaterialTheme.typography.headlineMedium, color = Color(0xFFF1F7F4), fontWeight = FontWeight.Bold)
-                    Text("Datos observados, cobertura explícita y señales que merecen investigación. Sin puntuaciones ni recomendaciones artificiales.", style = MaterialTheme.typography.bodyMedium, color = Color(0xFFB4C6C0))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        HeroStat(Modifier.weight(1f), assets.size.toString(), "ACTIVOS EN UNIVERSO")
-                        HeroStat(Modifier.weight(1f), watchlist.size.toString(), "EN SEGUIMIENTO")
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = onExplore) { Text("EXPLORAR MERCADOS  →", color = Color(0xFF75E0B2), fontWeight = FontWeight.Bold) }
-                        TextButton(onClick = onRefresh, enabled = refreshStatus?.startsWith("Actualizando") != true) {
-                            Text(if (refreshStatus?.startsWith("Actualizando") == true) "ACTUALIZANDO…" else "↻ ACTUALIZAR DATOS", color = Color(0xFF75E0B2), fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    Text(refreshStatus ?: catalogStatus, style = MaterialTheme.typography.labelSmall, color = Color(0xFF91A69F))
-                }
-            }
+            InvestorCommandHeader(
+                assetCount = assets.size,
+                watchedCount = watchlist.size,
+                catalogStatus = catalogStatus,
+                refreshStatus = refreshStatus,
+                onExplore = onExplore,
+                onRefresh = onRefresh
+            )
         }
         item {
             Text("MERCADO GLOBAL · COINPAPRIKA", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
