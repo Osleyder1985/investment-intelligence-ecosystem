@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -572,6 +573,33 @@ private fun AssetRow(
 }
 
 @Composable
+private fun DetailSection(
+    title: String,
+    description: String? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF151F29))
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            content = {
+                Text(title, style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFFE8EEF4), fontWeight = FontWeight.Bold)
+                if (description != null) {
+                    Text(description, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                content()
+            }
+        )
+    }
+}
+
+@Composable
 private fun AssetDetailDialog(
     asset: Asset,
     isWatched: Boolean,
@@ -620,106 +648,108 @@ private fun AssetDetailDialog(
             }
         },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                Text("ID local: ${asset.assetId}")
-                Text("Clave canónica: ${asset.canonicalKey}")
-                Text("Estado de identidad: ${asset.identityStatus}")
-                Spacer(Modifier.height(8.dp))
-                Text("Redes y representaciones:", fontWeight = FontWeight.SemiBold)
-                if (deployments.isEmpty()) {
-                    Text(
-                        if (asset.symbol == "USDC" || asset.symbol == "USDT") {
-                            "Sin despliegue asignado: activo multi-red pendiente de resolución."
-                        } else {
-                            "No hay despliegues registrados para este activo."
-                        },
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                } else {
-                    deployments.forEach { deployment ->
+            var showAudit by remember(asset.assetId) { mutableStateOf(false) }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 620.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Card(
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF172B31))
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("PRECIO DE MERCADO · USD", style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF9BB8AD), fontWeight = FontWeight.Bold)
                         Text(
-                            "${deployment.networkName} · ${deployment.representationKind} · ${deployment.decimals ?: "N/D"} decimales",
-                            style = MaterialTheme.typography.bodySmall
+                            marketQuote?.priceUsd?.let { "\$" + String.format(java.util.Locale.US, "%,.4f", it) }
+                                ?: "Cotización no disponible",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = Color(0xFFF0F7F3), fontWeight = FontWeight.Bold
                         )
+                        Text("CoinPaprika · " + (marketQuote?.freshnessStatus ?: "SIN DATOS"),
+                            style = MaterialTheme.typography.labelMedium, color = Color(0xFF8DDFB8))
+                        TextButton(onClick = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) },
+                            enabled = marketQuote?.isLoading != true) {
+                            Text(if (marketQuote?.isLoading == true) "Actualizando…" else "Actualizar cotización")
+                        }
                     }
                 }
 
-                Spacer(Modifier.height(12.dp))
-                Text("Expediente de investigación", fontWeight = FontWeight.SemiBold)
-                Text(
-                    "Genera un resumen con las observaciones guardadas en este dispositivo. No descarga datos ni emite recomendaciones.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                TextButton(onClick = { viewModel.generateResearchDossier(asset.assetId) }) {
-                    Text("Generar expediente con datos guardados")
-                }
-                ResearchDossierDetails(researchDossiers[asset.assetId])
-
-                Spacer(Modifier.height(10.dp))
-                Text("Suministro total on-chain · evidencia del expediente", fontWeight = FontWeight.SemiBold)
-                val erc20Deployments = deployments.filter { it.representationKind == "ERC20" }
-                if (erc20Deployments.isEmpty()) {
+                DetailSection("Evolución del precio", "Histórico diario disponible; no representa velas OHLCV ni precios ejecutables.") {
+                    MarketSparkline(dailyHistory, chartHeight = 150.dp)
                     Text(
-                        "Sin contratos EVM verificados registrados para consultar suministro on-chain.",
-                        style = MaterialTheme.typography.bodySmall
+                        if (dailyHistory.isEmpty()) "Sin histórico descargado. El gráfico aparecerá cuando haya puntos válidos."
+                        else "${dailyHistory.size} puntos diarios almacenados",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                } else {
-                    erc20Deployments.forEach { deployment ->
-                        RoutescanTokenSupplyDetails(
-                            state = routescanTokenSupplies[deployment.deploymentId],
-                            onRefresh = {
-                                viewModel.refreshRoutescanTokenSupply(asset.assetId, deployment.deploymentId)
+                    MarketHistorySyncDetails(state = historySync,
+                        onDownload = { viewModel.downloadDailyMarketHistory(asset.assetId, asset.symbol) })
+                    if (dailyHistory.isNotEmpty()) MarketHistoryPoints(points = dailyHistory)
+                }
+
+                DetailSection("Contraste de mercado", "Comparación de proveedores; no es una señal de compra o venta.") {
+                    MarketQuoteComparison(coinPaprika = marketQuote, coinMarketCap = coinMarketCapQuote)
+                    Text("CoinMarketCap", fontWeight = FontWeight.SemiBold)
+                    MarketQuoteDetails(quote = coinMarketCapQuote, providerName = "CoinMarketCap",
+                        onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) })
+                }
+
+                DetailSection("Investigación del activo", "Expediente construido con observaciones persistidas y evidencia disponible.") {
+                    ResearchDossierDetails(researchDossiers[asset.assetId])
+                    TextButton(onClick = { viewModel.generateResearchDossier(asset.assetId) }) {
+                        Text("Actualizar expediente")
+                    }
+                }
+
+                DetailSection("Tokenómica y suministro on-chain", "Los valores se muestran solo cuando existe evidencia de proveedor o de red.") {
+                    val erc20Deployments = deployments.filter { it.representationKind == "ERC20" }
+                    if (erc20Deployments.isEmpty()) {
+                        Text("No hay contratos EVM verificados registrados para este activo.",
+                            style = MaterialTheme.typography.bodySmall)
+                    } else {
+                        erc20Deployments.forEach { deployment ->
+                            Text(deployment.networkName, fontWeight = FontWeight.SemiBold)
+                            RoutescanTokenSupplyDetails(state = routescanTokenSupplies[deployment.deploymentId],
+                                onRefresh = { viewModel.refreshRoutescanTokenSupply(asset.assetId, deployment.deploymentId) })
+                        }
+                    }
+                }
+
+                DetailSection("Redes y representaciones", "Identidad y contratos asociados al activo.") {
+                    if (deployments.isEmpty()) {
+                        Text(if (asset.symbol == "USDC" || asset.symbol == "USDT")
+                            "Activo multired: todavía no hay despliegues asignados."
+                            else "No hay despliegues registrados.", style = MaterialTheme.typography.bodySmall)
+                    } else {
+                        deployments.forEach { deployment ->
+                            Text("${deployment.networkName} · ${deployment.representationKind} · ${deployment.decimals ?: "N/D"} decimales",
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+
+                TextButton(onClick = { showAudit = !showAudit }) {
+                    Text(if (showAudit) "Ocultar auditoría y procedencia" else "Ver auditoría y procedencia")
+                }
+                if (showAudit) {
+                    DetailSection("Auditoría de datos", "Identificadores, marcas temporales, validaciones y procedencia.") {
+                        Text("ID local: ${asset.assetId}", style = MaterialTheme.typography.bodySmall)
+                        Text("Clave canónica: ${asset.canonicalKey}", style = MaterialTheme.typography.bodySmall)
+                        Text("Estado de identidad: ${asset.identityStatus}", style = MaterialTheme.typography.bodySmall)
+                        if (provenance.isEmpty()) {
+                            Text("No hay observaciones de procedencia registradas.", style = MaterialTheme.typography.bodySmall)
+                        } else {
+                            provenance.forEach { observation ->
+                                ProvenanceObservation(observation)
+                                Spacer(Modifier.height(10.dp))
                             }
-                        )
+                        }
                     }
                 }
-
-                Spacer(Modifier.height(12.dp))
-                Text("Cotización de mercado · USD", fontWeight = FontWeight.SemiBold)
-                MarketQuoteDetails(
-                    quote = marketQuote,
-                    onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) }
-                )
-                Spacer(Modifier.height(8.dp))
-                Text("Cotización de CoinMarketCap · USD", fontWeight = FontWeight.SemiBold)
-                MarketQuoteDetails(
-                    quote = coinMarketCapQuote,
-                    providerName = "CoinMarketCap",
-                    onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) }
-                )
-                MarketQuoteComparison(
-                    coinPaprika = marketQuote,
-                    coinMarketCap = coinMarketCapQuote
-                )
-
-                Spacer(Modifier.height(10.dp))
-                Text("Histórico diario · CoinPaprika", fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "Importa hasta un año de puntos diarios de precio, volumen y capitalización. No son velas OHLCV ni precios ejecutables.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    MarketHistorySyncDetails(
-                        state = historySync,
-                        onDownload = { viewModel.downloadDailyMarketHistory(asset.assetId, asset.symbol) }
-                    )
-                MarketHistoryPoints(points = dailyHistory)
-
-                Spacer(Modifier.height(12.dp))
-                Text("Procedencia de los datos", fontWeight = FontWeight.SemiBold)
-                if (provenance.isEmpty()) {
-                    Text(
-                        "No hay observaciones de procedencia registradas.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                } else {
-                    provenance.forEach { observation ->
-                        ProvenanceObservation(observation)
-                        Spacer(Modifier.height(8.dp))
-                    }
-                }
-
-                Spacer(Modifier.height(12.dp))
-
             }
         },
         confirmButton = {
