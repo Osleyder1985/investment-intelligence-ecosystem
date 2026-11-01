@@ -288,13 +288,13 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             return
         }
         viewModelScope.launch {
-            _dashboardRefreshStatus.value = "Actualizando 0/\${assets.size} activos…"
+            _dashboardRefreshStatus.value = "Actualizando 0/${assets.size} activos…"
             assets.forEachIndexed { index, asset ->
                 markQuoteLoading(asset.assetId)
                 refreshMarketQuoteNow(asset.assetId, asset.symbol)
-                _dashboardRefreshStatus.value = "Actualizando \${index + 1}/\${assets.size} · \${asset.symbol.uppercase()}"
+                _dashboardRefreshStatus.value = "Actualizando ${index + 1}/${assets.size} · ${asset.symbol.uppercase()}"
             }
-            _dashboardRefreshStatus.value = "Actualización finalizada · \${assets.size} activos revisados."
+            _dashboardRefreshStatus.value = "Actualización finalizada · ${assets.size} activos revisados."
         }
     }
 
