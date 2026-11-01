@@ -73,6 +73,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
     val watchlist by viewModel.watchlist.collectAsState()
     val catalogStatus by viewModel.catalogStatus.collectAsState()
     val marketQuotes by viewModel.marketQuotes.collectAsState()
+    val marketHistorySync by viewModel.marketHistorySync.collectAsState()
     val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
     var selectedAsset by remember { mutableStateOf<Asset?>(null) }
     var destination by remember { mutableStateOf("Resumen") }
@@ -280,9 +281,11 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                                             asset = asset,
                                             quote = marketQuotes[asset.assetId],
                                             history = dailyHistoryByAsset[asset.assetId].orEmpty(),
+                                            historySync = marketHistorySync[asset.assetId],
                                             isWatched = asset.assetId in watchlist,
                                             onClick = { selectedAsset = asset },
                                             onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) },
+                                            onDownloadHistory = { viewModel.downloadDailyMarketHistory(asset.assetId, asset.symbol) },
                                             onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
                                         )
                                     } else {
@@ -318,9 +321,11 @@ private fun MarketAssetRow(
     asset: Asset,
     quote: MarketQuoteUiState?,
     history: List<CoinPaprikaHistoricalPoint>,
+    historySync: MarketHistorySyncUiState?,
     isWatched: Boolean,
     onClick: () -> Unit,
     onRefresh: () -> Unit,
+    onDownloadHistory: () -> Unit,
     onToggleWatchlist: () -> Unit
 ) {
     val latestTwo = history.sortedByDescending { it.timestampEpochMs }.take(2)
@@ -386,6 +391,19 @@ private fun MarketAssetRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )
+            }
+            Text(
+                "Histórico diario: " + history.size + " puntos guardados",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            historySync?.message?.let { Text(it, style = MaterialTheme.typography.labelSmall) }
+            historySync?.error?.let {
+                Text(it, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error)
+            }
+            TextButton(onClick = onDownloadHistory, enabled = historySync?.isLoading != true) {
+                Text(if (historySync?.isLoading == true) "Descargando histórico…" else "Descargar histórico diario")
             }
             TextButton(onClick = onRefresh, enabled = quote?.isLoading != true) {
                 Text(if (quote?.isLoading == true) "Actualizando…" else "Actualizar cotización")
