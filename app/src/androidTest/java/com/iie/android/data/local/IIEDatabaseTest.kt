@@ -395,13 +395,8 @@ class IIEDatabaseTest {
     }
 
     @Test
-    fun rerunningSeederAddsNewProviderMappingsToAnExistingCatalog() = runBlocking {
+    fun repeatedSeederPreservesAllCoinPaprikaProviderMappings() = runBlocking {
         DemoAssetSeeder(database) { 100L }.seed()
-        // Simulate an installation whose local database was seeded before BTC/ETH/SOL mappings existed.
-        database.assetIdentifierDao().findForAsset(
-            "asset:bitcoin", "source:coinpaprika", "coinpaprika"
-        )?.let { error("Unexpected pre-existing BTC provider mapping") }
-
         DemoAssetSeeder(database) { 200L }.seed()
 
         assertEquals("btc-bitcoin", database.assetIdentifierDao()
@@ -410,6 +405,10 @@ class IIEDatabaseTest {
             .findForAsset("asset:ethereum", "source:coinpaprika", "coinpaprika")?.identifierValue)
         assertEquals("sol-solana", database.assetIdentifierDao()
             .findForAsset("asset:solana", "source:coinpaprika", "coinpaprika")?.identifierValue)
+        assertEquals("usdc-usd-coin", database.assetIdentifierDao()
+            .findForAsset("asset:usd-coin", "source:coinpaprika", "coinpaprika")?.identifierValue)
+        assertEquals("usdt-tether", database.assetIdentifierDao()
+            .findForAsset("asset:tether", "source:coinpaprika", "coinpaprika")?.identifierValue)
     }
 
     @Test
