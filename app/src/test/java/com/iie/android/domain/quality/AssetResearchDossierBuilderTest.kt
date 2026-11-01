@@ -5,6 +5,8 @@ import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.ResearchFieldStatus
 import com.iie.android.domain.model.ResearchQuoteInput
 import com.iie.android.domain.model.ResearchQuoteComparisonInput
+import com.iie.android.domain.model.ResearchEvidence
+import com.iie.android.domain.model.TokenomicsResearchSection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -67,6 +69,35 @@ class AssetResearchDossierBuilderTest {
         )
         assertEquals(ResearchFieldStatus.UNKNOWN, dossier.identityAssessment)
         assertEquals("INSUFFICIENT_EVIDENCE", dossier.overallEvidenceStatus)
+    }
+
+    @Test fun tokenomicsEvidenceIsNotMarkedCompleteWhenFieldsAreMissing() {
+        val unknown = ResearchEvidence<Double>(
+            fieldKey = "circulating_supply", value = null,
+            status = ResearchFieldStatus.UNKNOWN, sourceId = null, sourceName = null,
+            sourceUrl = null, licenseReference = null, permittedUseStatus = "UNKNOWN",
+            observedAtEpochMs = null, retrievedAtEpochMs = null, qualityStatus = "NOT_PROVIDED"
+        )
+        val textUnknown = com.iie.android.domain.model.ResearchEvidence<String>(
+            fieldKey = "emission_schedule", value = null,
+            status = ResearchFieldStatus.UNKNOWN, sourceId = null, sourceName = null,
+            sourceUrl = null, licenseReference = null, permittedUseStatus = "UNKNOWN",
+            observedAtEpochMs = null, retrievedAtEpochMs = null, qualityStatus = "NOT_PROVIDED"
+        )
+        val section = TokenomicsResearchSection(
+            circulatingSupply = unknown,
+            totalSupply = unknown.copy(fieldKey = "total_supply"),
+            maxSupply = unknown.copy(fieldKey = "max_supply"),
+            annualInflationPercent = unknown.copy(fieldKey = "annual_inflation_percent"),
+            emissionSchedule = textUnknown,
+            unlockEvents = emptyList()
+        )
+        val dossier = builder.build(
+            asset, emptyList(), null, emptyList(), emptyList(), 100L,
+            tokenomicsEvidence = section
+        )
+        assertEquals(ResearchFieldStatus.UNKNOWN, dossier.tokenomics)
+        assertEquals(ResearchFieldStatus.UNKNOWN, dossier.tokenomicsEvidence?.circulatingSupply?.status)
     }
 
     private fun point(timestamp: Long, price: Double) = ResearchMarketHistoryPoint(
