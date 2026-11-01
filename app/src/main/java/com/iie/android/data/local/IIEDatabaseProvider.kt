@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * Destructive migrations are intentionally not enabled.
  */
 object IIEDatabaseProvider {
-    private val MIGRATION_1_2 = object : Migration(1, 2) {
+    internal val MIGRATION_1_2 = object : Migration(1, 2) {
         override fun migrate(database: SupportSQLiteDatabase) {
             database.execSQL("""CREATE TABLE IF NOT EXISTS asset_research_dossier_snapshots (
                 snapshotId TEXT NOT NULL,
