@@ -9,6 +9,7 @@ import com.iie.android.domain.model.ResearchDeployment
 import com.iie.android.domain.model.ResearchFieldStatus
 import com.iie.android.domain.model.ResearchQuoteInput
 import com.iie.android.domain.model.ResearchMarketHistoryPoint
+import com.iie.android.domain.model.ResearchQuoteComparisonInput
 
 /** Builds a transparent dossier from provider-validated observations; never infers investment merit. */
 class AssetResearchDossierBuilder {
@@ -18,7 +19,8 @@ class AssetResearchDossierBuilder {
         quote: ResearchQuoteInput?,
         history: List<ResearchMarketHistoryPoint>,
         provenance: List<AssetObservationProvenance>,
-        generatedAtEpochMs: Long
+        generatedAtEpochMs: Long,
+        quoteComparison: ResearchQuoteComparisonInput? = null
     ): AssetResearchDossier {
         require(generatedAtEpochMs > 0L)
         val validQuote = quote?.priceUsd?.takeIf { it.isFinite() && it > 0.0 }
@@ -35,6 +37,8 @@ class AssetResearchDossierBuilder {
         val periodReturn = if (first != null && last != null && first.priceUsd > 0.0) {
             ((last.priceUsd / first.priceUsd) - 1.0) * 100.0
         } else null
+
+        val comparison = evaluateQuoteComparison(quoteComparison, generatedAtEpochMs)
 
         return AssetResearchDossier(
             assetId = asset.assetId,
@@ -61,10 +65,52 @@ class AssetResearchDossierBuilder {
                 latestDailyReturnPercent = dailyReturn,
                 periodReturnPercent = periodReturn,
                 periodHighUsd = orderedHistory.maxOfOrNull { it.priceUsd },
-                periodLowUsd = orderedHistory.minOfOrNull { it.priceUsd }
+                periodLowUsd = orderedHistory.minOfOrNull { it.priceUsd },
+                quoteComparisonStatus = comparison.status,
+                quoteDifferencePercent = comparison.differencePercent,
+                quoteDifferenceThresholdPercent = quoteComparison?.thresholdPercent,
+                quoteComparisonPrimaryObservationId = quoteComparison?.primaryObservationId,
+                quoteComparisonSecondaryObservationId = quoteComparison?.secondaryObservationId,
+                quoteComparedAtEpochMs = comparison.comparedAtEpochMs
             ),
             evidenceCount = provenance.size,
             generatedAtEpochMs = generatedAtEpochMs
         )
     }
+    
+    private data class QuoteComparisonResult(
+        val status: String,
+        val differencePercent: Double?,
+        val comparedAtEpochMs: Long?
+    )
+
+    private fun evaluateQuoteComparison(
+        input: ResearchQuoteComparisonInput?,
+        generatedAtEpochMs: Long
+    ): QuoteComparisonResult {
+        if (input == null) return QuoteComparisonResult("NOT_AVAILABLE", null, null)
+        require(input.thresholdPercent.isFinite() && input.thresholdPercent > 0.0)
+        require(input.maxTimestampSkewMs >= 0L)
+        val first = input.primaryQuote
+        val second = input.secondaryQuote
+        val firstPrice = first?.priceUsd?.takeIf { it.isFinite() && it > 0.0 }
+        val secondPrice = second?.priceUsd?.takeIf { it.isFinite() && it > 0.0 }
+        val firstTime = first?.providerUpdatedAtEpochMs
+        val secondTime = second?.providerUpdatedAtEpochMs
+        if (firstPrice == null || secondPrice == null || firstTime == null || secondTime == null ||
+            firstTime <= 0L || secondTime <= 0L
+        ) return QuoteComparisonResult("NOT_COMPARABLE", null, null)
+        if (first.freshnessStatus != "FRESH" || second.freshnessStatus != "FRESH" ||
+            kotlin.math.abs(firstTime - secondTime) > input.maxTimestampSkewMs
+        ) return QuoteComparisonResult("NOT_COMPARABLE", null, null)
+        val mean = (firstPrice + secondPrice) / 2.0
+        val difference = kotlin.math.abs(firstPrice - secondPrice) / mean * 100.0
+        if (!difference.isFinite()) return QuoteComparisonResult("NOT_COMPARABLE", null, null)
+        return QuoteComparisonResult(
+            status = if (difference > input.thresholdPercent) "CONFLICTED" else "CONSISTENT",
+            differencePercent = difference,
+            comparedAtEpochMs = generatedAtEpochMs
+        )
+    }
+
 }
