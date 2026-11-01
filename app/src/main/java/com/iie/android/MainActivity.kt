@@ -192,10 +192,13 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                 when (destination) {
                     "Ajustes" -> CoinMarketCapSettingsScreen()
                     "Resumen" -> {
-                        Text("VISTA GENERAL", style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(8.dp))
+                        DashboardHero(
+                            assetCount = assets.size,
+                            watchedCount = watchlist.size,
+                            catalogStatus = catalogStatus,
+                            onExplore = { destination = "Mercados" }
+                        )
+                        Spacer(Modifier.height(20.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -413,6 +416,91 @@ private fun MarketAssetRow(
                 Text(if (quote?.isLoading == true) "Actualizando…" else "Actualizar cotización")
             }
         }
+    }
+}
+
+@Composable
+private fun DashboardHero(
+    assetCount: Int,
+    watchedCount: Int,
+    catalogStatus: String,
+    onExplore: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF14252B))
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "INVESTMENT INTELLIGENCE",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF8FA99F),
+                    fontWeight = FontWeight.Bold
+                )
+                Surface(
+                    color = Color(0xFF203D35),
+                    shape = RoundedCornerShape(50)
+                ) {
+                    Text(
+                        "PERSONAL TERMINAL",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        color = Color(0xFF8CE2BC),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            Text(
+                "Investiga con\ncriterio. Decide con datos.",
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color(0xFFF1F7F4),
+                fontWeight = FontWeight.Bold,
+                lineHeight = MaterialTheme.typography.headlineMedium.lineHeight
+            )
+            Text(
+                "Tu espacio de análisis de mercado, fundamentos y tokenómica.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFFB4C6C0)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                HeroStat(value = assetCount.toString(), label = "ACTIVOS")
+                HeroStat(value = watchedCount.toString(), label = "SEGUIMIENTO")
+            }
+            TextButton(onClick = onExplore) {
+                Text("EXPLORAR MERCADOS  →", color = Color(0xFF75E0B2), fontWeight = FontWeight.Bold)
+            }
+            Text(
+                catalogStatus,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color(0xFF91A69F)
+            )
+        }
+    }
+}
+
+@Composable
+private fun HeroStat(value: String, label: String) {
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .background(Color(0xFF1C3437), RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        Text(value, style = MaterialTheme.typography.headlineSmall, color = Color(0xFFF1F7F4), fontWeight = FontWeight.Bold)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Color(0xFF9EB7AE), fontWeight = FontWeight.Bold)
     }
 }
 
