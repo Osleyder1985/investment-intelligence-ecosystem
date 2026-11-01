@@ -44,6 +44,17 @@ class CoinMarketCapKeylessClientTest {
         assertEquals(1_798_000_000_000L, result.retrievedAtEpochMs)
     }
 
+    @Test fun parsesDocumentedV3QuoteArray() {
+        val arrayListing = listing().replace(
+            "\"quote\": {\"USD\": {\"price\": 65000.25}}",
+            "\"quote\": [{\"symbol\": \"USD\", \"price\": 65000.25}]"
+        )
+        val result = client.parse(
+            payload(arrayListing), setOf("BTC"), 1_798_000_000_000L
+        ).single()
+        assertEquals(65_000.25, result.priceUsd, 0.0)
+    }
+
     @Test fun absentSupplyRemainsNullRatherThanBecomingZero() {
         val result = client.parse(
             payload(listing(supply="")), setOf("BTC"), 1_798_000_000_000L
