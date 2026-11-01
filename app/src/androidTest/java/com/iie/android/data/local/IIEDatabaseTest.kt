@@ -55,6 +55,44 @@ class IIEDatabaseTest {
 
 
     @Test
+    fun initialAssetCatalogCreatesCanonicalAssetsWithoutSyntheticEvidenceAndIsIdempotent() = runBlocking {
+        val catalog = InitialAssetCatalog(database) { 1_700_000_000_000L }
+
+        catalog.synchronize()
+
+        assertEquals(5, database.assetDao().countAssets())
+        val bitcoin = database.assetDao().getAsset("asset:bitcoin")
+        assertNotNull(bitcoin)
+        assertEquals("crypto:bitcoin", bitcoin?.canonicalKey)
+        assertEquals("RESOLVED", bitcoin?.identityStatus)
+
+        val usdc = database.assetDao().getAsset("asset:usd-coin")
+        val usdt = database.assetDao().getAsset("asset:tether")
+        assertNotNull(usdc)
+        assertNotNull(usdt)
+        assertEquals("USDC", usdc?.symbol)
+        assertEquals("USDT", usdt?.symbol)
+        assertEquals("RESOLVED_WITH_LIMITATIONS", usdc?.identityStatus)
+        assertEquals("RESOLVED_WITH_LIMITATIONS", usdt?.identityStatus)
+
+        val usdcProviderId = database.assetIdentifierDao()
+            .findForAsset("asset:usd-coin", "source:coinpaprika", "coinpaprika")
+        val usdtProviderId = database.assetIdentifierDao()
+            .findForAsset("asset:tether", "source:coinpaprika", "coinpaprika")
+        assertEquals("usdc-usd-coin", usdcProviderId?.identifierValue)
+        assertEquals("usdt-tether", usdtProviderId?.identifierValue)
+        assertEquals("PROVIDER_ID_CONFIRMED", usdcProviderId?.verificationStatus)
+        assertEquals("PROVIDER_ID_CONFIRMED", usdtProviderId?.verificationStatus)
+
+        assertEquals(null, database.dataSourceDao().getSource("source:iie-demo-fixture"))
+        assertEquals(0, database.assetObservationDao().observeForAsset("asset:bitcoin").first().size)
+
+        catalog.synchronize()
+        assertEquals(5, database.assetDao().countAssets())
+        assertEquals(0, database.assetObservationDao().observeForAsset("asset:bitcoin").first().size)
+    }
+
+    @Test
     fun dossierSnapshotCodecRoundTripsNullableFieldsAndDeploymentReference() {
         val dossier = AssetResearchDossier(
             assetId = "asset-btc",
