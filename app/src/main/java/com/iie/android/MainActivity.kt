@@ -209,6 +209,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                             watchlist = watchlist,
                             quotes = coinMarketCapQuotes,
                             history = dailyHistoryByAsset,
+                            coinMarketCapHistory = coinMarketCapDailyHistoryByAsset,
                             globalMetrics = globalMarket.globalMetrics,
                             fearGreed = globalMarket.fearGreed,
                             catalogStatus = catalogStatus,
@@ -342,12 +343,32 @@ private fun MarketAssetRow(
     }
 }
 
+private fun chooseCanonicalHistoricalSeries(
+    coinPaprika: List<CoinPaprikaHistoricalPoint>,
+    coinMarketCap: List<CoinPaprikaHistoricalPoint>
+): com.iie.android.data.market.CanonicalHistoricalSeries? {
+    val candidates = listOf(coinPaprika, coinMarketCap)
+        .filter { it.isNotEmpty() }
+    val combined = candidates.flatten()
+    val priority = candidates
+        .sortedWith(
+            compareByDescending<List<CoinPaprikaHistoricalPoint>> { it.size }
+                .thenByDescending { points -> points.maxOfOrNull { it.retrievedAtEpochMs } ?: 0L }
+                .thenBy { points -> points.firstOrNull()?.sourceId.orEmpty() }
+        )
+        .mapNotNull { it.firstOrNull()?.sourceId }
+        .distinct()
+    return HistoricalRiskAnalyzer().selectCanonicalSeries(combined, priority)
+}
+
+
 @Composable
 private fun InvestorDashboard(
     assets: List<Asset>,
     watchlist: Set<String>,
     quotes: Map<String, MarketQuoteUiState>,
     history: Map<String, List<CoinPaprikaHistoricalPoint>>,
+    coinMarketCapHistory: Map<String, List<CoinPaprikaHistoricalPoint>>,
     globalMetrics: GlobalMarketMetrics?,
     fearGreed: FearGreedIndex?,
     catalogStatus: String,
@@ -360,13 +381,23 @@ private fun InvestorDashboard(
     val coveredCaps = assets.mapNotNull { asset -> quotes[asset.assetId]?.marketCapUsd?.takeIf { it.isFinite() && it > 0.0 } }
     val coveredCapTotal = coveredCaps.sum()
     val capCoverage = coveredCaps.size
-    val historyCoverage = assets.count { (history[it.assetId]?.size ?: 0) >= 2 }
-    val volatilityValues = assets.mapNotNull { historicalVolatilityPercent(history[it.assetId].orEmpty()) }.sorted()
+    val canonicalHistoryByAsset = assets.associate { asset ->
+        asset.assetId to chooseCanonicalHistoricalSeries(
+            history[asset.assetId].orEmpty(),
+            coinMarketCapHistory[asset.assetId].orEmpty()
+        )
+    }
+    val historyCoverage = canonicalHistoryByAsset.values.count { (it?.points?.size ?: 0) >= 2 }
+    val volatilityValues = canonicalHistoryByAsset.values.mapNotNull {
+        it?.let { series -> historicalVolatilityPercent(series.points) }
+    }.sorted()
+    val canonicalCmcCoverage = canonicalHistoryByAsset.values.count { it?.sourceId == "source:coinmarketcap" }
+    val canonicalPaprikaCoverage = canonicalHistoryByAsset.values.count { it?.sourceId == "source:coinpaprika" }
     val medianVolatility = volatilityValues.takeIf { it.isNotEmpty() }?.let {
         if (it.size % 2 == 1) it[it.size / 2] else (it[it.size / 2 - 1] + it[it.size / 2]) / 2.0
     }
     val movers = assets.mapNotNull { asset ->
-        val points = history[asset.assetId].orEmpty().sortedBy { it.timestampEpochMs }
+        val points = canonicalHistoryByAsset[asset.assetId]?.points.orEmpty().sortedBy { it.timestampEpochMs }
         if (points.size < 2 || points.first().priceUsd <= 0.0) null
         else asset to ((points.last().priceUsd / points.first().priceUsd) - 1.0) * 100.0
     }.filter { it.second.isFinite() }.sortedByDescending { kotlin.math.abs(it.second) }.take(4)
@@ -460,12 +491,14 @@ private fun InvestorDashboard(
                 MetricCard("Históricos disponibles", "$historyCoverage / ${assets.size}", Modifier.weight(1f))
             }
             Spacer(Modifier.height(6.dp))
-            Text("La capitalización suma únicamente activos con dato CMC disponible; no representa la capitalización total del mercado. La volatilidad se estima con retornos diarios observados.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Capitalización: solo activos cubiertos por CMC; no es el total del mercado. Riesgo: una serie canónica completa por activo, priorizada por cobertura y frescura; nunca se mezclan ni promedian proveedores. Fuentes canónicas: CMC $canonicalCmcCoverage · CoinPaprika $canonicalPaprikaCoverage.",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         item {
             val riskAnalyzer = remember { HistoricalRiskAnalyzer() }
             val riskByAsset = assets.mapNotNull { asset ->
-                val metrics = riskAnalyzer.analyze(history[asset.assetId].orEmpty())
+                val canonical = canonicalHistoryByAsset[asset.assetId] ?: return@mapNotNull null
+                val metrics = riskAnalyzer.analyze(canonical.points)
                 if (metrics.observations < 2) null else asset to metrics
             }
             val volatilityCoverage = riskByAsset.count { it.second.annualizedVolatilityPercent != null }
