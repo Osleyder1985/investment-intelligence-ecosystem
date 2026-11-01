@@ -23,6 +23,7 @@ import com.iie.android.data.local.entity.NetworkEntity
 import com.iie.android.data.local.entity.WatchlistEntryEntity
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.CoinPaprikaDailyHistoryFetcher
+import com.iie.android.data.market.CoinMarketCapDailyHistoryFetcher
 import com.iie.android.data.market.RoutescanTokenSupplyFetcher
 import com.iie.android.data.market.RoutescanTokenSupplyObservation
 import com.iie.android.domain.model.ExactTokenAmount
@@ -1179,6 +1180,80 @@ class IIEDatabaseTest {
             }
         }
         assertEquals(false, fetchCalled)
+    }
+
+    @Test
+    fun coinMarketCapDailyHistoryPersistsIndependentlyAndIncrementally() = runBlocking {
+        val now = 1_800_000_000_000L
+        InitialAssetCatalog(database) { now }.synchronize()
+        val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
+        val start = LocalDate.ofEpochDay(now / 86_400_000L - 2L)
+        val end = LocalDate.ofEpochDay(now / 86_400_000L - 1L)
+        var fetchCount = 0
+        val fetcher = CoinMarketCapDailyHistoryFetcher { cmcAssetId, apiKey, requestedStart, requestedEnd, retrievedAt ->
+            fetchCount += 1
+            assertEquals(3408L, cmcAssetId)
+            assertEquals("test-key-never-persisted", apiKey)
+            assertEquals(start, requestedStart)
+            assertEquals(end, requestedEnd)
+            assertEquals(now, retrievedAt)
+            listOf(
+                CoinPaprikaHistoricalPoint("3408", (now / 86_400_000L - 2L) * 86_400_000L,
+                    1.0001, 1200.0, 45_000_000_000.0, now, "source:coinmarketcap"),
+                CoinPaprikaHistoricalPoint("3408", (now / 86_400_000L - 1L) * 86_400_000L,
+                    0.9999, 1300.0, 44_900_000_000.0, now, "source:coinmarketcap")
+            )
+        }
+
+        val first = repository.downloadAndPersistCoinMarketCapDailyHistory(
+            "asset:usd-coin", "USDC", start, end, "test-key-never-persisted", fetcher
+        )
+        val repeated = repository.downloadAndPersistCoinMarketCapDailyHistory(
+            "asset:usd-coin", "USDC", start, end, "test-key-never-persisted", fetcher
+        )
+        val loaded = repository.getLatestCoinMarketCapDailyHistory("asset:usd-coin", limit = 10)
+        val paprikaHistory = repository.getLatestCoinPaprikaDailyHistory("asset:usd-coin", limit = 10)
+
+        assertEquals(1, fetchCount)
+        assertEquals(2, first.pointsReceived)
+        assertEquals(2, first.pointsInserted)
+        assertEquals(0, first.pointsAlreadyPresent)
+        assertEquals(0, repeated.pointsReceived)
+        assertEquals(2, loaded.size)
+        assertEquals(setOf("source:coinmarketcap"), loaded.map { it.sourceId }.toSet())
+        assertEquals(setOf("3408"), loaded.map { it.providerId }.toSet())
+        assertEquals(emptyList<CoinPaprikaHistoricalPoint>(), paprikaHistory)
+        val persisted = database.assetObservationDao().observeForAsset("asset:usd-coin").first()
+            .filter { it.observationType == "MARKET_HISTORY_DAILY" }
+        assertEquals(2, persisted.size)
+        assertEquals(setOf("source:coinmarketcap"), persisted.map { it.sourceId }.toSet())
+        assertEquals(true, persisted.all { it.payloadSha256?.matches(Regex("[a-f0-9]{64}")) == true })
+    }
+
+    @Test
+    fun coinMarketCapDailyHistoryRejectsCrossProviderPointsBeforeRoomInsert() = runBlocking {
+        val now = 1_800_000_000_000L
+        InitialAssetCatalog(database) { now }.synchronize()
+        val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
+        val day = now / 86_400_000L - 1L
+        val fetcher = CoinMarketCapDailyHistoryFetcher { cmcAssetId, _, _, _, retrievedAt ->
+            listOf(CoinPaprikaHistoricalPoint(
+                cmcAssetId.toString(), day * 86_400_000L, 1.0, null, null,
+                retrievedAt, "source:coinpaprika"
+            ))
+        }
+
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking {
+                repository.downloadAndPersistCoinMarketCapDailyHistory(
+                    "asset:usd-coin", "USDC",
+                    LocalDate.ofEpochDay(day), LocalDate.ofEpochDay(day),
+                    "test-key", fetcher
+                )
+            }
+        }
+        assertEquals(0, database.assetObservationDao().observeForAsset("asset:usd-coin").first()
+            .count { it.observationType == "MARKET_HISTORY_DAILY" })
     }
 
     private suspend fun insertQuote(
