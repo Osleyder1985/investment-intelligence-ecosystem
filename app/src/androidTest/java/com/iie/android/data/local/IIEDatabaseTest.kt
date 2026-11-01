@@ -43,7 +43,7 @@ class IIEDatabaseTest {
     }
 
     @Test
-    fun symbolsAreNotUniqueButCanonicalKeysAreUnique() = runBlocking {
+    fun symbolsAreNotUniqueButCanonicalKeysAreUnique(): Unit = runBlocking {
         database.assetDao().insertAssets(
             listOf(
                 asset("asset-1", "chain-a:asset-1", "Example One", "EX"),
@@ -77,7 +77,7 @@ class IIEDatabaseTest {
         )
 
         database.assetDeploymentDao().insertDeployment(
-            com.iie.android.data.local.entity.AssetDeploymentEntity(
+            AssetDeploymentEntity(
                 deploymentId = "deployment-btc-mainnet",
                 deploymentKey = "native:network-bitcoin:asset-btc",
                 assetId = "asset-btc",
@@ -94,9 +94,8 @@ class IIEDatabaseTest {
         assertNotNull(database.assetDeploymentDao().getDeployment("deployment-btc-mainnet"))
     }
 
-
     @Test
-    fun observationCannotReferenceDeploymentOfAnotherAsset() = runBlocking {
+    fun observationCannotReferenceDeploymentOfAnotherAsset(): Unit = runBlocking {
         database.assetDao().insertAssets(
             listOf(
                 asset("asset-a", "canonical:a", "Asset A", "AAA"),
@@ -266,6 +265,27 @@ class IIEDatabaseTest {
         assertNotNull(entry)
         assertEquals(150L, entry?.addedAtEpochMs)
         assertEquals("persist me", entry?.note)
+        val provenance = database.assetObservationDao()
+            .getLatest("asset:bitcoin", "IDENTITY_FIXTURE")
+        assertNotNull(provenance)
+        assertEquals(100L, provenance?.retrievedAtEpochMs)
+        assertEquals("DEMO", provenance?.status)
+    }
+
+    @Test
+    fun provenanceQueryJoinsObservationToRegisteredSource() = runBlocking {
+        DemoAssetSeeder(database) { 300L }.seed()
+
+        val observations = database.assetObservationDao()
+            .observeProvenanceForAsset("asset:bitcoin").first()
+
+        assertEquals(1, observations.size)
+        assertEquals("IIE local demonstration fixture", observations.single().sourceDisplayName)
+        assertEquals("LOCAL_FIXTURE", observations.single().sourceProviderType)
+        assertEquals("INTERNAL_DEMO_ONLY", observations.single().sourcePermittedUseStatus)
+        assertEquals("IDENTITY_FIXTURE", observations.single().observationType)
+        assertEquals("DEMO", observations.single().status)
+        assertEquals("UNVERIFIED", observations.single().quality)
     }
 
     @Test
@@ -279,6 +299,11 @@ class IIEDatabaseTest {
 
         assertEquals(4, database.assetDao().countAssets())
         assertNotNull(database.assetDeploymentDao().getDeployment("deployment:bitcoin-native"))
+        val provenance = database.assetObservationDao()
+            .getLatest("asset:bitcoin", "IDENTITY_FIXTURE")
+        assertNotNull(provenance)
+        assertEquals(100L, provenance?.retrievedAtEpochMs)
+        assertEquals("source:iie-demo-fixture", provenance?.sourceId)
         val entry = database.watchlistDao().getEntry("asset:bitcoin")
         assertNotNull(entry)
         assertEquals(150L, entry?.addedAtEpochMs)
