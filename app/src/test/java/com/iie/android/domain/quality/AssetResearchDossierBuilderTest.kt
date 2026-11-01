@@ -37,6 +37,28 @@ class AssetResearchDossierBuilderTest {
         assertEquals(ResearchFieldStatus.KNOWN, dossier.market.quoteStatus)
     }
 
+    @Test fun quoteDiscrepancyIsPersistableAndMarkedConflicted() {
+        val primary = ResearchQuoteInput(100.0, "CoinPaprika", 1_000L, 1_100L, "FRESH")
+        val secondary = ResearchQuoteInput(104.0, "CoinMarketCap", 1_000L, 1_100L, "FRESH")
+        val dossier = builder.build(asset, emptyList(), primary, emptyList(), emptyList(), 2_000L,
+            ResearchQuoteComparisonInput(primary, secondary, "obs-cp", "obs-cmc"))
+        assertEquals("CONFLICTED", dossier.market.quoteComparisonStatus)
+        assertEquals(3.9215686, dossier.market.quoteDifferencePercent!!, 0.00001)
+        assertEquals("obs-cp", dossier.market.quoteComparisonPrimaryObservationId)
+        assertEquals("obs-cmc", dossier.market.quoteComparisonSecondaryObservationId)
+        assertEquals(2_000L, dossier.market.quoteComparedAtEpochMs)
+        assertEquals("CONFLICTED", dossier.overallEvidenceStatus)
+    }
+
+    @Test fun quoteComparisonRejectsStaleOrUnsynchronizedObservations() {
+        val primary = ResearchQuoteInput(100.0, "CoinPaprika", 1_000L, 1_100L, "FRESH")
+        val stale = ResearchQuoteInput(100.1, "CoinMarketCap", 1_000L, 1_100L, "STALE")
+        val dossier = builder.build(asset, emptyList(), primary, emptyList(), emptyList(), 2_000L,
+            ResearchQuoteComparisonInput(primary, stale, "obs-cp", "obs-cmc"))
+        assertEquals("NOT_COMPARABLE", dossier.market.quoteComparisonStatus)
+        assertNull(dossier.market.quoteDifferencePercent)
+    }
+
     @Test fun unresolvedIdentityPreventsSufficientEvidence() {
         val dossier = builder.build(
             asset.copy(identityStatus = "UNVERIFIED"), emptyList(),
