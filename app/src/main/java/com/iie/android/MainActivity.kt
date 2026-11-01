@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -38,10 +39,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.ViewModelProvider
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetObservationProvenance
@@ -63,7 +66,20 @@ class MainActivity : ComponentActivity() {
         )[AssetExplorerViewModel::class.java]
 
         setContent {
-            MaterialTheme { AssetExplorerScreen(explorerViewModel) }
+            MaterialTheme(
+                colorScheme = darkColorScheme(
+                    primary = Color(0xFF63E6B2),
+                    onPrimary = Color(0xFF06251B),
+                    secondary = Color(0xFF8DA9FF),
+                    background = Color(0xFF080D12),
+                    surface = Color(0xFF111922),
+                    surfaceVariant = Color(0xFF1A2631),
+                    onSurface = Color(0xFFE8EEF4),
+                    onSurfaceVariant = Color(0xFF9EACB9),
+                    outline = Color(0xFF30404D),
+                    error = Color(0xFFFF7777)
+                )
+            ) { AssetExplorerScreen(explorerViewModel) }
         }
     }
 }
@@ -105,8 +121,9 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
         color = MaterialTheme.colorScheme.background
     ) {
         Scaffold(
+            containerColor = Color(0xFF080D12),
             bottomBar = {
-                NavigationBar {
+                NavigationBar(containerColor = Color(0xFF101820)) {
                     listOf("Resumen", "Mercados", "Seguimiento", "Ajustes").forEach { item ->
                         NavigationBarItem(
                             selected = destination == item,
@@ -170,37 +187,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                         )
                     }
                 }
-                Spacer(Modifier.height(16.dp))
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                    )
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(
-                            "CATÁLOGO DE ACTIVOS",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
-                        )
-                        Spacer(Modifier.height(5.dp))
-                        Text(
-                            "El catálogo inicial conserva identificadores canónicos y referencias de proveedor. Los datos de mercado solo se muestran tras consultarlos; no se generan señales ni recomendaciones.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            catalogStatus,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
-                        )
-                    }
-                }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(22.dp))
 
                 when (destination) {
                     "Ajustes" -> CoinMarketCapSettingsScreen()
@@ -343,8 +330,11 @@ private fun MarketAssetRow(
     val dailyChange = if (latestTwo.size == 2 && latestTwo[1].priceUsd > 0.0) {
         ((latestTwo[0].priceUsd / latestTwo[1].priceUsd) - 1.0) * 100.0
     } else null
-    Card(shape = RoundedCornerShape(16.dp)) {
-        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+    Card(
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF111B25))
+    ) {
+        Column(Modifier.fillMaxWidth().padding(18.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -432,7 +422,7 @@ private fun MetricCard(label: String, value: String, modifier: Modifier = Modifi
         modifier = modifier,
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = Color(0xFF14202B)
         )
     ) {
         Column(Modifier.padding(16.dp)) {
@@ -528,8 +518,19 @@ private fun AssetDetailDialog(
     }
 
     AlertDialog(
+        modifier = Modifier.fillMaxWidth(0.96f),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        containerColor = Color(0xFF111922),
+        titleContentColor = Color(0xFFE8EEF4),
+        textContentColor = Color(0xFFCAD4DE),
+        shape = RoundedCornerShape(28.dp),
         onDismissRequest = onDismiss,
-        title = { Text("${asset.name} (${asset.symbol})") },
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(asset.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(asset.symbol.uppercase(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            }
+        },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text("ID local: ${asset.assetId}")
