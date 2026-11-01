@@ -63,6 +63,22 @@ class InitialAssetCatalog(
                 )
             }
 
+            if (database.dataSourceDao().getSource(ROUTESCAN_SOURCE_ID) == null) {
+                database.dataSourceDao().insertSource(
+                    DataSourceEntity(
+                        sourceId = ROUTESCAN_SOURCE_ID,
+                        sourceKey = ROUTESCAN_SOURCE_KEY,
+                        displayName = "Routescan API",
+                        providerType = "ON_CHAIN_DATA_PROVIDER",
+                        homepageUrl = "https://routescan.io",
+                        termsUrl = "https://docs.routescan.io/plans-and-limits/api-keys-and-pricing",
+                        attributionText = "On-chain data indexed by Routescan",
+                        permittedUseStatus = "PERSONAL_USE_ONLY",
+                        registeredAtEpochMs = synchronizedAt
+                    )
+                )
+            }
+
             networks.forEach { network ->
                 val existing = database.networkDao().getNetwork(network.networkId)
                 if (existing == null) {
@@ -125,6 +141,8 @@ class InitialAssetCatalog(
         const val COINPAPRIKA_SOURCE_KEY = "coinpaprika-api-v1"
         const val COINMARKETCAP_SOURCE_ID = "source:coinmarketcap"
         const val COINMARKETCAP_SOURCE_KEY = "coinmarketcap-api-v3"
+        const val ROUTESCAN_SOURCE_ID = "source:routescan"
+        const val ROUTESCAN_SOURCE_KEY = "routescan-evm-api-v1"
 
         val assets = listOf(
             AssetEntity("asset:bitcoin", "crypto:bitcoin", "Bitcoin", "BTC", "CRYPTO_ASSET", "RESOLVED", 0L, 0L),
@@ -143,7 +161,9 @@ class InitialAssetCatalog(
         val deployments = listOf(
             AssetDeploymentEntity("deployment:bitcoin-native", "deployment:bitcoin:native", "asset:bitcoin", "network:bitcoin-mainnet", "NATIVE", "native", null, 8, null, null),
             AssetDeploymentEntity("deployment:ethereum-native", "deployment:ethereum:native", "asset:ethereum", "network:ethereum-mainnet", "NATIVE", "native", null, 18, null, null),
-            AssetDeploymentEntity("deployment:solana-native", "deployment:solana:native", "asset:solana", "network:solana-mainnet", "NATIVE", "native", null, 9, null, null)
+            AssetDeploymentEntity("deployment:solana-native", "deployment:solana:native", "asset:solana", "network:solana-mainnet", "NATIVE", "native", null, 9, null, null),
+            AssetDeploymentEntity("deployment:usdc-ethereum-erc20", "deployment:usdc:eip155:1:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "asset:usd-coin", "network:ethereum-mainnet", "ERC20", "eip155", "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", 6, null, null),
+            AssetDeploymentEntity("deployment:usdt-ethereum-erc20", "deployment:usdt:eip155:1:0xdac17f958d2ee523a2206206994597c13d831ec7", "asset:tether", "network:ethereum-mainnet", "ERC20", "eip155", "0xdac17f958d2ee523a2206206994597c13d831ec7", 6, null, null)
         )
 
         val providerIdentifiers = listOf(
