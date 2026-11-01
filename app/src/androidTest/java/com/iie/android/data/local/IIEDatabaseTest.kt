@@ -85,6 +85,24 @@ class IIEDatabaseTest {
         assertEquals("PROVIDER_ID_CONFIRMED", usdcProviderId?.verificationStatus)
         assertEquals("PROVIDER_ID_CONFIRMED", usdtProviderId?.verificationStatus)
 
+        val cmcIds = listOf(
+            "asset:bitcoin" to "1",
+            "asset:ethereum" to "1027",
+            "asset:solana" to "5426",
+            "asset:usd-coin" to "3408",
+            "asset:tether" to "825"
+        )
+        cmcIds.forEach { (assetId, expectedId) ->
+            val identifier = database.assetIdentifierDao()
+                .findForAsset(assetId, "source:coinmarketcap", "coinmarketcap")
+            assertEquals(expectedId, identifier?.identifierValue)
+            assertEquals("PROVIDER_ID_CONFIRMED", identifier?.verificationStatus)
+        }
+        assertEquals(
+            "PERSONAL_USE_ONLY",
+            database.dataSourceDao().getSource("source:coinmarketcap")?.permittedUseStatus
+        )
+
         database.dataSourceDao().insertSource(
             DataSourceEntity(
                 "source:iie-demo-fixture", "iie-local-demo-fixture-v1", "Retired fixture",
