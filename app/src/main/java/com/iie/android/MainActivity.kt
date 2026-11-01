@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +22,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,6 +38,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
@@ -69,57 +75,239 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
     val assets by viewModel.assets.collectAsState()
     val watchlist by viewModel.watchlist.collectAsState()
     val catalogStatus by viewModel.catalogStatus.collectAsState()
+    val marketQuotes by viewModel.marketQuotes.collectAsState()
+    val marketHistorySync by viewModel.marketHistorySync.collectAsState()
+    val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
     var selectedAsset by remember { mutableStateOf<Asset?>(null) }
+    var destination by remember { mutableStateOf("Resumen") }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxSize().padding(20.dp)) {
-            Text(
-                "Investment Intelligence Ecosystem",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(6.dp))
-            Text("Explorador de criptoactivos", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(12.dp))
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    "MODO DEMOSTRACIÓN · Datos locales de ejemplo; no son datos de mercado ni recomendaciones.",
-                    Modifier.padding(12.dp),
-                    style = MaterialTheme.typography.bodySmall
-                )
+    val visibleAssets = when (destination) {
+        "Seguimiento" -> assets.filter { it.assetId in watchlist }
+        else -> assets
+    }
+
+    LaunchedEffect(destination) {
+        if (destination != "Mercados" && query.isNotEmpty()) {
+            viewModel.updateSearchQuery("")
+        }
+    }
+
+    LaunchedEffect(destination, assets) {
+        if (destination == "Mercados") {
+            assets.forEach { asset ->
+                viewModel.loadLatestMarketQuote(asset.assetId)
+                viewModel.loadDailyMarketHistory(asset.assetId)
             }
-            Spacer(Modifier.height(8.dp))
-            Text(catalogStatus, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = query,
-                onValueChange = viewModel::updateSearchQuery,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Buscar por nombre o símbolo") },
-                singleLine = true
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                "${assets.size} activos · ${watchlist.size} en seguimiento",
-                style = MaterialTheme.typography.labelLarge
-            )
-            Spacer(Modifier.height(8.dp))
-            if (assets.isEmpty()) {
-                Text("No hay activos que coincidan con la búsqueda.")
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(assets, key = { it.assetId }) { asset ->
-                        AssetRow(
-                            asset = asset,
-                            isWatched = asset.assetId in watchlist,
-                            onClick = { selectedAsset = asset },
-                            onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
+        }
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Scaffold(
+            bottomBar = {
+                NavigationBar {
+                    listOf("Resumen", "Mercados", "Seguimiento").forEach { item ->
+                        NavigationBarItem(
+                            selected = destination == item,
+                            onClick = { destination = item },
+                            icon = {
+                                Text(
+                                    when (item) {
+                                        "Resumen" -> "⌂"
+                                        "Mercados" -> "◈"
+                                        else -> "☆"
+                                    },
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            },
+                            label = { Text(item) }
                         )
+                    }
+                }
+            }
+        ) { innerPadding ->
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "IIE  /  INTELLIGENCE",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            when (destination) {
+                                "Resumen" -> "Centro de inversión"
+                                "Mercados" -> "Universo de activos"
+                                else -> "Tu seguimiento"
+                            },
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Text(
+                            "LOCAL",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            "ENTORNO DE DEMOSTRACIÓN",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Spacer(Modifier.height(5.dp))
+                        Text(
+                            "El catálogo incluye datos locales de demostración. Las cotizaciones solo se muestran cuando se consultan al proveedor; no se generan señales ni recomendaciones.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            catalogStatus,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+
+                when (destination) {
+                    "Resumen" -> {
+                        Text("VISTA GENERAL", style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            MetricCard(
+                                label = "Activos",
+                                value = assets.size.toString(),
+                                modifier = Modifier.weight(1f)
+                            )
+                            MetricCard(
+                                label = "En seguimiento",
+                                value = watchlist.size.toString(),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Spacer(Modifier.height(18.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Explorar universo", style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold)
+                            TextButton(onClick = { destination = "Mercados" }) {
+                                Text("Ver todos")
+                            }
+                        }
+                        if (assets.isEmpty()) {
+                            EmptyState("El catálogo todavía no contiene activos.")
+                        } else {
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(assets.take(6), key = { it.assetId }) { asset ->
+                                    AssetRow(
+                                        asset = asset,
+                                        isWatched = asset.assetId in watchlist,
+                                        onClick = { selectedAsset = asset },
+                                        onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    "Mercados", "Seguimiento" -> {
+                        if (destination == "Mercados") {
+                            OutlinedTextField(
+                                value = query,
+                                onValueChange = viewModel::updateSearchQuery,
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Buscar por nombre o símbolo") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            Spacer(Modifier.height(12.dp))
+                        } else {
+                            Text(
+                                "Activos guardados para consultar más tarde.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(12.dp))
+                        }
+                        Text(
+                            "${visibleAssets.size} activos",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        if (visibleAssets.isEmpty()) {
+                            EmptyState(
+                                if (destination == "Seguimiento") {
+                                    "Todavía no sigues ningún activo. Añádelo desde Mercados."
+                                } else {
+                                    "No hay activos que coincidan con la búsqueda."
+                                }
+                            )
+                        } else {
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(visibleAssets, key = { it.assetId }) { asset ->
+                                    if (destination == "Mercados") {
+                                        MarketAssetRow(
+                                            asset = asset,
+                                            quote = marketQuotes[asset.assetId],
+                                            history = dailyHistoryByAsset[asset.assetId].orEmpty(),
+                                            historySync = marketHistorySync[asset.assetId],
+                                            isWatched = asset.assetId in watchlist,
+                                            onClick = { selectedAsset = asset },
+                                            onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) },
+                                            onDownloadHistory = { viewModel.downloadDailyMarketHistory(asset.assetId, asset.symbol) },
+                                            onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
+                                        )
+                                    } else {
+                                        AssetRow(
+                                            asset = asset,
+                                            isWatched = asset.assetId in watchlist,
+                                            onClick = { selectedAsset = asset },
+                                            onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -138,22 +326,160 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
 }
 
 @Composable
+private fun MarketAssetRow(
+    asset: Asset,
+    quote: MarketQuoteUiState?,
+    history: List<CoinPaprikaHistoricalPoint>,
+    historySync: MarketHistorySyncUiState?,
+    isWatched: Boolean,
+    onClick: () -> Unit,
+    onRefresh: () -> Unit,
+    onDownloadHistory: () -> Unit,
+    onToggleWatchlist: () -> Unit
+) {
+    val latestTwo = history.sortedByDescending { it.timestampEpochMs }.take(2)
+    val dailyChange = if (latestTwo.size == 2 && latestTwo[1].priceUsd > 0.0) {
+        ((latestTwo[0].priceUsd / latestTwo[1].priceUsd) - 1.0) * 100.0
+    } else null
+    Card(shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f).clickable(onClick = onClick)) {
+                    Text(asset.name, fontWeight = FontWeight.SemiBold)
+                    Text(asset.symbol, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        quote?.priceUsd?.let {
+                            "$" + String.format(java.util.Locale.US, "%.8f", it)
+                        } ?: "Sin cotización",
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        quote?.freshnessStatus ?: "SIN DATOS",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            if (history.size >= 2) {
+                MarketSparkline(history)
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    dailyChange?.let {
+                        "Variación entre puntos diarios: " +
+                            String.format(java.util.Locale.US, "%+.2f%%", it)
+                    } ?: "Variación diaria: histórico insuficiente",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (dailyChange == null) MaterialTheme.colorScheme.onSurfaceVariant
+                    else if (dailyChange >= 0.0) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.error
+                )
+                TextButton(onClick = onToggleWatchlist) {
+                    Text(if (isWatched) "Siguiendo" else "+ Seguir")
+                }
+            }
+            if (quote?.attribution != null) {
+                Text(
+                    "Fuente: ${quote.attribution} · Frescura: ${quote.freshnessReason}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (quote?.error != null) {
+                Text(
+                    "Error: ${quote.error}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            Text(
+                "Histórico diario: " + history.size + " puntos guardados",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            historySync?.message?.let { Text(it, style = MaterialTheme.typography.labelSmall) }
+            historySync?.error?.let {
+                Text(it, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error)
+            }
+            TextButton(onClick = onDownloadHistory, enabled = historySync?.isLoading != true) {
+                Text(if (historySync?.isLoading == true) "Descargando histórico…" else "Descargar histórico diario")
+            }
+            TextButton(onClick = onRefresh, enabled = quote?.isLoading != true) {
+                Text(if (quote?.isLoading == true) "Actualizando…" else "Actualizar cotización")
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricCard(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+            Text(value, style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(message: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    ) {
+        Text(
+            message,
+            modifier = Modifier.padding(18.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
 private fun AssetRow(
     asset: Asset,
     isWatched: Boolean,
     onClick: () -> Unit,
     onToggleWatchlist: () -> Unit
 ) {
-    Card(shape = RoundedCornerShape(12.dp)) {
+    Card(shape = RoundedCornerShape(16.dp)) {
         Row(
             Modifier.fillMaxWidth().padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
                 Modifier.weight(1f).clickable(onClick = onClick).padding(vertical = 2.dp)
             ) {
                 Text(asset.name, fontWeight = FontWeight.SemiBold)
-                Text(asset.identityStatus, style = MaterialTheme.typography.bodySmall)
+                Text(asset.identityStatus, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(asset.symbol, fontWeight = FontWeight.Bold)
@@ -226,9 +552,8 @@ private fun AssetDetailDialog(
                     onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) }
                 )
 
-                if (asset.symbol == "USDC" || asset.symbol == "USDT") {
-                    Spacer(Modifier.height(10.dp))
-                    Text("Histórico diario · CoinPaprika", fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(10.dp))
+                Text("Histórico diario · CoinPaprika", fontWeight = FontWeight.SemiBold)
                     Text(
                         "Importa hasta un año de puntos diarios de precio, volumen y capitalización. No son velas OHLCV ni precios ejecutables.",
                         style = MaterialTheme.typography.bodySmall
@@ -237,8 +562,7 @@ private fun AssetDetailDialog(
                         state = historySync,
                         onDownload = { viewModel.downloadDailyMarketHistory(asset.assetId, asset.symbol) }
                     )
-                    MarketHistoryPoints(points = dailyHistory)
-                }
+                MarketHistoryPoints(points = dailyHistory)
 
                 Spacer(Modifier.height(12.dp))
                 Text("Procedencia de los datos", fontWeight = FontWeight.SemiBold)
@@ -342,8 +666,49 @@ private fun MarketHistorySyncDetails(
 
 
 @Composable
+private fun MarketSparkline(
+    points: List<CoinPaprikaHistoricalPoint>,
+    chartHeight: androidx.compose.ui.unit.Dp = 52.dp
+) {
+    val ordered = points
+        .asSequence()
+        .filter { it.priceUsd.isFinite() && it.priceUsd > 0.0 }
+        .sortedBy { it.timestampEpochMs }
+        .toList()
+        .takeLast(30)
+    if (ordered.size < 2) return
+
+    val prices = ordered.map { it.priceUsd }
+    val minPrice = prices.minOrNull() ?: return
+    val maxPrice = prices.maxOrNull() ?: return
+    val range = (maxPrice - minPrice).takeIf { it > 0.0 } ?: (maxPrice * 0.000001).coerceAtLeast(1e-12)
+    val lineColor = MaterialTheme.colorScheme.primary
+
+    Canvas(Modifier.fillMaxWidth().height(chartHeight)) {
+        val path = Path()
+        prices.forEachIndexed { index, price ->
+            val x = index.toFloat() / (prices.size - 1).toFloat() * size.width
+            val normalized = ((price - minPrice) / range).toFloat().coerceIn(0f, 1f)
+            val y = size.height - normalized * size.height
+            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        drawPath(
+            path = path,
+            color = lineColor,
+            style = Stroke(width = 2.dp.toPx())
+        )
+    }
+}
+
+@Composable
 private fun MarketHistoryPoints(points: List<CoinPaprikaHistoricalPoint>) {
     val dateFormatter = DateFormat.getDateInstance(DateFormat.MEDIUM)
+    Spacer(Modifier.height(8.dp))
+    Text("Tendencia de precios · últimos 30 puntos diarios", fontWeight = FontWeight.Medium)
+    MarketSparkline(points, chartHeight = 112.dp)
+    Text("Representación de precios de cierre diarios; no son velas OHLCV ni precios ejecutables.",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(8.dp))
     Text("Últimos puntos almacenados", fontWeight = FontWeight.Medium)
     if (points.isEmpty()) {

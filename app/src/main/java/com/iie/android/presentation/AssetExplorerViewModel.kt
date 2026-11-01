@@ -17,6 +17,7 @@ import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetDeploymentSummary
 import com.iie.android.domain.model.AssetObservationProvenance
 import com.iie.android.domain.quality.LocalDemoEvidenceEvaluator
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +32,7 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.ZoneOffset
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class AssetExplorerViewModel(application: Application) : AndroidViewModel(application) {
     private val database = IIEDatabaseProvider.get(application)
     private val repository = RoomAssetRepository(database)
