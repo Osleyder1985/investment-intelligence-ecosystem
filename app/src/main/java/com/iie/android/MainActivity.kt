@@ -711,7 +711,7 @@ private fun AssetDetailDialog(
                         Text("PRECIO DE MERCADO · USD", style = MaterialTheme.typography.labelSmall,
                             color = Color(0xFF9BB8AD), fontWeight = FontWeight.Bold)
                         Text(
-                            marketQuote?.priceUsd?.let { "\$" + String.format(java.util.Locale.US, "%,.4f", it) }
+                            marketQuote?.priceUsd?.let { "$" + String.format(java.util.Locale.US, "%,.4f", it) }
                                 ?: "Cotización no disponible",
                             style = MaterialTheme.typography.headlineMedium,
                             color = Color(0xFFF0F7F3), fontWeight = FontWeight.Bold
@@ -912,7 +912,7 @@ private fun ResearchDossierDetails(dossier: AssetResearchDossier?) {
                 val valueText = field.value?.let { value ->
                     when (field.fieldKey) {
                         "marketCapUsd", "fullyDilutedMarketCapUsd" ->
-                            "\$" + String.format(java.util.Locale.US, "%,.2f", value) + " USD"
+                            "$" + String.format(java.util.Locale.US, "%,.2f", value) + " USD"
                         else -> String.format(java.util.Locale.US, "%,.8f", value)
                     }
                 } ?: field.status.name
