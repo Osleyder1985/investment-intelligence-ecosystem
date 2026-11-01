@@ -26,13 +26,20 @@ class CoinMarketCapHistoricalQuotesClientTest {
             """{
               "status":{"error_code":0},
               "data":{
-                "plan":{"credit_limit_monthly":15000},
-                "usage":{"current_month":{"credits_left":14980}}
+                "plan":{"credit_limit_monthly":15000,"rate_limit_minute":50},
+                "usage":{
+                  "current_month":{"credits_left":14980},
+                  "current_day":{"credits_left":3900},
+                  "current_minute":{"requests_left":47}
+                }
               }
             }"""
         )
         assertEquals(15_000L, result.monthlyCreditLimit)
         assertEquals(14_980L, result.monthlyCreditsLeft)
+        assertEquals(3_900L, result.dailyCreditsLeft)
+        assertEquals(50L, result.minuteRateLimit)
+        assertEquals(47L, result.minuteRequestsLeft)
     }
 
     @Test fun rejectsInvalidKeyInfoAndMalformedQuotaMetadata() {
