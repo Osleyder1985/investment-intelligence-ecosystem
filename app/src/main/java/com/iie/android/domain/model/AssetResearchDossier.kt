@@ -48,3 +48,12 @@ data class MarketResearchSection(
     val periodHighUsd: Double?,
     val periodLowUsd: Double?
 )
+
+/** Presentation-independent quote facts passed into the domain dossier builder. */
+data class ResearchQuoteInput(
+    val priceUsd: Double?,
+    val provider: String?,
+    val providerUpdatedAtEpochMs: Long?,
+    val retrievedAtEpochMs: Long?,
+    val freshnessStatus: String
+)
