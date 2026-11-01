@@ -192,12 +192,21 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                         shape = RoundedCornerShape(50),
                         color = MaterialTheme.colorScheme.secondaryContainer
                     ) {
-                        Text(
-                            "LOCAL",
+                        Column(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
-                        )
+                            horizontalAlignment = Alignment.End
+                        ) {
+                            Text(
+                                "LOCAL",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "v${BuildConfig.VERSION_NAME} · #${BuildConfig.VERSION_CODE}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(22.dp))
