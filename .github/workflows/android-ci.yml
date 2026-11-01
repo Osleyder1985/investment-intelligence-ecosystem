@@ -90,6 +90,16 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Enable KVM hardware acceleration for Android emulator
+        run: |
+          if [ ! -e /dev/kvm ]; then
+            echo "KVM device /dev/kvm is unavailable on this runner."
+            exit 1
+          fi
+          sudo chmod 666 /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+          ls -l /dev/kvm
+
       - name: Run Room instrumentation tests on API 35
         uses: reactivecircus/android-emulator-runner@v2
         with:
