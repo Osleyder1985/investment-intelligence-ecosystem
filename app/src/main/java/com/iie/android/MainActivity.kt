@@ -506,6 +506,8 @@ private fun AssetDetailDialog(
         .collectAsState(initial = emptyList())
     val marketQuotes by viewModel.marketQuotes.collectAsState()
     val marketQuote = marketQuotes[asset.assetId]
+    val coinMarketCapQuotes by viewModel.coinMarketCapQuotes.collectAsState()
+    val coinMarketCapQuote = coinMarketCapQuotes[asset.assetId]
     val historySyncStates by viewModel.marketHistorySync.collectAsState()
     val historySync = historySyncStates[asset.assetId]
     val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
@@ -561,6 +563,13 @@ private fun AssetDetailDialog(
                 Text("Cotización de mercado · USD", fontWeight = FontWeight.SemiBold)
                 MarketQuoteDetails(
                     quote = marketQuote,
+                    onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) }
+                )
+                Spacer(Modifier.height(8.dp))
+                Text("Cotización de CoinMarketCap · USD", fontWeight = FontWeight.SemiBold)
+                MarketQuoteDetails(
+                    quote = coinMarketCapQuote,
+                    providerName = "CoinMarketCap",
                     onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) }
                 )
 
@@ -651,6 +660,7 @@ private fun ResearchDossierDetails(dossier: AssetResearchDossier?) {
 @Composable
 private fun MarketQuoteDetails(
     quote: MarketQuoteUiState?,
+    providerName: String = "CoinPaprika",
     onRefresh: () -> Unit
 ) {
     val formatter = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
@@ -661,14 +671,14 @@ private fun MarketQuoteDetails(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-            Text("Proveedor: CoinPaprika · ID: ${quote.providerId}", style = MaterialTheme.typography.bodySmall)
+            Text("Proveedor: ${providerName} · ID: ${quote.providerId}", style = MaterialTheme.typography.bodySmall)
             quote.providerUpdatedAtEpochMs?.let {
                 Text("Actualizado por el proveedor: ${formatter.format(Date(it))}", style = MaterialTheme.typography.bodySmall)
             }
             quote.retrievedAtEpochMs?.let {
                 Text("Recuperado y guardado localmente: ${formatter.format(Date(it))}", style = MaterialTheme.typography.bodySmall)
             }
-            Text(quote.attribution ?: "Powered by CoinPaprika", style = MaterialTheme.typography.bodySmall)
+            Text(quote.attribution ?: "Datos proporcionados por ${providerName}", style = MaterialTheme.typography.bodySmall)
             Text("Frescura local: ${quote.freshnessStatus} · ${quote.freshnessReason}", style = MaterialTheme.typography.bodySmall)
             Text("Política operativa local: FRESH hasta 10 min; STALE hasta 60 min; EXPIRED después. No certifica exactitud del precio.", style = MaterialTheme.typography.bodySmall)
             Text("Caché local: intervalo mínimo de 10 minutos entre consultas por activo.", style = MaterialTheme.typography.bodySmall)
