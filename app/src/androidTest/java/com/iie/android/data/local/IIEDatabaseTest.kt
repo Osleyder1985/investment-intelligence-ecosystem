@@ -8,6 +8,11 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.iie.android.data.local.entity.AssetEntity
+import com.iie.android.data.local.entity.AssetResearchDossierSnapshotEntity
+import com.iie.android.domain.model.AssetResearchDossier
+import com.iie.android.domain.model.MarketResearchSection
+import com.iie.android.domain.model.ResearchDeployment
+import com.iie.android.domain.model.ResearchFieldStatus
 import com.iie.android.data.local.entity.AssetDeploymentEntity
 import com.iie.android.data.local.entity.AssetObservationEntity
 import com.iie.android.data.local.entity.DataSourceEntity
@@ -47,6 +52,95 @@ class IIEDatabaseTest {
         context.deleteDatabase(databaseName)
     }
 
+
+
+    @Test
+    fun dossierSnapshotCodecRoundTripsNullableFieldsAndDeploymentReference() {
+        val dossier = AssetResearchDossier(
+            assetId = "asset-btc",
+            assetName = "Bitcoin",
+            symbol = "BTC",
+            identityStatus = "VERIFIED",
+            identityAssessment = ResearchFieldStatus.KNOWN,
+            deployments = listOf(
+                ResearchDeployment("Bitcoin Mainnet", "NATIVE", "native", null, 8),
+                ResearchDeployment("Wrapped Network", "TOKEN", "erc20", "0xabc", 18)
+            ),
+            market = MarketResearchSection(
+                quoteStatus = ResearchFieldStatus.KNOWN,
+                priceUsd = 65000.25,
+                provider = "CoinPaprika",
+                providerUpdatedAtEpochMs = 1000L,
+                retrievedAtEpochMs = 1100L,
+                freshnessStatus = "FRESH",
+                historyPointCount = 30,
+                latestDailyReturnPercent = 1.25,
+                periodReturnPercent = null,
+                periodHighUsd = 67000.0,
+                periodLowUsd = 60000.0
+            ),
+            evidenceCount = 4,
+            generatedAtEpochMs = 1200L
+        )
+        val payload = AssetResearchDossierSnapshotCodec.encode(dossier)
+        val entity = AssetResearchDossierSnapshotEntity(
+            snapshotId = "snapshot-1",
+            assetId = dossier.assetId,
+            generatedAtEpochMs = dossier.generatedAtEpochMs,
+            schemaVersion = AssetResearchDossierSnapshotCodec.SCHEMA_VERSION,
+            evidenceStatus = dossier.overallEvidenceStatus,
+            payloadJson = payload,
+            payloadSha256 = AssetResearchDossierSnapshotCodec.sha256(payload)
+        )
+
+        val restored = AssetResearchDossierSnapshotCodec.decode(entity)
+        assertEquals(dossier, restored)
+        assertEquals(null, restored.deployments.first().reference)
+        assertEquals("0xabc", restored.deployments.last().reference)
+        assertEquals(null, restored.market.periodReturnPercent)
+    }
+
+    @Test
+    fun dossierSnapshotCodecRejectsPayloadTampering() {
+        val payload = AssetResearchDossierSnapshotCodec.encode(
+            AssetResearchDossier(
+                assetId = "asset-eth",
+                assetName = "Ethereum",
+                symbol = "ETH",
+                identityStatus = "VERIFIED",
+                identityAssessment = ResearchFieldStatus.KNOWN,
+                deployments = emptyList(),
+                market = MarketResearchSection(
+                    quoteStatus = ResearchFieldStatus.UNKNOWN,
+                    priceUsd = null,
+                    provider = null,
+                    providerUpdatedAtEpochMs = null,
+                    retrievedAtEpochMs = null,
+                    freshnessStatus = "UNKNOWN",
+                    historyPointCount = 0,
+                    latestDailyReturnPercent = null,
+                    periodReturnPercent = null,
+                    periodHighUsd = null,
+                    periodLowUsd = null
+                ),
+                evidenceCount = 0,
+                generatedAtEpochMs = 1300L
+            )
+        )
+        val entity = AssetResearchDossierSnapshotEntity(
+            snapshotId = "snapshot-corrupt",
+            assetId = "asset-eth",
+            generatedAtEpochMs = 1300L,
+            schemaVersion = AssetResearchDossierSnapshotCodec.SCHEMA_VERSION,
+            evidenceStatus = "INSUFFICIENT_EVIDENCE",
+            payloadJson = payload + " ",
+            payloadSha256 = AssetResearchDossierSnapshotCodec.sha256(payload)
+        )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            AssetResearchDossierSnapshotCodec.decode(entity)
+        }
+    }
 
     @Test
     fun migration1To2PreservesExistingAssetsAndCreatesSnapshotSchema() {
