@@ -46,6 +46,7 @@ import com.iie.android.presentation.AssetExplorerViewModel
 import com.iie.android.presentation.EvidenceEvaluationUiState
 import com.iie.android.presentation.MarketQuoteUiState
 import com.iie.android.presentation.MarketHistorySyncUiState
+import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import java.text.DateFormat
 import java.util.Date
 
@@ -181,10 +182,13 @@ private fun AssetDetailDialog(
     val marketQuote = marketQuotes[asset.assetId]
     val historySyncStates by viewModel.marketHistorySync.collectAsState()
     val historySync = historySyncStates[asset.assetId]
+    val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
+    val dailyHistory = dailyHistoryByAsset[asset.assetId].orEmpty()
 
     LaunchedEffect(asset.assetId) {
         viewModel.evaluateLatestEvidence(asset.assetId)
         viewModel.loadLatestMarketQuote(asset.assetId)
+        viewModel.loadDailyMarketHistory(asset.assetId)
     }
 
     AlertDialog(
@@ -233,6 +237,7 @@ private fun AssetDetailDialog(
                         state = historySync,
                         onDownload = { viewModel.downloadDailyMarketHistory(asset.assetId, asset.symbol) }
                     )
+                    MarketHistoryPoints(points = dailyHistory)
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -332,6 +337,27 @@ private fun MarketHistorySyncDetails(
     }
     TextButton(onClick = onDownload, enabled = state?.isLoading != true) {
         Text(if (state?.isLoading == true) "Descargando e importando…" else "Descargar último año")
+    }
+}
+
+
+@Composable
+private fun MarketHistoryPoints(points: List<CoinPaprikaHistoricalPoint>) {
+    val dateFormatter = DateFormat.getDateInstance(DateFormat.MEDIUM)
+    Spacer(Modifier.height(8.dp))
+    Text("Últimos puntos almacenados", fontWeight = FontWeight.Medium)
+    if (points.isEmpty()) {
+        Text("Todavía no hay puntos históricos guardados.", style = MaterialTheme.typography.bodySmall)
+    } else {
+        points.take(10).forEach { point ->
+            val date = dateFormatter.format(Date(point.timestampEpochMs))
+            val price = String.format(java.util.Locale.US, "%.8f", point.priceUsd)
+            Text("$date · $price USD", style = MaterialTheme.typography.bodySmall)
+            Text(
+                "Vol. 24 h: ${point.volume24hUsd?.let { String.format(java.util.Locale.US, "%.2f", it) } ?: "N/D"} · Cap.: ${point.marketCapUsd?.let { String.format(java.util.Locale.US, "%.2f", it) } ?: "N/D"}",
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
     }
 }
 
