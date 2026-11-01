@@ -180,7 +180,7 @@ fun CoinMarketCapSettingsScreen(onCredentialSaved: () -> Unit = {}) {
                         Text(if (isValidating) "Probando endpoint…" else "Probar acceso al histórico (BTC)")
                     }
                     Text(
-                        "Esta prueba consulta hasta 7 snapshots diarios de BTC. Puede consumir al menos 1 crédito de datos de CMC. Es una comprobación real del endpoint histórico, distinta de validar /v1/key/info.",
+                        "Esta prueba consulta hasta 7 snapshots diarios de BTC. Si CMC devuelve al menos uno, consume 1 crédito de datos (1 crédito por cada 100 puntos, redondeado hacia arriba). Es una comprobación real del endpoint histórico, distinta de validar /v1/key/info.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
