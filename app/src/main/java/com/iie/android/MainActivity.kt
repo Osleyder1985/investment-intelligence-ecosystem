@@ -86,6 +86,12 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
         else -> assets
     }
 
+    LaunchedEffect(destination) {
+        if (destination != "Mercados" && query.isNotEmpty()) {
+            viewModel.updateSearchQuery("")
+        }
+    }
+
     LaunchedEffect(destination, assets) {
         if (destination == "Mercados") {
             assets.forEach { asset ->
