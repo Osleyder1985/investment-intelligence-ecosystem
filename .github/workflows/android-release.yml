@@ -2,24 +2,29 @@ name: Android Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+    paths:
+      - "app/build.gradle.kts"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: android-release-${{ github.ref }}
+  group: android-release
   cancel-in-progress: false
 
 jobs:
   build-and-publish:
     name: Test, sign, build and publish Android APK
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
-      - name: Check out tagged source
+      - name: Check out main with tags
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -37,7 +42,56 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Detect version and prevent duplicate or backward releases
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_NAME="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' app/build.gradle.kts | head -n1)"
+          VERSION_CODE="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*([0-9]+).*/\1/p' app/build.gradle.kts | head -n1)"
+          if [[ -z "$VERSION_NAME" || -z "$VERSION_CODE" ]]; then
+            echo "::error::Could not read versionName/versionCode from app/build.gradle.kts"
+            exit 1
+          fi
+          if [[ ! "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::versionName must use a semantic version such as 0.1.2"
+            exit 1
+          fi
+          TAG="v$VERSION_NAME"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Release $TAG already has a Git tag; nothing to publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          LATEST_TAG="$(git tag --list 'v[0-9]*' | sort -V | tail -n1)"
+          if [[ -n "$LATEST_TAG" ]]; then
+            LATEST_VERSION="${LATEST_TAG#v}"
+            if [[ "$VERSION_NAME" == "$LATEST_VERSION" || "$(printf '%s\n%s\n' "$LATEST_VERSION" "$VERSION_NAME" | sort -V | head -n1)" != "$LATEST_VERSION" ]]; then
+              echo "::error::Refusing non-incrementing version $VERSION_NAME; latest tag is $LATEST_TAG"
+              exit 1
+            fi
+
+            LATEST_VERSION_CODE="$(git show "$LATEST_TAG:app/build.gradle.kts" | sed -nE 's/^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*([0-9]+).*/\1/p' | head -n1)"
+            if [[ -z "$LATEST_VERSION_CODE" ]]; then
+              echo "::error::Could not read versionCode from latest release tag $LATEST_TAG"
+              exit 1
+            fi
+            if (( VERSION_CODE <= LATEST_VERSION_CODE )); then
+              echo "::error::versionCode $VERSION_CODE must be greater than the latest release versionCode $LATEST_VERSION_CODE"
+              exit 1
+            fi
+          fi
+          echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+
+      - name: Stop when version was not incremented
+        if: steps.version.outputs.publish != 'true'
+        run: echo "No new Android release is required."
+
       - name: Validate and install release signing key
+        if: steps.version.outputs.publish == 'true'
         shell: bash
         env:
           IIE_KEYSTORE_BASE64: ${{ secrets.IIE_KEYSTORE_BASE64 }}
@@ -55,35 +109,43 @@ jobs:
           KEYSTORE_PATH="$RUNNER_TEMP/iie-release.jks"
           printf '%s' "$IIE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
           test -s "$KEYSTORE_PATH"
+          keytool -list -keystore "$KEYSTORE_PATH" -storepass "$IIE_KEYSTORE_PASSWORD" >/dev/null
+          keytool -certreq -alias "$IIE_KEY_ALIAS" -keystore "$KEYSTORE_PATH" -storepass "$IIE_KEYSTORE_PASSWORD" -keypass "$IIE_KEY_PASSWORD" -file "$RUNNER_TEMP/iie-release-check.csr" >/dev/null
           echo "IIE_KEYSTORE_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
           echo "IIE_KEYSTORE_PASSWORD=$IIE_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
           echo "IIE_KEY_ALIAS=$IIE_KEY_ALIAS" >> "$GITHUB_ENV"
           echo "IIE_KEY_PASSWORD=$IIE_KEY_PASSWORD" >> "$GITHUB_ENV"
 
       - name: Run Android unit tests
+        if: steps.version.outputs.publish == 'true'
         run: gradle :app:testDebugUnitTest
 
       - name: Build signed release APK
+        if: steps.version.outputs.publish == 'true'
         run: gradle :app:assembleRelease
 
       - name: Verify APK signature and prepare SHA-256 checksum
+        if: steps.version.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
           APK_SOURCE="app/build/outputs/apk/release/app-release.apk"
           test -s "$APK_SOURCE"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK_SOURCE"
-          APK_NAME="IIE-Android-${GITHUB_REF_NAME}.apk"
+          APK_NAME="IIE-Android-v${{ steps.version.outputs.name }}.apk"
           cp "$APK_SOURCE" "$APK_NAME"
           sha256sum "$APK_NAME" > "$APK_NAME.sha256"
           echo "APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
 
       - name: Publish GitHub Release
+        if: steps.version.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          name: IIE Android ${{ github.ref_name }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: IIE Android v${{ steps.version.outputs.name }}
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-preview') || contains(github.ref_name, '-rc') }}
+          prerelease: ${{ contains(steps.version.outputs.name, '-preview') || contains(steps.version.outputs.name, '-rc') }}
           files: |
             ${{ env.APK_NAME }}
             ${{ env.APK_NAME }}.sha256
