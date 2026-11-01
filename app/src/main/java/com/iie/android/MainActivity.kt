@@ -885,15 +885,15 @@ private fun DetailSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF151F29))
+        shape = RoundedCornerShape(IIEDesign.Radius.large),
+        colors = CardDefaults.cardColors(containerColor = IIEDesign.surface)
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             content = {
                 Text(title, style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFFE8EEF4), fontWeight = FontWeight.Bold)
+                    color = IIEDesign.textPrimary, fontWeight = FontWeight.Bold)
                 if (description != null) {
                     Text(description, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -957,6 +957,7 @@ private fun AssetDetailDialog(
         },
         text = {
             var showAudit by remember(asset.assetId) { mutableStateOf(false) }
+            var selectedSection by remember(asset.assetId) { mutableStateOf("MERCADO") }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -964,6 +965,20 @@ private fun AssetDetailDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                Text("CENTRO DE ANÁLISIS", color = IIEDesign.accentSecondary,
+                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                Text("Evidencia disponible para ${asset.symbol.uppercase()}",
+                    color = IIEDesign.textSecondary, style = MaterialTheme.typography.bodySmall)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf("MERCADO", "FUNDAMENTOS", "RED").forEach { section ->
+                        TextButton(onClick = { selectedSection = section }) {
+                            Text(section, color = if (selectedSection == section)
+                                IIEDesign.accentSecondary else IIEDesign.textSecondary,
+                                fontWeight = if (selectedSection == section) FontWeight.Bold else FontWeight.Normal)
+                        }
+                    }
+                }
+                if (selectedSection == "MERCADO") {
                 Card(
                     shape = RoundedCornerShape(22.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF172B31))
@@ -1010,6 +1025,9 @@ private fun AssetDetailDialog(
                         onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) })
                 }
 
+                }
+
+                if (selectedSection == "FUNDAMENTOS") {
                 DetailSection("Investigación del activo", "Expediente construido con observaciones persistidas y evidencia disponible.") {
                     ResearchDossierDetails(researchDossiers[asset.assetId])
                     TextButton(onClick = { viewModel.generateResearchDossier(asset.assetId) }) {
@@ -1031,6 +1049,9 @@ private fun AssetDetailDialog(
                     }
                 }
 
+                }
+
+                if (selectedSection == "RED") {
                 DetailSection("Redes y representaciones", "Identidad y contratos asociados al activo.") {
                     if (deployments.isEmpty()) {
                         Text(if (asset.symbol == "USDC" || asset.symbol == "USDT")
@@ -1042,6 +1063,8 @@ private fun AssetDetailDialog(
                                 style = MaterialTheme.typography.bodySmall)
                         }
                     }
+                }
+
                 }
 
                 TextButton(onClick = { showAudit = !showAudit }) {
