@@ -40,6 +40,14 @@ class RoutescanTokenSupplyClientTest {
     }
 
     @Test
+    fun rejectsEmptyContractCodeAndAcceptsNonEmptyBytecode() {
+        assertEquals(false, RoutescanTokenSupplyClient.hasContractBytecode("0x"))
+        assertEquals(false, RoutescanTokenSupplyClient.hasContractBytecode("0x0"))
+        assertEquals(false, RoutescanTokenSupplyClient.hasContractBytecode("0xzz"))
+        assertEquals(true, RoutescanTokenSupplyClient.hasContractBytecode("0x6001600055"))
+    }
+
+    @Test
     fun acceptsFullWidthUint256() {
         val maxUint256 = "0x" + "f".repeat(64)
         assertEquals(
