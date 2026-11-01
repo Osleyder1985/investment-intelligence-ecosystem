@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.iie.android.data.local.IIEDatabaseProvider
+import com.iie.android.data.local.InitialAssetCatalog
 import com.iie.android.data.local.AssetResearchDossierSnapshotCodec
 import com.iie.android.data.local.entity.AssetResearchDossierSnapshotEntity
 import com.iie.android.data.market.CoinPaprikaTickerClient
