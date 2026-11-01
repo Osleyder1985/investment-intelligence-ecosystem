@@ -305,6 +305,10 @@ class RoomAssetRepository(
         require(retrievedAt > 0L) { "Invalid local retrieval clock" }
         val todayUtc = java.time.Instant.ofEpochMilli(retrievedAt).atZone(ZoneOffset.UTC).toLocalDate()
         require(!end.isAfter(todayUtc)) { "Historical end date cannot be in the future" }
+        val earliestAllowedStart = todayUtc.minusYears(1)
+        require(!start.isBefore(earliestAllowedStart)) {
+            "Free-plan daily history is limited to one year"
+        }
 
         val points = fetcher.fetchDaily(
             providerId = identifier.identifierValue,
