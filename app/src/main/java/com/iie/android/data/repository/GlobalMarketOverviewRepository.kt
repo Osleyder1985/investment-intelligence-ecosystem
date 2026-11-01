@@ -150,7 +150,8 @@ class GlobalMarketOverviewRepository(
             row.snapshotType == snapshotType &&
             row.quality == "PROVIDER_SCHEMA_VALIDATED" &&
             row.observedAtEpochMs > 0L &&
-            row.retrievedAtEpochMs >= row.observedAtEpochMs &&
+            row.retrievedAtEpochMs > 0L &&
+            row.observedAtEpochMs <= row.retrievedAtEpochMs + 60_000L &&
             row.payloadSha256 == sha256(row.payloadJson)
 
     private fun nullableDouble(json: JSONObject, key: String): Double? {
