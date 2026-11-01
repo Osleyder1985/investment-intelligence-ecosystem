@@ -72,12 +72,23 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
     val assets by viewModel.assets.collectAsState()
     val watchlist by viewModel.watchlist.collectAsState()
     val catalogStatus by viewModel.catalogStatus.collectAsState()
+    val marketQuotes by viewModel.marketQuotes.collectAsState()
+    val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
     var selectedAsset by remember { mutableStateOf<Asset?>(null) }
     var destination by remember { mutableStateOf("Resumen") }
 
     val visibleAssets = when (destination) {
         "Seguimiento" -> assets.filter { it.assetId in watchlist }
         else -> assets
+    }
+
+    LaunchedEffect(destination, assets) {
+        if (destination == "Mercados") {
+            assets.forEach { asset ->
+                viewModel.loadLatestMarketQuote(asset.assetId)
+                viewModel.loadDailyMarketHistory(asset.assetId)
+            }
+        }
     }
 
     Surface(
@@ -264,12 +275,24 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                         } else {
                             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 items(visibleAssets, key = { it.assetId }) { asset ->
-                                    AssetRow(
-                                        asset = asset,
-                                        isWatched = asset.assetId in watchlist,
-                                        onClick = { selectedAsset = asset },
-                                        onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
-                                    )
+                                    if (destination == "Mercados") {
+                                        MarketAssetRow(
+                                            asset = asset,
+                                            quote = marketQuotes[asset.assetId],
+                                            history = dailyHistoryByAsset[asset.assetId].orEmpty(),
+                                            isWatched = asset.assetId in watchlist,
+                                            onClick = { selectedAsset = asset },
+                                            onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) },
+                                            onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
+                                        )
+                                    } else {
+                                        AssetRow(
+                                            asset = asset,
+                                            isWatched = asset.assetId in watchlist,
+                                            onClick = { selectedAsset = asset },
+                                            onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -287,6 +310,87 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
             onToggleWatchlist = { viewModel.toggleWatchlist(asset.assetId) },
             onDismiss = { selectedAsset = null }
         )
+    }
+}
+
+@Composable
+private fun MarketAssetRow(
+    asset: Asset,
+    quote: MarketQuoteUiState?,
+    history: List<CoinPaprikaHistoricalPoint>,
+    isWatched: Boolean,
+    onClick: () -> Unit,
+    onRefresh: () -> Unit,
+    onToggleWatchlist: () -> Unit
+) {
+    val latestTwo = history.sortedByDescending { it.timestampEpochMs }.take(2)
+    val dailyChange = if (latestTwo.size == 2 && latestTwo[1].priceUsd > 0.0) {
+        ((latestTwo[0].priceUsd / latestTwo[1].priceUsd) - 1.0) * 100.0
+    } else null
+    Card(shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f).clickable(onClick = onClick)) {
+                    Text(asset.name, fontWeight = FontWeight.SemiBold)
+                    Text(asset.symbol, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        quote?.priceUsd?.let {
+                            "$" + String.format(java.util.Locale.US, "%.8f", it)
+                        } ?: "Sin cotización",
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        quote?.freshnessStatus ?: "SIN DATOS",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    dailyChange?.let {
+                        "Variación entre puntos diarios: " +
+                            String.format(java.util.Locale.US, "%+.2f%%", it)
+                    } ?: "Variación diaria: histórico insuficiente",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (dailyChange == null) MaterialTheme.colorScheme.onSurfaceVariant
+                    else if (dailyChange >= 0.0) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.error
+                )
+                TextButton(onClick = onToggleWatchlist) {
+                    Text(if (isWatched) "Siguiendo" else "+ Seguir")
+                }
+            }
+            if (quote?.attribution != null) {
+                Text(
+                    "Fuente: \${quote.attribution} · Frescura: \${quote.freshnessReason}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (quote?.error != null) {
+                Text(
+                    "Error: \${quote.error}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            TextButton(onClick = onRefresh, enabled = quote?.isLoading != true) {
+                Text(if (quote?.isLoading == true) "Actualizando…" else "Actualizar cotización")
+            }
+        }
     }
 }
 
@@ -418,9 +522,8 @@ private fun AssetDetailDialog(
                     onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) }
                 )
 
-                if (asset.symbol == "USDC" || asset.symbol == "USDT") {
-                    Spacer(Modifier.height(10.dp))
-                    Text("Histórico diario · CoinPaprika", fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(10.dp))
+                Text("Histórico diario · CoinPaprika", fontWeight = FontWeight.SemiBold)
                     Text(
                         "Importa hasta un año de puntos diarios de precio, volumen y capitalización. No son velas OHLCV ni precios ejecutables.",
                         style = MaterialTheme.typography.bodySmall
@@ -429,8 +532,7 @@ private fun AssetDetailDialog(
                         state = historySync,
                         onDownload = { viewModel.downloadDailyMarketHistory(asset.assetId, asset.symbol) }
                     )
-                    MarketHistoryPoints(points = dailyHistory)
-                }
+                MarketHistoryPoints(points = dailyHistory)
 
                 Spacer(Modifier.height(12.dp))
                 Text("Procedencia de los datos", fontWeight = FontWeight.SemiBold)
