@@ -328,6 +328,36 @@ private fun EmptyState(message: String) {
 }
 
 @Composable
+private fun AssetRow(
+    asset: Asset,
+    isWatched: Boolean,
+    onClick: () -> Unit,
+    onToggleWatchlist: () -> Unit
+) {
+    Card(shape = RoundedCornerShape(16.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                Modifier.weight(1f).clickable(onClick = onClick).padding(vertical = 2.dp)
+            ) {
+                Text(asset.name, fontWeight = FontWeight.SemiBold)
+                Text(asset.identityStatus, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(asset.symbol, fontWeight = FontWeight.Bold)
+                TextButton(onClick = onToggleWatchlist) {
+                    Text(if (isWatched) "Siguiendo" else "+ Seguir")
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun AssetDetailDialog(
     asset: Asset,
     isWatched: Boolean,
