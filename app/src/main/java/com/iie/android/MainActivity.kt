@@ -47,6 +47,7 @@ import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetObservationProvenance
 import com.iie.android.domain.model.AssetResearchDossier
 import com.iie.android.presentation.AssetExplorerViewModel
+import com.iie.android.presentation.CoinMarketCapSettingsScreen
 import com.iie.android.presentation.MarketQuoteUiState
 import com.iie.android.presentation.MarketHistorySyncUiState
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
@@ -105,7 +106,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
         Scaffold(
             bottomBar = {
                 NavigationBar {
-                    listOf("Resumen", "Mercados", "Seguimiento").forEach { item ->
+                    listOf("Resumen", "Mercados", "Seguimiento", "Ajustes").forEach { item ->
                         NavigationBarItem(
                             selected = destination == item,
                             onClick = { destination = item },
@@ -114,7 +115,8 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                                     when (item) {
                                         "Resumen" -> "⌂"
                                         "Mercados" -> "◈"
-                                        else -> "☆"
+                                        "Seguimiento" -> "☆"
+                                        else -> "⚙"
                                     },
                                     style = MaterialTheme.typography.titleMedium
                                 )
@@ -148,7 +150,8 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                             when (destination) {
                                 "Resumen" -> "Centro de inversión"
                                 "Mercados" -> "Universo de activos"
-                                else -> "Tu seguimiento"
+                                "Seguimiento" -> "Tu seguimiento"
+                                else -> "Configuración"
                             },
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
@@ -199,6 +202,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                 Spacer(Modifier.height(16.dp))
 
                 when (destination) {
+                    "Ajustes" -> CoinMarketCapSettingsScreen()
                     "Resumen" -> {
                         Text("VISTA GENERAL", style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
