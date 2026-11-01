@@ -24,13 +24,19 @@ fun interface CoinPaprikaDailyHistoryFetcher {
     ): List<CoinPaprikaHistoricalPoint>
 }
 
+/**
+ * A historical quote keeps two different identities:
+ * providerId is the asset identifier assigned by the provider;
+ * sourceId identifies the data provider itself.
+ */
 data class CoinPaprikaHistoricalPoint(
     val providerId: String,
     val timestampEpochMs: Long,
     val priceUsd: Double,
     val volume24hUsd: Double?,
     val marketCapUsd: Double?,
-    val retrievedAtEpochMs: Long
+    val retrievedAtEpochMs: Long,
+    val sourceId: String = "source:coinpaprika"
 )
 
 /**
@@ -135,7 +141,15 @@ class CoinPaprikaHistoricalTickerClient(
             val marketCap = optionalNumber(row, "market_cap")
             if (volume != null && (!volume.isFinite() || volume < 0.0)) throw IOException("Historical volume is invalid")
             if (marketCap != null && (!marketCap.isFinite() || marketCap < 0.0)) throw IOException("Historical market cap is invalid")
-            CoinPaprikaHistoricalPoint(requestedProviderId, timestampMs, price, volume, marketCap, retrievedAtEpochMs)
+            CoinPaprikaHistoricalPoint(
+                providerId = requestedProviderId,
+                timestampEpochMs = timestampMs,
+                priceUsd = price,
+                volume24hUsd = volume,
+                marketCapUsd = marketCap,
+                retrievedAtEpochMs = retrievedAtEpochMs,
+                sourceId = SOURCE_ID
+            )
         }
         if (points.map { it.timestampEpochMs }.distinct().size != points.size) {
             throw IOException("CoinPaprika returned duplicate historical timestamps")
@@ -153,4 +167,8 @@ class CoinPaprikaHistoricalTickerClient(
     }
 
     private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8.name())
+
+    companion object {
+        const val SOURCE_ID = "source:coinpaprika"
+    }
 }

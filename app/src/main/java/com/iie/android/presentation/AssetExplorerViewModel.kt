@@ -12,6 +12,8 @@ import com.iie.android.data.local.entity.AssetResearchDossierSnapshotEntity
 import com.iie.android.data.market.CoinPaprikaTickerClient
 import com.iie.android.data.market.CoinMarketCapKeylessClient
 import com.iie.android.data.market.CoinPaprikaHistoricalTickerClient
+import com.iie.android.data.market.CoinMarketCapHistoricalQuotesClient
+import com.iie.android.data.market.CoinMarketCapApiKeyStore
 import com.iie.android.data.market.RoutescanTokenSupplyClient
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.QuoteFreshnessEvaluator
@@ -57,6 +59,8 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     private val coinPaprikaClient = CoinPaprikaTickerClient()
     private val coinMarketCapClient = CoinMarketCapKeylessClient()
     private val coinPaprikaHistoryClient = CoinPaprikaHistoricalTickerClient()
+    private val coinMarketCapHistoryClient = CoinMarketCapHistoricalQuotesClient()
+    private val coinMarketCapApiKeyStore = CoinMarketCapApiKeyStore(application)
     private val routescanTokenSupplyClient = RoutescanTokenSupplyClient()
     private val quoteFreshnessEvaluator = QuoteFreshnessEvaluator()
     private val dossierBuilder = AssetResearchDossierBuilder()
@@ -77,6 +81,9 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
 
     private val _dailyMarketHistory = MutableStateFlow<Map<String, List<CoinPaprikaHistoricalPoint>>>(emptyMap())
     val dailyMarketHistory: StateFlow<Map<String, List<CoinPaprikaHistoricalPoint>>> = _dailyMarketHistory.asStateFlow()
+
+    private val _coinMarketCapDailyHistory = MutableStateFlow<Map<String, List<CoinPaprikaHistoricalPoint>>>(emptyMap())
+    val coinMarketCapDailyHistory: StateFlow<Map<String, List<CoinPaprikaHistoricalPoint>>> = _coinMarketCapDailyHistory.asStateFlow()
 
     private val _routescanTokenSupplies = MutableStateFlow<Map<String, RoutescanTokenSupplyUiState>>(emptyMap())
     val routescanTokenSupplies: StateFlow<Map<String, RoutescanTokenSupplyUiState>> = _routescanTokenSupplies.asStateFlow()
@@ -309,9 +316,23 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             assets.forEachIndexed { index, asset ->
                 markQuoteLoading(asset.assetId)
                 refreshMarketQuoteNow(asset.assetId, asset.symbol)
-                if ((_dailyMarketHistory.value[asset.assetId]?.size ?: 0) < 2) {
-                    _dashboardRefreshStatus.value = "Actualizando · descargando histórico · ${asset.symbol.uppercase()}"
+                val historicalRefreshDue = withContext(Dispatchers.IO) {
+                    val yesterdayUtc = LocalDate.now(ZoneOffset.UTC).minusDays(1)
+                    val paprikaLatest = repository.getLatestCoinPaprikaDailyHistory(asset.assetId, limit = 1).firstOrNull()
+                    val cmcLatest = repository.getLatestCoinMarketCapDailyHistory(asset.assetId, limit = 1).firstOrNull()
+                    fun isStale(point: CoinPaprikaHistoricalPoint?): Boolean {
+                        if (point == null) return true
+                        val pointDate = java.time.Instant.ofEpochMilli(point.timestampEpochMs)
+                            .atZone(ZoneOffset.UTC).toLocalDate()
+                        return pointDate.isBefore(yesterdayUtc)
+                    }
+                    isStale(paprikaLatest) || isStale(cmcLatest)
+                }
+                if (historicalRefreshDue) {
+                    _dashboardRefreshStatus.value = "Actualizando · históricos diarios pendientes · ${asset.symbol.uppercase()}"
                     downloadDailyMarketHistoryNow(asset.assetId, asset.symbol)
+                    loadDailyMarketHistory(asset.assetId)
+                    loadCoinMarketCapDailyHistory(asset.assetId)
                 }
                 _dashboardRefreshStatus.value = "Actualizando ${index + 1}/${assets.size} · ${asset.symbol.uppercase()}"
             }
@@ -423,13 +444,29 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             try {
                 val points = withContext(Dispatchers.IO) {
-                    repository.getLatestCoinPaprikaDailyHistory(assetId, limit = 30)
+                    repository.getLatestCoinPaprikaDailyHistory(assetId, limit = 370)
                 }
                 _dailyMarketHistory.value = _dailyMarketHistory.value + (assetId to points)
             } catch (error: Exception) {
                 _marketHistorySync.value = _marketHistorySync.value + (assetId to
                     (_marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()).copy(
                         error = error.message ?: "No se pudo leer el histórico local"
+                    ))
+            }
+        }
+    }
+
+    fun loadCoinMarketCapDailyHistory(assetId: String) {
+        viewModelScope.launch {
+            try {
+                val points = withContext(Dispatchers.IO) {
+                    repository.getLatestCoinMarketCapDailyHistory(assetId, limit = 370)
+                }
+                _coinMarketCapDailyHistory.value = _coinMarketCapDailyHistory.value + (assetId to points)
+            } catch (error: Exception) {
+                _marketHistorySync.value = _marketHistorySync.value + (assetId to
+                    (_marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()).copy(
+                        coinMarketCapError = error.message ?: "No se pudo leer el histórico local de CoinMarketCap"
                     ))
             }
         }
@@ -462,7 +499,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             }
             loadDailyMarketHistory(assetId)
             _marketHistorySync.value = _marketHistorySync.value + (assetId to MarketHistorySyncUiState(
-                isLoading = false,
+                isLoading = true,
                 pointsReceived = result.pointsReceived,
                 pointsInserted = result.pointsInserted,
                 pointsAlreadyPresent = result.pointsAlreadyPresent,
@@ -471,9 +508,49 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
         } catch (error: Exception) {
             val previous = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
             _marketHistorySync.value = _marketHistorySync.value + (assetId to previous.copy(
-                isLoading = false,
+                isLoading = true,
                 error = error.message ?: "No se pudo descargar el histórico",
-                message = "La importación no se completó."
+                message = "La importación de CoinPaprika no se completó."
+            ))
+        }
+
+        // CMC is an independent source: never merge its observations into the
+        // CoinPaprika series and never make a missing credential fail the other provider.
+        try {
+            val apiKey = withContext(Dispatchers.IO) { coinMarketCapApiKeyStore.read() }
+            if (apiKey.isNullOrBlank()) {
+                val previous = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
+                _marketHistorySync.value = _marketHistorySync.value + (assetId to previous.copy(
+                    isLoading = false,
+                    coinMarketCapError = "API key de CoinMarketCap no configurada; histórico CMC omitido."
+                ))
+            } else {
+                val cmcResult = withContext(Dispatchers.IO) {
+                    val end = LocalDate.now(ZoneOffset.UTC)
+                    repository.downloadAndPersistCoinMarketCapDailyHistory(
+                        assetId = assetId,
+                        expectedSymbol = symbol,
+                        start = end.minusYears(1),
+                        end = end,
+                        apiKey = apiKey,
+                        client = coinMarketCapHistoryClient
+                    )
+                }
+                loadCoinMarketCapDailyHistory(assetId)
+                val previous = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
+                _marketHistorySync.value = _marketHistorySync.value + (assetId to previous.copy(
+                    isLoading = false,
+                    coinMarketCapPointsReceived = cmcResult.pointsReceived,
+                    coinMarketCapPointsInserted = cmcResult.pointsInserted,
+                    coinMarketCapPointsAlreadyPresent = cmcResult.pointsAlreadyPresent,
+                    coinMarketCapError = null
+                ))
+            }
+        } catch (error: Exception) {
+            val previous = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
+            _marketHistorySync.value = _marketHistorySync.value + (assetId to previous.copy(
+                isLoading = false,
+                coinMarketCapError = error.message ?: "No se pudo importar el histórico de CoinMarketCap"
             ))
         }
     }
@@ -569,5 +646,9 @@ data class MarketHistorySyncUiState(
     val pointsInserted: Int = 0,
     val pointsAlreadyPresent: Int = 0,
     val message: String? = null,
-    val error: String? = null
+    val error: String? = null,
+    val coinMarketCapPointsReceived: Int = 0,
+    val coinMarketCapPointsInserted: Int = 0,
+    val coinMarketCapPointsAlreadyPresent: Int = 0,
+    val coinMarketCapError: String? = null
 )

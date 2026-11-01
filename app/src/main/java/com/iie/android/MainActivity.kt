@@ -61,6 +61,8 @@ import com.iie.android.presentation.RoutescanTokenSupplyUiState
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.GlobalMarketMetrics
 import com.iie.android.data.market.FearGreedIndex
+import com.iie.android.data.market.HistoricalRiskAnalyzer
+import com.iie.android.data.market.HistoricalProviderComparator
 import java.text.DateFormat
 import java.util.Date
 
@@ -102,6 +104,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
     val globalMarket by viewModel.globalMarket.collectAsState()
     val marketHistorySync by viewModel.marketHistorySync.collectAsState()
     val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
+    val coinMarketCapDailyHistoryByAsset by viewModel.coinMarketCapDailyHistory.collectAsState()
     var selectedAsset by remember { mutableStateOf<Asset?>(null) }
     var destination by remember { mutableStateOf("Resumen") }
 
@@ -121,6 +124,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
             assets.forEach { asset ->
                 viewModel.loadLatestMarketQuote(asset.assetId)
                 viewModel.loadDailyMarketHistory(asset.assetId)
+                viewModel.loadCoinMarketCapDailyHistory(asset.assetId)
             }
         }
     }
@@ -188,24 +192,36 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                         shape = RoundedCornerShape(50),
                         color = MaterialTheme.colorScheme.secondaryContainer
                     ) {
-                        Text(
-                            "LOCAL",
+                        Column(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
-                        )
+                            horizontalAlignment = Alignment.End
+                        ) {
+                            Text(
+                                "LOCAL",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "v${BuildConfig.VERSION_NAME} · #${BuildConfig.VERSION_CODE}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(22.dp))
 
                 when (destination) {
-                    "Ajustes" -> CoinMarketCapSettingsScreen()
+                    "Ajustes" -> CoinMarketCapSettingsScreen(
+                        onHistoricalSyncRequested = { viewModel.refreshAllMarketQuotes(assets) }
+                    )
                     "Resumen" -> {
                         InvestorDashboard(
                             assets = assets,
                             watchlist = watchlist,
                             quotes = coinMarketCapQuotes,
                             history = dailyHistoryByAsset,
+                            coinMarketCapHistory = coinMarketCapDailyHistoryByAsset,
                             globalMetrics = globalMarket.globalMetrics,
                             fearGreed = globalMarket.fearGreed,
                             catalogStatus = catalogStatus,
@@ -339,12 +355,32 @@ private fun MarketAssetRow(
     }
 }
 
+private fun chooseCanonicalHistoricalSeries(
+    coinPaprika: List<CoinPaprikaHistoricalPoint>,
+    coinMarketCap: List<CoinPaprikaHistoricalPoint>
+): com.iie.android.data.market.CanonicalHistoricalSeries? {
+    val candidates = listOf(coinPaprika, coinMarketCap)
+        .filter { it.isNotEmpty() }
+    val combined = candidates.flatten()
+    val priority = candidates
+        .sortedWith(
+            compareByDescending<List<CoinPaprikaHistoricalPoint>> { it.size }
+                .thenByDescending { points -> points.maxOfOrNull { it.retrievedAtEpochMs } ?: 0L }
+                .thenBy { points -> points.firstOrNull()?.sourceId.orEmpty() }
+        )
+        .mapNotNull { it.firstOrNull()?.sourceId }
+        .distinct()
+    return HistoricalRiskAnalyzer().selectCanonicalSeries(combined, priority)
+}
+
+
 @Composable
 private fun InvestorDashboard(
     assets: List<Asset>,
     watchlist: Set<String>,
     quotes: Map<String, MarketQuoteUiState>,
     history: Map<String, List<CoinPaprikaHistoricalPoint>>,
+    coinMarketCapHistory: Map<String, List<CoinPaprikaHistoricalPoint>>,
     globalMetrics: GlobalMarketMetrics?,
     fearGreed: FearGreedIndex?,
     catalogStatus: String,
@@ -357,13 +393,23 @@ private fun InvestorDashboard(
     val coveredCaps = assets.mapNotNull { asset -> quotes[asset.assetId]?.marketCapUsd?.takeIf { it.isFinite() && it > 0.0 } }
     val coveredCapTotal = coveredCaps.sum()
     val capCoverage = coveredCaps.size
-    val historyCoverage = assets.count { (history[it.assetId]?.size ?: 0) >= 2 }
-    val volatilityValues = assets.mapNotNull { historicalVolatilityPercent(history[it.assetId].orEmpty()) }.sorted()
+    val canonicalHistoryByAsset = assets.associate { asset ->
+        asset.assetId to chooseCanonicalHistoricalSeries(
+            history[asset.assetId].orEmpty(),
+            coinMarketCapHistory[asset.assetId].orEmpty()
+        )
+    }
+    val historyCoverage = canonicalHistoryByAsset.values.count { (it?.points?.size ?: 0) >= 2 }
+    val volatilityValues = canonicalHistoryByAsset.values.mapNotNull {
+        it?.let { series -> historicalVolatilityPercent(series.points) }
+    }.sorted()
+    val canonicalCmcCoverage = canonicalHistoryByAsset.values.count { it?.sourceId == "source:coinmarketcap" }
+    val canonicalPaprikaCoverage = canonicalHistoryByAsset.values.count { it?.sourceId == "source:coinpaprika" }
     val medianVolatility = volatilityValues.takeIf { it.isNotEmpty() }?.let {
         if (it.size % 2 == 1) it[it.size / 2] else (it[it.size / 2 - 1] + it[it.size / 2]) / 2.0
     }
     val movers = assets.mapNotNull { asset ->
-        val points = history[asset.assetId].orEmpty().sortedBy { it.timestampEpochMs }
+        val points = canonicalHistoryByAsset[asset.assetId]?.points.orEmpty().sortedBy { it.timestampEpochMs }
         if (points.size < 2 || points.first().priceUsd <= 0.0) null
         else asset to ((points.last().priceUsd / points.first().priceUsd) - 1.0) * 100.0
     }.filter { it.second.isFinite() }.sortedByDescending { kotlin.math.abs(it.second) }.take(4)
@@ -457,7 +503,135 @@ private fun InvestorDashboard(
                 MetricCard("Históricos disponibles", "$historyCoverage / ${assets.size}", Modifier.weight(1f))
             }
             Spacer(Modifier.height(6.dp))
-            Text("La capitalización suma únicamente activos con dato CMC disponible; no representa la capitalización total del mercado. La volatilidad se estima con retornos diarios observados.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Capitalización: solo activos cubiertos por CMC; no es el total del mercado. Riesgo: una serie canónica completa por activo, priorizada por cobertura y frescura; nunca se mezclan ni promedian proveedores. Fuentes canónicas: CMC $canonicalCmcCoverage · CoinPaprika $canonicalPaprikaCoverage.",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        item {
+            val comparator = remember { HistoricalProviderComparator() }
+            val comparisons = assets.mapNotNull { asset ->
+                comparator.compare(
+                    history[asset.assetId].orEmpty(),
+                    coinMarketCapHistory[asset.assetId].orEmpty()
+                ).takeIf { it.matchedObservations > 0 }?.let { asset to it }
+            }
+            val paprikaQuality = assets.map { asset ->
+                comparator.quality(history[asset.assetId].orEmpty(), "source:coinpaprika")
+            }
+            val cmcQuality = assets.map { asset ->
+                comparator.quality(coinMarketCapHistory[asset.assetId].orEmpty(), "source:coinmarketcap")
+            }
+            val paprikaSeriesCoverage = paprikaQuality.count { it.usableTimestamps >= 2 }
+            val cmcSeriesCoverage = cmcQuality.count { it.usableTimestamps >= 2 }
+            fun medianRetrievalAgeHours(qualities: List<com.iie.android.data.market.HistoricalProviderSeriesQuality>): Double? {
+                val now = System.currentTimeMillis()
+                val ages = qualities.mapNotNull { it.latestRetrievedAtEpochMs }
+                    .map { ((now - it).coerceAtLeast(0L) / 3_600_000.0) }.sorted()
+                return ages.takeIf { it.isNotEmpty() }?.let {
+                    if (it.size % 2 == 1) it[it.size / 2] else (it[it.size / 2 - 1] + it[it.size / 2]) / 2.0
+                }
+            }
+            val paprikaMedianAge = medianRetrievalAgeHours(paprikaQuality)
+            val cmcMedianAge = medianRetrievalAgeHours(cmcQuality)
+            val ambiguousTimestamps = paprikaQuality.sumOf { it.conflictingTimestamps } +
+                cmcQuality.sumOf { it.conflictingTimestamps }
+            val invalidHistoryRows = paprikaQuality.sumOf { it.invalidObservations } +
+                cmcQuality.sumOf { it.invalidObservations }
+            val divergences = comparisons.mapNotNull { it.second.latestSymmetricDivergencePercent }.sorted()
+            val medianDivergence = divergences.takeIf { it.isNotEmpty() }?.let {
+                if (it.size % 2 == 1) it[it.size / 2] else (it[it.size / 2 - 1] + it[it.size / 2]) / 2.0
+            }
+            val highestDivergence = comparisons.maxByOrNull {
+                it.second.latestSymmetricDivergencePercent ?: Double.NEGATIVE_INFINITY
+            }
+            Text("CALIDAD DE DATOS · CONTRASTE ENTRE PROVEEDORES", style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricCard("Activos comparables", "${comparisons.size} / ${assets.size}", Modifier.weight(1f))
+                MetricCard("Divergencia mediana", medianDivergence?.let {
+                    String.format(java.util.Locale.US, "%.3f%%", it)
+                } ?: "Sin pares exactos", Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricCard("CoinPaprika · series válidas", "$paprikaSeriesCoverage / ${assets.size}", Modifier.weight(1f))
+                MetricCard("CMC · series válidas", "$cmcSeriesCoverage / ${assets.size}", Modifier.weight(1f))
+            }
+            Text("Recuperación mediana: CoinPaprika ${paprikaMedianAge?.let { String.format(java.util.Locale.US, "%.1f h", it) } ?: "N/D"} · CMC ${cmcMedianAge?.let { String.format(java.util.Locale.US, "%.1f h", it) } ?: "N/D"} · Filas inválidas: $invalidHistoryRows · timestamps conflictivos: $ambiguousTimestamps",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (highestDivergence != null) {
+                Spacer(Modifier.height(8.dp))
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF111B25))) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("MAYOR DIVERGENCIA OBSERVADA", style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                        Text("${highestDivergence.first.name} · ${String.format(java.util.Locale.US, "%.3f%%",
+                            highestDivergence.second.latestSymmetricDivergencePercent ?: 0.0)}",
+                            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("${highestDivergence.second.matchedObservations} timestamps UTC coincidentes",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            } else {
+                EmptyState("Todavía no existen timestamps UTC idénticos entre ambos proveedores. No se calcula ni se infiere una divergencia a partir de fechas aproximadas.")
+            }
+            Text("La comparación exige el mismo activo canónico, USD y timestamp UTC exacto. La divergencia simétrica compara las dos cotizaciones observadas; no se promedian precios ni se interpreta como oportunidad de arbitraje.",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        item {
+            val riskAnalyzer = remember { HistoricalRiskAnalyzer() }
+            val riskByAsset = assets.mapNotNull { asset ->
+                val canonical = canonicalHistoryByAsset[asset.assetId] ?: return@mapNotNull null
+                val metrics = riskAnalyzer.analyze(canonical.points)
+                if (metrics.observations < 2) null else asset to metrics
+            }
+            val volatilityCoverage = riskByAsset.count { it.second.annualizedVolatilityPercent != null }
+            val tailCoverage = riskByAsset.count { it.second.historicalVar95Percent != null }
+            val highestVolatility = riskByAsset.filter { it.second.annualizedVolatilityPercent != null }
+                .sortedByDescending { it.second.annualizedVolatilityPercent }.take(4)
+            val worstDrawdowns = riskByAsset.filter { it.second.maximumDrawdownPercent != null }
+                .sortedByDescending { it.second.maximumDrawdownPercent }.take(4)
+            Text("ANÁLISIS DE RIESGO · HISTÓRICO", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricCard("Volatilidad calculable", "$volatilityCoverage / ${assets.size}", Modifier.weight(1f))
+                MetricCard("VaR 95% calculable", "$tailCoverage / ${assets.size}", Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(8.dp))
+            if (riskByAsset.isEmpty()) {
+                EmptyState("No hay histórico diario suficiente para calcular riesgo. Actualiza los datos y descarga históricos.")
+            } else {
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111B25))) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("MAYOR VOLATILIDAD ANUALIZADA", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (highestVolatility.isEmpty()) Text("Muestra insuficiente: se requieren al menos 7 retornos diarios consecutivos.")
+                        highestVolatility.forEach { (asset, metrics) ->
+                            Row(Modifier.fillMaxWidth().clickable { onAssetClick(asset) }, horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("${asset.name} · ${metrics.dailyReturns} retornos", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                                Text(String.format(java.util.Locale.US, "%.1f%%", metrics.annualizedVolatilityPercent), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text("MAYOR CAÍDA DESDE MÁXIMOS (DRAWDOWN)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        worstDrawdowns.forEach { (asset, metrics) ->
+                            Row(Modifier.fillMaxWidth().clickable { onAssetClick(asset) }, horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(asset.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                                Text(String.format(java.util.Locale.US, "%.1f%%", metrics.maximumDrawdownPercent), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                        val representative = riskByAsset.firstOrNull { it.second.historicalVar95Percent != null }
+                        Text(
+                            representative?.let { (asset, metrics) ->
+                                "Cola histórica 95% · ${asset.symbol.uppercase()}: VaR diario ${String.format(java.util.Locale.US, "%.2f%%", metrics.historicalVar95Percent)} · pérdida media de cola (ES) ${String.format(java.util.Locale.US, "%.2f%%", metrics.historicalExpectedShortfall95Percent)}"
+                            } ?: "VaR y pérdida esperada de cola (ES) no disponibles: se requieren al menos 30 retornos diarios consecutivos.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Text("Volatilidad anualizada con desviación estándar muestral y √365. Drawdown: caída máxima desde un pico observado. VaR/ES: cola histórica diaria al 95%; no son pérdidas máximas ni pronósticos. Métricas por activo, no riesgo ponderado de cartera.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -725,6 +899,8 @@ private fun AssetDetailDialog(
     val historySync = historySyncStates[asset.assetId]
     val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
     val dailyHistory = dailyHistoryByAsset[asset.assetId].orEmpty()
+    val coinMarketCapDailyHistoryByAsset by viewModel.coinMarketCapDailyHistory.collectAsState()
+    val coinMarketCapDailyHistory = coinMarketCapDailyHistoryByAsset[asset.assetId].orEmpty()
     val researchDossiers by viewModel.researchDossiers.collectAsState()
     val routescanTokenSupplies by viewModel.routescanTokenSupplies.collectAsState()
 
@@ -732,6 +908,7 @@ private fun AssetDetailDialog(
         viewModel.loadLatestResearchDossier(asset.assetId)
         viewModel.loadLatestMarketQuote(asset.assetId)
         viewModel.loadDailyMarketHistory(asset.assetId)
+        viewModel.loadCoinMarketCapDailyHistory(asset.assetId)
     }
     LaunchedEffect(deployments) {
         deployments.filter { it.representationKind == "ERC20" }.forEach { deployment ->
@@ -794,6 +971,10 @@ private fun AssetDetailDialog(
                     )
                     MarketHistorySyncDetails(state = historySync,
                         onDownload = { viewModel.downloadDailyMarketHistory(asset.assetId, asset.symbol) })
+                    HistoricalProviderComparison(
+                        coinPaprika = dailyHistory,
+                        coinMarketCap = coinMarketCapDailyHistory
+                    )
                     if (dailyHistory.isNotEmpty()) MarketHistoryPoints(points = dailyHistory)
                 }
 
@@ -1116,8 +1297,64 @@ private fun MarketHistorySyncDetails(
             style = MaterialTheme.typography.bodySmall
         )
     }
+    state?.coinMarketCapPointsReceived?.takeIf { it > 0 }?.let { received ->
+        Text("CoinMarketCap · $received puntos recibidos · ${state.coinMarketCapPointsInserted} nuevos · ${state.coinMarketCapPointsAlreadyPresent} existentes",
+            style = MaterialTheme.typography.bodySmall)
+    }
+    state?.coinMarketCapError?.let {
+        Text("CoinMarketCap: $it", color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall)
+    }
     TextButton(onClick = onDownload, enabled = state?.isLoading != true) {
-        Text(if (state?.isLoading == true) "Descargando e importando…" else "Descargar último año")
+        Text(if (state?.isLoading == true) "Descargando e importando…" else "Descargar último año · ambos proveedores")
+    }
+}
+
+
+@Composable
+private fun HistoricalProviderComparison(
+    coinPaprika: List<CoinPaprikaHistoricalPoint>,
+    coinMarketCap: List<CoinPaprikaHistoricalPoint>
+) {
+    val comparator = remember { HistoricalProviderComparator() }
+    val result = remember(coinPaprika, coinMarketCap) {
+        comparator.compare(coinPaprika, coinMarketCap)
+    }
+    val paprikaQuality = remember(coinPaprika) {
+        comparator.quality(coinPaprika, "source:coinpaprika")
+    }
+    val cmcQuality = remember(coinMarketCap) {
+        comparator.quality(coinMarketCap, "source:coinmarketcap")
+    }
+    val utcFormatter = remember {
+        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm 'UTC'", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Text("Contraste histórico independiente", fontWeight = FontWeight.SemiBold)
+        Text("CoinPaprika: ${coinPaprika.size} puntos · CoinMarketCap: ${coinMarketCap.size} puntos",
+            style = MaterialTheme.typography.bodySmall)
+        Text("Timestamps UTC exactamente coincidentes: ${result.matchedObservations}",
+            style = MaterialTheme.typography.bodySmall)
+        Text(result.latestSymmetricDivergencePercent?.let {
+            "Divergencia simétrica en la última observación común: ${String.format(java.util.Locale.US, "%.3f", it)}%"
+        } ?: "Divergencia no calculable: no hay timestamps UTC exactos y precios válidos en ambas fuentes.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        result.latestTimestampEpochMs?.let { timestamp ->
+            Text("Instante UTC: ${utcFormatter.format(Date(timestamp))}",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("CoinPaprika: ${result.coinPaprikaPriceUsd} USD · CoinMarketCap: ${result.coinMarketCapPriceUsd} USD",
+                style = MaterialTheme.typography.bodySmall)
+        }
+        Text("Calidad CoinPaprika: ${paprikaQuality.usableTimestamps} timestamps utilizables · ${paprikaQuality.invalidObservations} filas inválidas · ${paprikaQuality.conflictingTimestamps} timestamps ambiguos.")
+        Text("Calidad CoinMarketCap: ${cmcQuality.usableTimestamps} timestamps utilizables · ${cmcQuality.invalidObservations} filas inválidas · ${cmcQuality.conflictingTimestamps} timestamps ambiguos.")
+        Text("Última recuperación de la observación común: CoinPaprika ${result.coinPaprikaRetrievedAtEpochMs?.let { DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(it)) } ?: "N/D"} · CMC ${result.coinMarketCapRetrievedAtEpochMs?.let { DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(it)) } ?: "N/D"}",
+            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Solo se emparejan el mismo activo, moneda USD y timestamp UTC exacto. Las series permanecen separadas; no se promedian ni se sustituyen precios entre proveedores.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -1163,7 +1400,7 @@ private fun MarketHistoryPoints(points: List<CoinPaprikaHistoricalPoint>) {
     Spacer(Modifier.height(8.dp))
     Text("Tendencia de precios · últimos 30 puntos diarios", fontWeight = FontWeight.Medium)
     MarketSparkline(points, chartHeight = 112.dp)
-    Text("Representación de precios de cierre diarios; no son velas OHLCV ni precios ejecutables.",
+    Text("Cotizaciones diarias observadas por el proveedor; no se deben interpretar como cierres oficiales, velas OHLCV ni precios ejecutables.",
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(8.dp))
