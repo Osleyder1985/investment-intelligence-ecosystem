@@ -5,7 +5,7 @@ import com.iie.android.data.local.IIEDatabase
 import com.iie.android.data.local.entity.AssetObservationEntity
 import com.iie.android.data.local.entity.WatchlistEntryEntity
 import com.iie.android.data.market.CoinPaprikaTickerClient
-import com.iie.android.data.market.CoinMarketCapAuthenticatedClient
+import com.iie.android.data.market.CoinMarketCapKeylessClient
 import com.iie.android.data.market.CoinPaprikaQuote
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.CoinPaprikaDailyHistoryFetcher
@@ -324,16 +324,16 @@ class RoomAssetRepository(
     }
 
     /**
-     * Fetches CoinMarketCap by its confirmed numeric provider ID and appends an immutable
-     * observation to the same provenance ledger used by CoinPaprika.
+     * Fetches CoinMarketCap's public keyless listing for a confirmed provider ID and
+     * appends an immutable observation to the provenance ledger. Metrics absent from
+     * this public endpoint remain null; they are never synthesized.
      */
     suspend fun fetchAndPersistCoinMarketCapQuote(
         assetId: String,
         expectedSymbol: String,
-        apiKey: String,
-        client: CoinMarketCapAuthenticatedClient
+        client: CoinMarketCapKeylessClient
     ): AssetObservationEntity {
-        val sourceId = "source:coinmarketcap"
+        val sourceId = CoinMarketCapKeylessClient.SOURCE_ID
         val source = database.dataSourceDao().getSource(sourceId)
             ?: error("CoinMarketCap source is not registered")
         check(source.permittedUseStatus == "PERSONAL_USE_ONLY") {
@@ -366,7 +366,9 @@ class RoomAssetRepository(
             cachedCoinMarketCapMatches(cached, expectedProviderId, expectedSymbol)
         ) return cached
 
-        val quote = client.fetchLatestQuote(apiKey, expectedSymbol, expectedProviderId = expectedProviderId)
+        val listings = client.fetchListings(setOf(expectedSymbol))
+        val quote = listings.singleOrNull()
+            ?: error("CoinMarketCap did not return exactly one listing for $expectedSymbol")
         require(quote.providerId == expectedProviderId) {
             "CoinMarketCap response ID does not match the confirmed asset mapping"
         }
@@ -385,8 +387,8 @@ class RoomAssetRepository(
             .put("circulatingSupply", quote.circulatingSupply ?: JSONObject.NULL)
             .put("totalSupply", quote.totalSupply ?: JSONObject.NULL)
             .put("maxSupply", quote.maxSupply ?: JSONObject.NULL)
-            .put("marketCapUsd", quote.marketCapUsd ?: JSONObject.NULL)
-            .put("fullyDilutedMarketCapUsd", quote.fullyDilutedMarketCapUsd ?: JSONObject.NULL)
+            .put("marketCapUsd", JSONObject.NULL)
+            .put("fullyDilutedMarketCapUsd", JSONObject.NULL)
             .put("providerUpdatedAtEpochMs", quote.providerUpdatedAtEpochMs)
             .put("retrievedAtEpochMs", quote.retrievedAtEpochMs)
             .toString()
