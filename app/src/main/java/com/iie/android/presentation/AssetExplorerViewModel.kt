@@ -11,6 +11,7 @@ import com.iie.android.data.repository.RoomAssetRepository
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetDeploymentSummary
 import com.iie.android.domain.model.AssetObservationProvenance
+import com.iie.android.domain.quality.LocalDemoEvidenceEvaluator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,7 @@ import kotlinx.coroutines.withContext
 class AssetExplorerViewModel(application: Application) : AndroidViewModel(application) {
     private val database = IIEDatabaseProvider.get(application)
     private val repository = RoomAssetRepository(database)
+    private val evidenceEvaluator = LocalDemoEvidenceEvaluator.create()
 
     private val query = MutableStateFlow("")
     val searchQuery: StateFlow<String> = query.asStateFlow()
@@ -40,6 +42,9 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
 
     private val _catalogStatus = MutableStateFlow("Preparando catálogo local…")
     val catalogStatus: StateFlow<String> = _catalogStatus.asStateFlow()
+
+    private val _evidenceEvaluation = MutableStateFlow<EvidenceEvaluationUiState?>(null)
+    val evidenceEvaluation: StateFlow<EvidenceEvaluationUiState?> = _evidenceEvaluation.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -58,6 +63,48 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
 
     fun observeProvenance(assetId: String): Flow<List<AssetObservationProvenance>> =
         repository.observeProvenance(assetId)
+
+    fun evaluateLatestEvidence(assetId: String) {
+        _evidenceEvaluation.value = EvidenceEvaluationUiState(assetId = assetId, isLoading = true)
+        viewModelScope.launch {
+            val state = try {
+                withContext(Dispatchers.IO) {
+                    val record = repository.getLatestObservationForEvaluation(
+                        assetId = assetId,
+                        observationType = "IDENTITY_FIXTURE"
+                    )
+                    if (record == null) {
+                        EvidenceEvaluationUiState(
+                            assetId = assetId,
+                            isLoading = false,
+                            message = "No existe una observación evaluable con fuente registrada."
+                        )
+                    } else {
+                        val (observation, permittedUseStatus) = record
+                        EvidenceEvaluationUiState(
+                            assetId = assetId,
+                            isLoading = false,
+                            evaluation = evidenceEvaluator.evaluate(
+                                observation = observation,
+                                sourcePermittedUseStatus = permittedUseStatus,
+                                intendedUse = LocalDemoEvidenceEvaluator.INTENDED_USE,
+                                evaluatedAtEpochMs = System.currentTimeMillis()
+                            )
+                        )
+                    }
+                }
+            } catch (error: Exception) {
+                EvidenceEvaluationUiState(
+                    assetId = assetId,
+                    isLoading = false,
+                    message = "No se pudo evaluar la evidencia: ${error.message ?: "error desconocido"}"
+                )
+            }
+            if (_evidenceEvaluation.value?.assetId == assetId) {
+                _evidenceEvaluation.value = state
+            }
+        }
+    }
 
     fun updateSearchQuery(value: String) {
         query.value = value

@@ -289,6 +289,27 @@ class IIEDatabaseTest {
     }
 
     @Test
+    fun repositoryMapsPersistedObservationAndSourceUseForEvidenceEvaluation(): Unit = runBlocking {
+        DemoAssetSeeder(database) { 400L }.seed()
+        val repository = com.iie.android.data.repository.RoomAssetRepository(database)
+
+        val record = repository.getLatestObservationForEvaluation(
+            assetId = "asset:bitcoin",
+            observationType = "IDENTITY_FIXTURE"
+        )
+
+        assertNotNull(record)
+        assertEquals("observation:demo:asset:bitcoin", record?.first?.observationId)
+        assertEquals("source:iie-demo-fixture", record?.first?.sourceId)
+        assertEquals("UNVERIFIED", record?.first?.quality)
+        assertEquals("INTERNAL_DEMO_ONLY", record?.second)
+        assertEquals(
+            """{"recordType":"synthetic_demo_fixture","marketData":false}""",
+            record?.first?.valueJson
+        )
+    }
+
+    @Test
     fun demoSeederIsIdempotentAndPreservesUserWatchlistData() = runBlocking {
         DemoAssetSeeder(database) { 100L }.seed()
         database.watchlistDao().add(
