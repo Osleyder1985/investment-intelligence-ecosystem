@@ -13,6 +13,7 @@ import com.iie.android.data.market.CoinPaprikaTickerClient
 import com.iie.android.data.market.CoinMarketCapAuthenticatedClient
 import com.iie.android.data.security.CoinMarketCapApiKeyStore
 import com.iie.android.data.market.CoinPaprikaHistoricalTickerClient
+import com.iie.android.data.market.RoutescanTokenSupplyClient
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.QuoteFreshnessEvaluator
 import org.json.JSONObject
@@ -53,6 +54,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     private val coinMarketCapClient = CoinMarketCapAuthenticatedClient()
     private val coinMarketCapKeyStore = CoinMarketCapApiKeyStore(application)
     private val coinPaprikaHistoryClient = CoinPaprikaHistoricalTickerClient()
+    private val routescanTokenSupplyClient = RoutescanTokenSupplyClient()
     private val quoteFreshnessEvaluator = QuoteFreshnessEvaluator()
     private val dossierBuilder = AssetResearchDossierBuilder()
     private val _researchDossiers = MutableStateFlow<Map<String, AssetResearchDossier>>(emptyMap())
@@ -69,6 +71,9 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
 
     private val _dailyMarketHistory = MutableStateFlow<Map<String, List<CoinPaprikaHistoricalPoint>>>(emptyMap())
     val dailyMarketHistory: StateFlow<Map<String, List<CoinPaprikaHistoricalPoint>>> = _dailyMarketHistory.asStateFlow()
+
+    private val _routescanTokenSupplies = MutableStateFlow<Map<String, RoutescanTokenSupplyUiState>>(emptyMap())
+    val routescanTokenSupplies: StateFlow<Map<String, RoutescanTokenSupplyUiState>> = _routescanTokenSupplies.asStateFlow()
 
     private val query = MutableStateFlow("")
     val searchQuery: StateFlow<String> = query.asStateFlow()
@@ -319,6 +324,64 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    fun loadLatestRoutescanTokenSupply(assetId: String, deploymentId: String) {
+        viewModelScope.launch {
+            try {
+                val observation = withContext(Dispatchers.IO) {
+                    repository.getLatestRoutescanTokenSupply(assetId, deploymentId)
+                }
+                if (observation != null) {
+                    _routescanTokenSupplies.value = _routescanTokenSupplies.value +
+                        (deploymentId to observation.toRoutescanTokenSupplyUiState())
+                }
+            } catch (error: Exception) {
+                val previous = _routescanTokenSupplies.value[deploymentId] ?: RoutescanTokenSupplyUiState()
+                _routescanTokenSupplies.value = _routescanTokenSupplies.value +
+                    (deploymentId to previous.copy(error = error.message ?: "No se pudo leer el suministro on-chain"))
+            }
+        }
+    }
+
+    fun refreshRoutescanTokenSupply(assetId: String, deploymentId: String) {
+        val previous = _routescanTokenSupplies.value[deploymentId] ?: RoutescanTokenSupplyUiState()
+        _routescanTokenSupplies.value = _routescanTokenSupplies.value +
+            (deploymentId to previous.copy(isLoading = true, error = null))
+        viewModelScope.launch {
+            try {
+                val observation = withContext(Dispatchers.IO) {
+                    repository.fetchAndPersistRoutescanTokenSupply(
+                        assetId = assetId,
+                        deploymentId = deploymentId,
+                        client = routescanTokenSupplyClient
+                    )
+                }
+                _routescanTokenSupplies.value = _routescanTokenSupplies.value +
+                    (deploymentId to observation.toRoutescanTokenSupplyUiState())
+            } catch (error: Exception) {
+                val current = _routescanTokenSupplies.value[deploymentId] ?: RoutescanTokenSupplyUiState()
+                _routescanTokenSupplies.value = _routescanTokenSupplies.value +
+                    (deploymentId to current.copy(
+                        isLoading = false,
+                        error = error.message ?: "No se pudo consultar Routescan"
+                    ))
+            }
+        }
+    }
+
+    private fun com.iie.android.data.local.entity.AssetObservationEntity.toRoutescanTokenSupplyUiState(): RoutescanTokenSupplyUiState {
+        val payload = JSONObject(valueJson)
+        return RoutescanTokenSupplyUiState(
+            rawAmount = payload.getString("rawAmount"),
+            decimalAmount = payload.getString("decimalAmount"),
+            decimals = payload.getInt("decimals"),
+            chainId = payload.getString("chainId"),
+            contractAddress = payload.getString("contractAddress"),
+            blockNumber = payload.getLong("blockNumber"),
+            retrievedAtEpochMs = retrievedAtEpochMs,
+            isLoading = false
+        )
+    }
+
     fun loadDailyMarketHistory(assetId: String) {
         viewModelScope.launch {
             try {
@@ -436,6 +499,18 @@ data class MarketQuoteUiState(
     val error: String? = null
 )
 
+
+data class RoutescanTokenSupplyUiState(
+    val rawAmount: String? = null,
+    val decimalAmount: String? = null,
+    val decimals: Int? = null,
+    val chainId: String? = null,
+    val contractAddress: String? = null,
+    val blockNumber: Long? = null,
+    val retrievedAtEpochMs: Long? = null,
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
 
 data class MarketHistorySyncUiState(
     val isLoading: Boolean = false,
