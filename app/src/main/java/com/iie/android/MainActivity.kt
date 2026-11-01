@@ -106,16 +106,16 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
         else -> assets
     }.filter { asset ->
         (destination != "Mercados" || selectedAssetType == "TODOS" || asset.assetType == selectedAssetType) &&
-            (!onlyQuotedAssets || marketQuotes[asset.assetId]?.priceUsd?.let { it.isFinite() && it > 0.0 } == true)
+            (destination != "Mercados" || !onlyQuotedAssets || marketQuotes[asset.assetId]?.priceUsd?.let { it.isFinite() && it > 0.0 } == true)
     }.let { filtered ->
         when (marketSort) {
             "PRECIO ↓" -> filtered.sortedWith(
-                compareBy<Asset> { marketQuotes[it.assetId]?.priceUsd == null }
-                    .thenByDescending { marketQuotes[it.assetId]?.priceUsd ?: 0.0 }
+                compareBy<Asset> { marketQuotes[it.assetId]?.priceUsd?.let { price -> price.isFinite() && price > 0.0 } != true }
+                    .thenByDescending { marketQuotes[it.assetId]?.priceUsd?.takeIf { price -> price.isFinite() && price > 0.0 } ?: 0.0 }
             )
             "PRECIO ↑" -> filtered.sortedWith(
-                compareBy<Asset> { marketQuotes[it.assetId]?.priceUsd == null }
-                    .thenBy { marketQuotes[it.assetId]?.priceUsd ?: Double.MAX_VALUE }
+                compareBy<Asset> { marketQuotes[it.assetId]?.priceUsd?.let { price -> price.isFinite() && price > 0.0 } != true }
+                    .thenBy { marketQuotes[it.assetId]?.priceUsd?.takeIf { price -> price.isFinite() && price > 0.0 } ?: Double.MAX_VALUE }
             )
             "TIPO" -> filtered.sortedWith(compareBy<Asset> { it.assetType }.thenBy { it.name.lowercase() })
             else -> filtered.sortedBy { it.name.lowercase() }
