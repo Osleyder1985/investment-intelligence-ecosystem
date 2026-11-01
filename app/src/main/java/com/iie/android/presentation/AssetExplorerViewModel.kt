@@ -23,6 +23,7 @@ import com.iie.android.domain.model.AssetObservationProvenance
 import com.iie.android.domain.model.AssetResearchDossier
 import com.iie.android.domain.model.ResearchQuoteInput
 import com.iie.android.domain.model.ResearchMarketHistoryPoint
+import com.iie.android.domain.model.ResearchQuoteComparisonInput
 import com.iie.android.domain.quality.AssetResearchDossierBuilder
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -103,6 +104,8 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                     val provenance = repository.observeProvenance(assetId).first()
                     val quoteRecord = repository.getLatestCoinPaprikaQuote(assetId)
                     val quote = quoteRecord?.let { (observation, attribution) -> observation.toUiState(attribution) }
+                    val cmcQuoteRecord = repository.getLatestCoinMarketCapQuote(assetId)
+                    val cmcQuote = cmcQuoteRecord?.let { (observation, attribution) -> observation.toUiState(attribution) }
                     val history = repository.getLatestCoinPaprikaDailyHistory(assetId, limit = 365)
                     dossierBuilder.build(
                         asset = asset,
@@ -118,7 +121,13 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                         },
                         history = history.map { ResearchMarketHistoryPoint(it.timestampEpochMs, it.priceUsd) },
                         provenance = provenance,
-                        generatedAtEpochMs = System.currentTimeMillis()
+                        generatedAtEpochMs = System.currentTimeMillis(),
+                        quoteComparison = ResearchQuoteComparisonInput(
+                            primaryQuote = quote?.let { ResearchQuoteInput(it.priceUsd, it.attribution, it.providerUpdatedAtEpochMs, it.retrievedAtEpochMs, it.freshnessStatus) },
+                            secondaryQuote = cmcQuote?.let { ResearchQuoteInput(it.priceUsd, it.attribution, it.providerUpdatedAtEpochMs, it.retrievedAtEpochMs, it.freshnessStatus) },
+                            primaryObservationId = quoteRecord?.first?.observationId,
+                            secondaryObservationId = cmcQuoteRecord?.first?.observationId
+                        )
                     )
                 }
                 withContext(Dispatchers.IO) {
