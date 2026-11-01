@@ -114,6 +114,8 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                         val circulating = payload.nullableNonNegativeDouble("circulatingSupply")
                         val total = payload.nullableNonNegativeDouble("totalSupply")
                         val maximum = payload.nullableNonNegativeDouble("maxSupply")
+                        val marketCap = payload.nullableNonNegativeDouble("marketCapUsd")
+                        val fullyDilutedMarketCap = payload.nullableNonNegativeDouble("fullyDilutedMarketCapUsd")
                         val relationIssues = com.iie.android.domain.model.ResearchEvidenceQualityGate
                             .validateSupplyRelations(circulating, total, maximum)
                         fun supplyEvidence(field: String, value: Double?): ResearchEvidence<Double> =
@@ -135,6 +137,18 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                                 qualityStatus = "PROVIDER_SCHEMA_VALIDATED",
                                 notes = relationIssues
                             )
+                        fun valuationEvidence(field: String, value: Double?): ResearchEvidence<Double> =
+                            ResearchEvidence(
+                                fieldKey = field, value = value,
+                                status = if (value == null) ResearchFieldStatus.UNKNOWN else ResearchFieldStatus.KNOWN,
+                                sourceId = CoinMarketCapAuthenticatedClient.SOURCE_ID,
+                                sourceName = "CoinMarketCap", sourceUrl = "https://coinmarketcap.com/",
+                                licenseReference = CoinMarketCapAuthenticatedClient.TERMS_URL,
+                                permittedUseStatus = "PERSONAL_USE_ONLY",
+                                observedAtEpochMs = observation.observedAtEpochMs,
+                                retrievedAtEpochMs = observation.retrievedAtEpochMs,
+                                qualityStatus = "PROVIDER_SCHEMA_VALIDATED"
+                            )
                         val unknownNumber = ResearchEvidence<Double>(
                             fieldKey = "annual_inflation_percent", value = null,
                             status = ResearchFieldStatus.UNKNOWN,
@@ -155,6 +169,8 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                             circulatingSupply = supplyEvidence("circulating_supply", circulating),
                             totalSupply = supplyEvidence("total_supply", total),
                             maxSupply = supplyEvidence("max_supply", maximum),
+                            marketCapUsd = valuationEvidence("market_cap_usd", marketCap),
+                            fullyDilutedMarketCapUsd = valuationEvidence("fully_diluted_market_cap_usd", fullyDilutedMarketCap),
                             annualInflationPercent = unknownNumber,
                             emissionSchedule = unknownText,
                             unlockEvents = emptyList()
