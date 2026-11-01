@@ -1,6 +1,6 @@
 package com.iie.android.domain.quality
 
-import com.iie.android.data.market.CoinPaprikaHistoricalPoint
+import com.iie.android.domain.model.ResearchMarketHistoryPoint
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.ResearchFieldStatus
 import com.iie.android.domain.model.ResearchQuoteInput
@@ -46,8 +46,7 @@ class AssetResearchDossierBuilderTest {
         assertEquals("INSUFFICIENT_EVIDENCE", dossier.overallEvidenceStatus)
     }
 
-    private fun point(timestamp: Long, price: Double) = CoinPaprikaHistoricalPoint(
-        providerId = "btc-bitcoin", timestampEpochMs = timestamp, priceUsd = price,
-        volume24hUsd = null, marketCapUsd = null, retrievedAtEpochMs = timestamp + 1L
+    private fun point(timestamp: Long, price: Double) = ResearchMarketHistoryPoint(
+        timestampEpochMs = timestamp, priceUsd = price
     )
 }
