@@ -14,9 +14,9 @@ concurrency:
 
 jobs:
   build-and-publish:
-    name: Build and publish Android APK
+    name: Test, build and publish Android APK
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Check out tagged source
         uses: actions/checkout@v4
@@ -36,6 +36,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+
+      - name: Run Android unit tests
+        run: gradle :app:testDebugUnitTest
 
       - name: Build release candidate APK
         run: gradle :app:assembleDebug
