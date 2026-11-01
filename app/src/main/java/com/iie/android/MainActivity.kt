@@ -204,7 +204,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
 
                 when (destination) {
                     "Ajustes" -> CoinMarketCapSettingsScreen(
-                        onCredentialSaved = { viewModel.refreshAllMarketQuotes(assets) }
+                        onHistoricalSyncRequested = { viewModel.refreshAllMarketQuotes(assets) }
                     )
                     "Resumen" -> {
                         InvestorDashboard(
