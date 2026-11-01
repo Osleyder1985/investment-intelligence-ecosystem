@@ -5,6 +5,8 @@ import com.iie.android.domain.model.AssetResearchDossier
 import com.iie.android.domain.model.MarketResearchSection
 import com.iie.android.domain.model.ResearchDeployment
 import com.iie.android.domain.model.ResearchFieldStatus
+import com.iie.android.domain.model.ResearchEvidence
+import com.iie.android.domain.model.TokenomicsResearchSection
 import java.security.MessageDigest
 import org.json.JSONArray
 import org.json.JSONObject
@@ -52,6 +54,17 @@ object AssetResearchDossierSnapshotCodec {
                 .put("quoteComparedAtEpochMs", market.quoteComparedAtEpochMs ?: JSONObject.NULL))
             .put("fundamentals", dossier.fundamentals.name)
             .put("tokenomics", dossier.tokenomics.name)
+            .put("tokenomicsEvidence", dossier.tokenomicsEvidence?.let { section ->
+                JSONObject()
+                    .put("circulatingSupply", encodeDoubleEvidence(section.circulatingSupply))
+                    .put("totalSupply", encodeDoubleEvidence(section.totalSupply))
+                    .put("maxSupply", encodeDoubleEvidence(section.maxSupply))
+                    .put("annualInflationPercent", encodeDoubleEvidence(section.annualInflationPercent))
+                    .put("emissionSchedule", encodeStringEvidence(section.emissionSchedule))
+                    .put("unlockEvents", JSONArray().apply {
+                        section.unlockEvents.forEach { put(encodeStringEvidence(it)) }
+                    })
+            } ?: JSONObject.NULL)
             .put("security", dossier.security.name)
             .put("governance", dossier.governance.name)
             .put("evidenceCount", dossier.evidenceCount)
@@ -95,6 +108,19 @@ object AssetResearchDossierSnapshotCodec {
             quoteComparisonSecondaryObservationId = nullableString(m, "quoteComparisonSecondaryObservationId"),
             quoteComparedAtEpochMs = nullableLong(m, "quoteComparedAtEpochMs")
         )
+        val tokenomicsJson = root.optJSONObject("tokenomicsEvidence")
+        val tokenomicsEvidence = tokenomicsJson?.let { json ->
+            TokenomicsResearchSection(
+                circulatingSupply = decodeDoubleEvidence(json.getJSONObject("circulatingSupply")),
+                totalSupply = decodeDoubleEvidence(json.getJSONObject("totalSupply")),
+                maxSupply = decodeDoubleEvidence(json.getJSONObject("maxSupply")),
+                annualInflationPercent = decodeDoubleEvidence(json.getJSONObject("annualInflationPercent")),
+                emissionSchedule = decodeStringEvidence(json.getJSONObject("emissionSchedule")),
+                unlockEvents = (0 until json.getJSONArray("unlockEvents").length()).map { index ->
+                    decodeStringEvidence(json.getJSONArray("unlockEvents").getJSONObject(index))
+                }
+            )
+        }
         return AssetResearchDossier(
             assetId = root.getString("assetId"),
             assetName = root.getString("assetName"),
@@ -105,6 +131,7 @@ object AssetResearchDossierSnapshotCodec {
             market = market,
             fundamentals = ResearchFieldStatus.valueOf(root.getString("fundamentals")),
             tokenomics = ResearchFieldStatus.valueOf(root.getString("tokenomics")),
+            tokenomicsEvidence = tokenomicsEvidence,
             security = ResearchFieldStatus.valueOf(root.getString("security")),
             governance = ResearchFieldStatus.valueOf(root.getString("governance")),
             evidenceCount = root.getInt("evidenceCount"),
@@ -115,6 +142,51 @@ object AssetResearchDossierSnapshotCodec {
     fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }
+
+
+    private fun encodeDoubleEvidence(evidence: ResearchEvidence<Double>): JSONObject =
+        encodeEvidence(evidence).put("value", evidence.value ?: JSONObject.NULL)
+
+    private fun encodeStringEvidence(evidence: ResearchEvidence<String>): JSONObject =
+        encodeEvidence(evidence).put("value", evidence.value ?: JSONObject.NULL)
+
+    private fun encodeEvidence(evidence: ResearchEvidence<*>): JSONObject =
+        JSONObject()
+            .put("fieldKey", evidence.fieldKey)
+            .put("status", evidence.status.name)
+            .put("sourceId", evidence.sourceId ?: JSONObject.NULL)
+            .put("sourceName", evidence.sourceName ?: JSONObject.NULL)
+            .put("sourceUrl", evidence.sourceUrl ?: JSONObject.NULL)
+            .put("licenseReference", evidence.licenseReference ?: JSONObject.NULL)
+            .put("permittedUseStatus", evidence.permittedUseStatus)
+            .put("observedAtEpochMs", evidence.observedAtEpochMs ?: JSONObject.NULL)
+            .put("retrievedAtEpochMs", evidence.retrievedAtEpochMs ?: JSONObject.NULL)
+            .put("qualityStatus", evidence.qualityStatus)
+            .put("notes", JSONArray(evidence.notes))
+
+    private fun decodeDoubleEvidence(json: JSONObject): ResearchEvidence<Double> =
+        decodeEvidence(json, if (json.isNull("value")) null else json.getDouble("value"))
+
+    private fun decodeStringEvidence(json: JSONObject): ResearchEvidence<String> =
+        decodeEvidence(json, if (json.isNull("value")) null else json.getString("value"))
+
+    private fun <T> decodeEvidence(json: JSONObject, value: T?): ResearchEvidence<T> =
+        ResearchEvidence(
+            fieldKey = json.getString("fieldKey"),
+            value = value,
+            status = ResearchFieldStatus.valueOf(json.getString("status")),
+            sourceId = nullableString(json, "sourceId"),
+            sourceName = nullableString(json, "sourceName"),
+            sourceUrl = nullableString(json, "sourceUrl"),
+            licenseReference = nullableString(json, "licenseReference"),
+            permittedUseStatus = json.getString("permittedUseStatus"),
+            observedAtEpochMs = nullableLong(json, "observedAtEpochMs"),
+            retrievedAtEpochMs = nullableLong(json, "retrievedAtEpochMs"),
+            qualityStatus = json.getString("qualityStatus"),
+            notes = json.optJSONArray("notes")?.let { notes ->
+                (0 until notes.length()).map { notes.getString(it) }
+            } ?: emptyList()
+        )
 
     private fun nullableString(json: JSONObject, key: String): String? =
         if (json.isNull(key)) null else json.getString(key)
