@@ -38,6 +38,17 @@ class ResearchEvidenceQualityGateTest {
         assertTrue(result.reasons.isEmpty())
     }
 
+    @Test
+    fun explicitPersonalUsePermissionIsAcceptedWithAttributionLicenseDecision() {
+        val result = ResearchEvidenceQualityGate.evaluate(
+            evidence().copy(permittedUseStatus = "PERSONAL_USE_ONLY"),
+            1_000L,
+            ResearchLicenseStatus.ATTRIBUTION_REQUIRED
+        )
+        assertTrue(result.accepted)
+        assertEquals(ResearchFieldStatus.KNOWN, result.status)
+    }
+
     @Test fun missingValueNeverBecomesKnown() {
         val result = ResearchEvidenceQualityGate.evaluate(
             evidence(value = null, status = ResearchFieldStatus.UNKNOWN),
