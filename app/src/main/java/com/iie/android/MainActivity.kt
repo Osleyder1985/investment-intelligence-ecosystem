@@ -552,14 +552,6 @@ private fun AssetDetailDialog(
                             "${deployment.networkName} · ${deployment.representationKind} · ${deployment.decimals ?: "N/D"} decimales",
                             style = MaterialTheme.typography.bodySmall
                         )
-                        if (deployment.representationKind == "ERC20") {
-                            RoutescanTokenSupplyDetails(
-                                state = routescanTokenSupplies[deployment.deploymentId],
-                                onRefresh = {
-                                    viewModel.refreshRoutescanTokenSupply(asset.assetId, deployment.deploymentId)
-                                }
-                            )
-                        }
                     }
                 }
 
@@ -573,6 +565,25 @@ private fun AssetDetailDialog(
                     Text("Generar expediente con datos guardados")
                 }
                 ResearchDossierDetails(researchDossiers[asset.assetId])
+
+                Spacer(Modifier.height(10.dp))
+                Text("Suministro total on-chain · evidencia del expediente", fontWeight = FontWeight.SemiBold)
+                val erc20Deployments = deployments.filter { it.representationKind == "ERC20" }
+                if (erc20Deployments.isEmpty()) {
+                    Text(
+                        "Sin contratos EVM verificados registrados para consultar suministro on-chain.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                } else {
+                    erc20Deployments.forEach { deployment ->
+                        RoutescanTokenSupplyDetails(
+                            state = routescanTokenSupplies[deployment.deploymentId],
+                            onRefresh = {
+                                viewModel.refreshRoutescanTokenSupply(asset.assetId, deployment.deploymentId)
+                            }
+                        )
+                    }
+                }
 
                 Spacer(Modifier.height(12.dp))
                 Text("Cotización de mercado · USD", fontWeight = FontWeight.SemiBold)
