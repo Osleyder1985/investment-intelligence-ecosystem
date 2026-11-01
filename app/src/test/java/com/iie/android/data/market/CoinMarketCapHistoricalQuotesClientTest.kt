@@ -20,6 +20,14 @@ class CoinMarketCapHistoricalQuotesClientTest {
     }"""
 
 
+    @Test fun historicalEndpointProbeUsesSevenCompletedUtcDays() {
+        val retrievedAt = java.time.Instant.parse("2026-11-01T15:49:00Z").toEpochMilli()
+        val (start, end) = client.historicalProbeWindow(retrievedAt)
+        assertEquals(LocalDate.parse("2026-10-25"), start)
+        assertEquals(LocalDate.parse("2026-10-31"), end)
+        assertEquals(7L, java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1L)
+    }
+
     @Test fun parsesKeyInfoUsageWithoutExposingCredentialMaterial() {
         val validator = CoinMarketCapApiKeyValidator()
         val result = validator.parseKeyInfo(
