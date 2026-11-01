@@ -92,7 +92,7 @@ fun CoinMarketCapSettingsScreen(onCredentialSaved: () -> Unit = {}) {
                                 try {
                                     // Validate first; never persist a credential that CMC rejects.
                                     val validation = validator.validate(apiKey.trim())
-                                    keyStore.save(apiKey)
+                                    withContext(Dispatchers.IO) { keyStore.save(apiKey) }
                                     apiKey = ""
                                     hasStoredKey = true
                                     val left = validation.monthlyCreditsLeft
