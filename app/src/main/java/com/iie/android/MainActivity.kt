@@ -3,6 +3,7 @@ package com.iie.android
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
@@ -475,8 +476,8 @@ private fun DashboardHero(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                HeroStat(value = assetCount.toString(), label = "ACTIVOS")
-                HeroStat(value = watchedCount.toString(), label = "SEGUIMIENTO")
+                HeroStat(modifier = Modifier.weight(1f), value = assetCount.toString(), label = "ACTIVOS")
+                HeroStat(modifier = Modifier.weight(1f), value = watchedCount.toString(), label = "SEGUIMIENTO")
             }
             TextButton(onClick = onExplore) {
                 Text("EXPLORAR MERCADOS  →", color = Color(0xFF75E0B2), fontWeight = FontWeight.Bold)
@@ -491,10 +492,9 @@ private fun DashboardHero(
 }
 
 @Composable
-private fun HeroStat(value: String, label: String) {
+private fun HeroStat(modifier: Modifier, value: String, label: String) {
     Column(
-        modifier = Modifier
-            .weight(1f)
+        modifier = modifier
             .background(Color(0xFF1C3437), RoundedCornerShape(16.dp))
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp)
