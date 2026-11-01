@@ -193,6 +193,8 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     fun refreshMarketQuote(assetId: String, symbol: String) {
         _marketQuotes.value = _marketQuotes.value + (assetId to
             (_marketQuotes.value[assetId] ?: MarketQuoteUiState()).copy(isLoading = true, error = null))
+        _coinMarketCapQuotes.value = _coinMarketCapQuotes.value + (assetId to
+            (_coinMarketCapQuotes.value[assetId] ?: MarketQuoteUiState()).copy(isLoading = true, error = null))
         viewModelScope.launch {
             try {
                 val observation = withContext(Dispatchers.IO) {
