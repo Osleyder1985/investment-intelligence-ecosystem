@@ -271,6 +271,27 @@ class RoomAssetRepository(
         return observation
     }
 
+    suspend fun getLatestCoinMarketCapQuote(assetId: String): Pair<AssetObservationEntity, String>? {
+        val sourceId = "source:coinmarketcap"
+        val asset = database.assetDao().getAsset(assetId) ?: return null
+        val identifier = database.assetIdentifierDao().findForAsset(
+            assetId = assetId,
+            sourceId = sourceId,
+            namespace = "coinmarketcap"
+        ) ?: return null
+        val providerId = identifier.identifierValue.toLongOrNull() ?: return null
+        if (identifier.verificationStatus != "PROVIDER_ID_CONFIRMED") return null
+        val observation = database.assetObservationDao().getLatestForSource(
+            assetId = assetId,
+            observationType = MARKET_QUOTE_OBSERVATION_TYPE,
+            sourceId = sourceId
+        ) ?: return null
+        if (!cachedCoinMarketCapMatches(observation, providerId, asset.symbol)) return null
+        val source = database.dataSourceDao().getSource(sourceId) ?: return null
+        if (source.permittedUseStatus != "PERSONAL_USE_ONLY") return null
+        return observation to (source.attributionText ?: source.displayName)
+    }
+
     private fun cachedCoinMarketCapMatches(
         observation: AssetObservationEntity,
         expectedProviderId: Long,
