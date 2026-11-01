@@ -944,9 +944,9 @@ private fun AssetDetailDialog(
     AlertDialog(
         modifier = Modifier.fillMaxWidth(0.96f),
         properties = DialogProperties(usePlatformDefaultWidth = false),
-        containerColor = Color(0xFF111922),
-        titleContentColor = Color(0xFFE8EEF4),
-        textContentColor = Color(0xFFCAD4DE),
+        containerColor = IIEDesign.background,
+        titleContentColor = IIEDesign.textPrimary,
+        textContentColor = IIEDesign.textSecondary,
         shape = RoundedCornerShape(28.dp),
         onDismissRequest = onDismiss,
         title = {
@@ -981,19 +981,19 @@ private fun AssetDetailDialog(
                 if (selectedSection == "MERCADO") {
                 Card(
                     shape = RoundedCornerShape(22.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF172B31))
+                    colors = CardDefaults.cardColors(containerColor = IIEDesign.surfaceElevated)
                 ) {
                     Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("PRECIO DE MERCADO · USD", style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF9BB8AD), fontWeight = FontWeight.Bold)
+                            color = IIEDesign.accentSecondary, fontWeight = FontWeight.Bold)
                         Text(
                             marketQuote?.priceUsd?.let { "\$" + String.format(java.util.Locale.US, "%,.4f", it) }
                                 ?: "Cotización no disponible",
                             style = MaterialTheme.typography.headlineMedium,
-                            color = Color(0xFFF0F7F3), fontWeight = FontWeight.Bold
+                            color = IIEDesign.textPrimary, fontWeight = FontWeight.Bold
                         )
                         Text((if (marketQuote != null) "CoinPaprika" else "MERCADO") + " · " + (marketQuote?.freshnessStatus ?: "SIN DATOS"),
-                            style = MaterialTheme.typography.labelMedium, color = Color(0xFF8DDFB8))
+                            style = MaterialTheme.typography.labelMedium, color = IIEDesign.positive)
                         TextButton(onClick = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) },
                             enabled = marketQuote?.isLoading != true) {
                             Text(if (marketQuote?.isLoading == true) "Actualizando…" else "Actualizar cotización")
