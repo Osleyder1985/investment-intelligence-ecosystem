@@ -133,7 +133,11 @@ fun CoinMarketCapSettingsScreen() {
                     ) { Text("Eliminar credencial guardada") }
                 }
                 status?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (statusIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    )
                 }
                 Text(
                     "La verificación usa /v1/key/info: CMC indica que no consume créditos de datos, aunque sí ocupa una solicitud del límite por minuto. Confirma la credencial y la cuota informada, no garantiza que cada endpoint histórico esté incluido en tu plan.",
