@@ -395,7 +395,7 @@ class IIEDatabaseTest {
                     valueSchemaVersion = 1,
                     valueJson = """{"schema":"iie.market-quote.v1","providerId":"usdc-usd-coin","symbol":"USDC","quoteCurrency":"USD","price":1.0001,"providerUpdatedAtEpochMs":1799999900000,"retrievedAtEpochMs":1800000000000}""",
                     payloadSha256 = "fixture-usdc",
-                    licenseReference = "https://coinpaprika.com/terms-of-use"
+                    licenseReference = "https://coinpaprika.com/terms-api"
                 ),
                 AssetObservationEntity(
                     observationId = "observation:quote:usdt",
@@ -410,7 +410,7 @@ class IIEDatabaseTest {
                     valueSchemaVersion = 1,
                     valueJson = """{"schema":"iie.market-quote.v1","providerId":"usdt-tether","symbol":"USDT","quoteCurrency":"USD","price":0.9999,"providerUpdatedAtEpochMs":1799999900000,"retrievedAtEpochMs":1800000000000}""",
                     payloadSha256 = "fixture-usdt",
-                    licenseReference = "https://coinpaprika.com/terms-of-use"
+                    licenseReference = "https://coinpaprika.com/terms-api"
                 )
             )
         )
@@ -427,6 +427,7 @@ class IIEDatabaseTest {
     fun recentMarketQuoteIsServedFromLocalCacheWithoutNetworkRefresh() = runBlocking {
         val retrievedAt = 1_800_000_000_000L
         DemoAssetSeeder(database) { retrievedAt }.seed()
+        val cachedPayload = """{"schema":"iie.market-quote.v1","providerId":"usdc-usd-coin","symbol":"USDC","quoteCurrency":"USD","price":1.0,"providerUpdatedAtEpochMs":1800000000000,"retrievedAtEpochMs":1800000000000}"""
         database.assetObservationDao().insertObservation(
             AssetObservationEntity(
                 observationId = "observation:cached:usdc",
@@ -439,9 +440,9 @@ class IIEDatabaseTest {
                 status = "ACCEPTED",
                 quality = "PROVIDER_SCHEMA_VALIDATED",
                 valueSchemaVersion = 1,
-                valueJson = """{"schema":"iie.market-quote.v1","providerId":"usdc-usd-coin","symbol":"USDC","quoteCurrency":"USD","price":1.0,"providerUpdatedAtEpochMs":1800000000000,"retrievedAtEpochMs":1800000000000}""",
-                payloadSha256 = "cached-fixture",
-                licenseReference = "https://coinpaprika.com/terms-of-use"
+                valueJson = cachedPayload,
+                payloadSha256 = sha256(cachedPayload),
+                licenseReference = "https://coinpaprika.com/terms-api"
             )
         )
         val repository = com.iie.android.data.repository.RoomAssetRepository(database) {
@@ -497,6 +498,24 @@ class IIEDatabaseTest {
     }
 
     @Test
+    fun coinPaprikaQuoteReadRejectsPayloadHashMismatch() = runBlocking {
+        DemoAssetSeeder(database) { 1_800_000_000_000L }.seed()
+        insertQuote(
+            "observation:tampered-payload",
+            "asset:usd-coin",
+            "source:coinpaprika",
+            "usdc-usd-coin",
+            "USDC",
+            payloadSha256Override = "0".repeat(64)
+        )
+
+        val result = com.iie.android.data.repository.RoomAssetRepository(database)
+            .getLatestCoinPaprikaQuote("asset:usd-coin")
+
+        assertEquals(null, result)
+    }
+
+    @Test
     fun coinPaprikaQuoteReadRejectsMismatchedSymbol() = runBlocking {
         DemoAssetSeeder(database) { 1_800_000_000_000L }.seed()
         insertQuote("observation:wrong-symbol", "asset:usd-coin", "source:coinpaprika",
@@ -543,7 +562,7 @@ class IIEDatabaseTest {
             org.json.JSONObject(it.valueJson).getString("providerId")
         }.toSet())
         assertEquals(true, usdcHistory.all { it.payloadSha256?.matches(Regex("[a-f0-9]{64}")) == true })
-        assertEquals(true, usdcHistory.all { it.licenseReference == "https://coinpaprika.com/terms-of-use" })
+        assertEquals(true, usdcHistory.all { it.licenseReference == "https://coinpaprika.com/terms-api" })
     }
 
     @Test
@@ -721,9 +740,11 @@ class IIEDatabaseTest {
         assetId: String,
         sourceId: String,
         providerId: String,
-        symbol: String
+        symbol: String,
+        payloadSha256Override: String? = null
     ) {
         val timestamp = 1_800_000_000_000L
+        val payload = """{"schema":"iie.market-quote.v1","providerId":"$providerId","symbol":"$symbol","quoteCurrency":"USD","price":1.0,"providerUpdatedAtEpochMs":1800000000000,"retrievedAtEpochMs":1800000000000}"""
         database.assetObservationDao().insertObservation(
             AssetObservationEntity(
                 observationId = observationId,
@@ -736,12 +757,17 @@ class IIEDatabaseTest {
                 status = "ACCEPTED",
                 quality = "PROVIDER_SCHEMA_VALIDATED",
                 valueSchemaVersion = 1,
-                valueJson = """{"schema":"iie.market-quote.v1","providerId":"$providerId","symbol":"$symbol","quoteCurrency":"USD","price":1.0,"providerUpdatedAtEpochMs":1800000000000,"retrievedAtEpochMs":1800000000000}""",
-                payloadSha256 = "fixture-$observationId",
-                licenseReference = "https://coinpaprika.com/terms-of-use"
+                valueJson = payload,
+                payloadSha256 = payloadSha256Override ?: sha256(payload),
+                licenseReference = "https://coinpaprika.com/terms-api"
             )
         )
     }
+
+    private fun sha256(value: String): String =
+        java.security.MessageDigest.getInstance("SHA-256")
+            .digest(value.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
 
     private fun asset(
         id: String,

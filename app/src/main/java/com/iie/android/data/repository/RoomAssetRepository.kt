@@ -411,11 +411,21 @@ class RoomAssetRepository(
                 false
             } else {
                 val payload = JSONObject(observation.valueJson)
+                val actualDigest = MessageDigest.getInstance("SHA-256")
+                    .digest(observation.valueJson.toByteArray(Charsets.UTF_8))
+                    .joinToString("") { "%02x".format(it) }
+                val providerTimestamp = payload.optLong("providerUpdatedAtEpochMs", -1L)
+                val retrievedTimestamp = payload.optLong("retrievedAtEpochMs", -1L)
                 payload.optString("schema") == "iie.market-quote.v1" &&
                     payload.optString("providerId") == expectedProviderId &&
                     payload.optString("symbol").equals(expectedSymbol, ignoreCase = true) &&
                     payload.optString("quoteCurrency") == "USD" &&
-                    payload.optDouble("price", Double.NaN).let { it.isFinite() && it > 0.0 }
+                    payload.optDouble("price", Double.NaN).let { it.isFinite() && it > 0.0 } &&
+                    observation.payloadSha256 == actualDigest &&
+                    providerTimestamp == observation.observedAtEpochMs &&
+                    retrievedTimestamp == observation.retrievedAtEpochMs &&
+                    providerTimestamp > 0L &&
+                    retrievedTimestamp >= providerTimestamp
             }
         } catch (_: Exception) {
             false

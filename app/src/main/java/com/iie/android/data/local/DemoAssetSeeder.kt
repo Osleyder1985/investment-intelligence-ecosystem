@@ -43,7 +43,7 @@ class DemoAssetSeeder(
                         displayName = "CoinPaprika API",
                         providerType = "MARKET_DATA_PROVIDER",
                         homepageUrl = "https://coinpaprika.com",
-                        termsUrl = "https://coinpaprika.com/terms-of-use",
+                        termsUrl = "https://coinpaprika.com/terms-api",
                         attributionText = "Powered by CoinPaprika",
                         permittedUseStatus = "PERSONAL_USE_ONLY",
                         registeredAtEpochMs = seededAt
