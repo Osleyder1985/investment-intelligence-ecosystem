@@ -10,8 +10,7 @@ import com.iie.android.data.local.InitialAssetCatalog
 import com.iie.android.data.local.AssetResearchDossierSnapshotCodec
 import com.iie.android.data.local.entity.AssetResearchDossierSnapshotEntity
 import com.iie.android.data.market.CoinPaprikaTickerClient
-import com.iie.android.data.market.CoinMarketCapAuthenticatedClient
-import com.iie.android.data.security.CoinMarketCapApiKeyStore
+import com.iie.android.data.market.CoinMarketCapKeylessClient
 import com.iie.android.data.market.CoinPaprikaHistoricalTickerClient
 import com.iie.android.data.market.RoutescanTokenSupplyClient
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
@@ -51,8 +50,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     private val database = IIEDatabaseProvider.get(application)
     private val repository = RoomAssetRepository(database)
     private val coinPaprikaClient = CoinPaprikaTickerClient()
-    private val coinMarketCapClient = CoinMarketCapAuthenticatedClient()
-    private val coinMarketCapKeyStore = CoinMarketCapApiKeyStore(application)
+    private val coinMarketCapClient = CoinMarketCapKeylessClient()
     private val coinPaprikaHistoryClient = CoinPaprikaHistoricalTickerClient()
     private val routescanTokenSupplyClient = RoutescanTokenSupplyClient()
     private val quoteFreshnessEvaluator = QuoteFreshnessEvaluator()
@@ -132,7 +130,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                                     relationIssues.isNotEmpty() -> ResearchFieldStatus.CONFLICTED
                                     else -> ResearchFieldStatus.KNOWN
                                 },
-                                sourceId = CoinMarketCapAuthenticatedClient.SOURCE_ID,
+                                sourceId = CoinMarketCapKeylessClient.SOURCE_ID,
                                 sourceName = "CoinMarketCap",
                                 sourceUrl = "https://coinmarketcap.com/",
                                 licenseReference = CoinMarketCapAuthenticatedClient.TERMS_URL,
@@ -300,12 +298,9 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
 
             try {
                 val cmcObservation = withContext(Dispatchers.IO) {
-                    val apiKey = coinMarketCapKeyStore.read()
-                        ?: error("Configura tu API key de CoinMarketCap en Ajustes")
                     repository.fetchAndPersistCoinMarketCapQuote(
                         assetId = assetId,
                         expectedSymbol = symbol,
-                        apiKey = apiKey,
                         client = coinMarketCapClient
                     )
                 }
