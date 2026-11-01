@@ -88,6 +88,8 @@ class AssetResearchDossierBuilderTest {
             circulatingSupply = unknown,
             totalSupply = unknown.copy(fieldKey = "total_supply"),
             maxSupply = unknown.copy(fieldKey = "max_supply"),
+            marketCapUsd = unknown.copy(fieldKey = "market_cap_usd"),
+            fullyDilutedMarketCapUsd = unknown.copy(fieldKey = "fully_diluted_market_cap_usd"),
             annualInflationPercent = unknown.copy(fieldKey = "annual_inflation_percent"),
             emissionSchedule = textUnknown,
             unlockEvents = emptyList()
