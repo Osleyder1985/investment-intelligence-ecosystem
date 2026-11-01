@@ -180,7 +180,13 @@ class IIEDatabaseTest {
                 latestDailyReturnPercent = 1.25,
                 periodReturnPercent = null,
                 periodHighUsd = 67000.0,
-                periodLowUsd = 60000.0
+                periodLowUsd = 60000.0,
+                quoteComparisonStatus = "CONFLICTED",
+                quoteDifferencePercent = 2.75,
+                quoteDifferenceThresholdPercent = 2.0,
+                quoteComparisonPrimaryObservationId = "obs-coinpaprika-btc",
+                quoteComparisonSecondaryObservationId = "obs-coinmarketcap-btc",
+                quoteComparedAtEpochMs = 1150L
             ),
             evidenceCount = 4,
             generatedAtEpochMs = 1200L
