@@ -30,6 +30,7 @@ class FundamentalValuationEngineTest {
         priceReference = reference,
         valuationTimestampEpochMs = 10_000L,
         marketTimestampEpochMs = 10_000L,
+        maximumTimestampSkewMs = 0L,
         sameEconomicObjectAndUnit = true,
         liquidityAndDepthReviewed = true,
         executionCostsIncluded = true,
@@ -110,9 +111,16 @@ class FundamentalValuationEngineTest {
         assertNull(result.conservativeGapPercent)
     }
 
-    @Test fun differentMarketAndValuationTimestampsAreNotCompared() {
+    @Test fun differentMarketAndValuationTimestampsAreNotComparedWithoutTolerance() {
         val result = FundamentalValuationEngine.evaluate(input().copy(marketTimestampEpochMs = 20_000L))
         assertEquals(ValuationClassification.INSUFFICIENT_EVIDENCE, result.classification)
         assertNull(result.conservativeGapPercent)
+    }
+
+    @Test fun explicitTimestampToleranceAllowsDocumentedTemporalAlignment() {
+        val result = FundamentalValuationEngine.evaluate(
+            input().copy(marketTimestampEpochMs = 10_030L, maximumTimestampSkewMs = 60_000L)
+        )
+        assertEquals(ValuationClassification.MODEL_SUPPORTED_UNDERVALUATION, result.classification)
     }
 }
