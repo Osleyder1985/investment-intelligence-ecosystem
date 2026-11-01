@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.iie.android.data.market.CoinMarketCapApiKeyStore
 import com.iie.android.data.market.CoinMarketCapApiKeyValidator
+import com.iie.android.data.market.CoinMarketCapHistoricalQuotesClient
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +37,7 @@ fun CoinMarketCapSettingsScreen(onCredentialSaved: () -> Unit = {}) {
     val context = LocalContext.current
     val keyStore = remember(context) { CoinMarketCapApiKeyStore(context) }
     val validator = remember { CoinMarketCapApiKeyValidator() }
+    val historicalClient = remember { CoinMarketCapHistoricalQuotesClient() }
     val scope = rememberCoroutineScope()
     var apiKey by remember { mutableStateOf("") }
     var hasStoredKey by remember { mutableStateOf(keyStore.hasKey()) }
@@ -143,6 +145,45 @@ fun CoinMarketCapSettingsScreen(onCredentialSaved: () -> Unit = {}) {
                         },
                         enabled = !isValidating
                     ) { Text(if (isValidating) "Verificando…" else "Comprobar credencial guardada") }
+                    Button(
+                        onClick = {
+                            if (!isValidating) {
+                                isValidating = true
+                                status = "Probando endpoint histórico de CoinMarketCap con BTC…"
+                                statusIsError = false
+                                scope.launch {
+                                    try {
+                                        val storedKey = withContext(Dispatchers.IO) { keyStore.read() }
+                                            ?: error("No hay una credencial almacenada.")
+                                        val points = historicalClient.probeHistoricalAccess(storedKey)
+                                        val latest = points.maxByOrNull { it.timestampEpochMs }
+                                            ?: error("CMC no devolvió observaciones utilizables.")
+                                        val utc = java.text.SimpleDateFormat(
+                                            "yyyy-MM-dd HH:mm 'UTC'", java.util.Locale.US
+                                        ).apply {
+                                            timeZone = java.util.TimeZone.getTimeZone("UTC")
+                                        }
+                                        status = "Acceso histórico confirmado: ${points.size} snapshots BTC recibidos. Última observación: ${utc.format(java.util.Date(latest.timestampEpochMs))} · ${String.format(java.util.Locale.US, "%.8f", latest.priceUsd)} USD."
+                                        statusIsError = false
+                                    } catch (error: Exception) {
+                                        status = error.message ?: "No se pudo acceder al endpoint histórico de CoinMarketCap."
+                                        statusIsError = true
+                                    } finally {
+                                        isValidating = false
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !isValidating,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (isValidating) "Probando endpoint…" else "Probar acceso al histórico (BTC)")
+                    }
+                    Text(
+                        "Esta prueba consulta hasta 7 snapshots diarios de BTC. Puede consumir al menos 1 crédito de datos de CMC. Es una comprobación real del endpoint histórico, distinta de validar /v1/key/info.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     TextButton(
                         onClick = {
                             runCatching { keyStore.delete() }
@@ -159,6 +200,10 @@ fun CoinMarketCapSettingsScreen(onCredentialSaved: () -> Unit = {}) {
                         },
                         enabled = !isValidating
                     ) { Text("Eliminar credencial guardada") }
+                }
+                usageSummary?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 status?.let {
                     Text(
