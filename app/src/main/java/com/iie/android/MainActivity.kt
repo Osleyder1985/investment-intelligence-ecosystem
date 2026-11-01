@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -94,10 +96,30 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
     val coinMarketCapDailyHistoryByAsset by viewModel.coinMarketCapDailyHistory.collectAsState()
     var selectedAsset by remember { mutableStateOf<Asset?>(null) }
     var destination by remember { mutableStateOf("Resumen") }
+    var selectedAssetType by remember { mutableStateOf("TODOS") }
+    var onlyQuotedAssets by remember { mutableStateOf(false) }
+    var marketSort by remember { mutableStateOf("NOMBRE") }
 
+    val assetTypes = assets.map { it.assetType }.filter { it.isNotBlank() }.distinct().sorted()
     val visibleAssets = when (destination) {
         "Seguimiento" -> assets.filter { it.assetId in watchlist }
         else -> assets
+    }.filter { asset ->
+        (destination != "Mercados" || selectedAssetType == "TODOS" || asset.assetType == selectedAssetType) &&
+            (!onlyQuotedAssets || marketQuotes[asset.assetId]?.priceUsd?.let { it.isFinite() && it > 0.0 } == true)
+    }.let { filtered ->
+        when (marketSort) {
+            "PRECIO ↓" -> filtered.sortedWith(
+                compareBy<Asset> { marketQuotes[it.assetId]?.priceUsd == null }
+                    .thenByDescending { marketQuotes[it.assetId]?.priceUsd ?: 0.0 }
+            )
+            "PRECIO ↑" -> filtered.sortedWith(
+                compareBy<Asset> { marketQuotes[it.assetId]?.priceUsd == null }
+                    .thenBy { marketQuotes[it.assetId]?.priceUsd ?: Double.MAX_VALUE }
+            )
+            "TIPO" -> filtered.sortedWith(compareBy<Asset> { it.assetType }.thenBy { it.name.lowercase() })
+            else -> filtered.sortedBy { it.name.lowercase() }
+        }
     }
 
     LaunchedEffect(destination) {
@@ -121,9 +143,9 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
         color = MaterialTheme.colorScheme.background
     ) {
         Scaffold(
-            containerColor = Color(0xFF080D12),
+            containerColor = IIEDesign.background,
             bottomBar = {
-                NavigationBar(containerColor = Color(0xFF101820)) {
+                NavigationBar(containerColor = IIEDesign.surface) {
                     listOf("Resumen", "Mercados", "Seguimiento", "Ajustes").forEach { item ->
                         NavigationBarItem(
                             selected = destination == item,
@@ -230,6 +252,36 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                                 shape = RoundedCornerShape(16.dp)
                             )
                             Spacer(Modifier.height(12.dp))
+                            Text("CLASIFICAR UNIVERSO", color = IIEDesign.textSecondary,
+                                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilterChip(selected = selectedAssetType == "TODOS",
+                                    onClick = { selectedAssetType = "TODOS" },
+                                    label = { Text("Todos") })
+                                assetTypes.forEach { type ->
+                                    FilterChip(selected = selectedAssetType == type,
+                                        onClick = { selectedAssetType = type },
+                                        label = { Text(type.replace('_', ' ')) })
+                                }
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                FilterChip(selected = onlyQuotedAssets,
+                                    onClick = { onlyQuotedAssets = !onlyQuotedAssets },
+                                    label = { Text("Con cotización") })
+                                TextButton(onClick = {
+                                    marketSort = when (marketSort) {
+                                        "NOMBRE" -> "PRECIO ↓"
+                                        "PRECIO ↓" -> "PRECIO ↑"
+                                        "PRECIO ↑" -> "TIPO"
+                                        else -> "NOMBRE"
+                                    }
+                                }) {
+                                    Text("Orden: $marketSort", color = IIEDesign.accentSecondary)
+                                }
+                            }
+                            Spacer(Modifier.height(4.dp))
                         } else {
                             Text(
                                 "Activos guardados para consultar más tarde.",
@@ -239,7 +291,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                             Spacer(Modifier.height(12.dp))
                         }
                         Text(
-                            "${visibleAssets.size} activos",
+                            "${visibleAssets.size} de ${if (destination == "Mercados") assets.size else visibleAssets.size} activos",
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
