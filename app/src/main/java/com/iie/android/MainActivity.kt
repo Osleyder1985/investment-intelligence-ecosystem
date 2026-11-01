@@ -74,20 +74,7 @@ class MainActivity : ComponentActivity() {
         )[AssetExplorerViewModel::class.java]
 
         setContent {
-            MaterialTheme(
-                colorScheme = darkColorScheme(
-                    primary = Color(0xFF63E6B2),
-                    onPrimary = Color(0xFF06251B),
-                    secondary = Color(0xFF8DA9FF),
-                    background = Color(0xFF080D12),
-                    surface = Color(0xFF111922),
-                    surfaceVariant = Color(0xFF1A2631),
-                    onSurface = Color(0xFFE8EEF4),
-                    onSurfaceVariant = Color(0xFF9EACB9),
-                    outline = Color(0xFF30404D),
-                    error = Color(0xFFFF7777)
-                )
-            ) { AssetExplorerScreen(explorerViewModel) }
+            IIETheme { AssetExplorerScreen(explorerViewModel) }
         }
     }
 }
