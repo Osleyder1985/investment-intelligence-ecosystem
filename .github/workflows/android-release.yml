@@ -66,8 +66,18 @@ jobs:
           LATEST_TAG="$(git tag --list 'v[0-9]*' | sort -V | tail -n1)"
           if [[ -n "$LATEST_TAG" ]]; then
             LATEST_VERSION="${LATEST_TAG#v}"
-            if [[ "$(printf '%s\n%s\n' "$LATEST_VERSION" "$VERSION_NAME" | sort -V | head -n1)" != "$LATEST_VERSION" ]]; then
+            if [[ "$VERSION_NAME" == "$LATEST_VERSION" || "$(printf '%s\n%s\n' "$LATEST_VERSION" "$VERSION_NAME" | sort -V | head -n1)" != "$LATEST_VERSION" ]]; then
               echo "::error::Refusing non-incrementing version $VERSION_NAME; latest tag is $LATEST_TAG"
+              exit 1
+            fi
+
+            LATEST_VERSION_CODE="$(git show "$LATEST_TAG:app/build.gradle.kts" | sed -nE 's/^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*([0-9]+).*/\1/p' | head -n1)"
+            if [[ -z "$LATEST_VERSION_CODE" ]]; then
+              echo "::error::Could not read versionCode from latest release tag $LATEST_TAG"
+              exit 1
+            fi
+            if (( VERSION_CODE <= LATEST_VERSION_CODE )); then
+              echo "::error::versionCode $VERSION_CODE must be greater than the latest release versionCode $LATEST_VERSION_CODE"
               exit 1
             fi
           fi
