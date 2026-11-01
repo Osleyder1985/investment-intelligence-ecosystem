@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build-and-publish:
-    name: Test, build and publish Android APK
+    name: Test, sign, build and publish Android APK
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -37,18 +37,42 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Validate and install release signing key
+        shell: bash
+        env:
+          IIE_KEYSTORE_BASE64: ${{ secrets.IIE_KEYSTORE_BASE64 }}
+          IIE_KEYSTORE_PASSWORD: ${{ secrets.IIE_KEYSTORE_PASSWORD }}
+          IIE_KEY_ALIAS: ${{ secrets.IIE_KEY_ALIAS }}
+          IIE_KEY_PASSWORD: ${{ secrets.IIE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in IIE_KEYSTORE_BASE64 IIE_KEYSTORE_PASSWORD IIE_KEY_ALIAS IIE_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing GitHub Actions secret: $name"
+              exit 1
+            fi
+          done
+          KEYSTORE_PATH="$RUNNER_TEMP/iie-release.jks"
+          printf '%s' "$IIE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+          echo "IIE_KEYSTORE_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+          echo "IIE_KEYSTORE_PASSWORD=$IIE_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "IIE_KEY_ALIAS=$IIE_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "IIE_KEY_PASSWORD=$IIE_KEY_PASSWORD" >> "$GITHUB_ENV"
+
       - name: Run Android unit tests
         run: gradle :app:testDebugUnitTest
 
-      - name: Build release candidate APK
-        run: gradle :app:assembleDebug
+      - name: Build signed release APK
+        run: gradle :app:assembleRelease
 
-      - name: Prepare APK and SHA-256 checksum
+      - name: Verify APK signature and prepare SHA-256 checksum
         shell: bash
         run: |
           set -euo pipefail
-          APK_SOURCE="app/build/outputs/apk/debug/app-debug.apk"
+          APK_SOURCE="app/build/outputs/apk/release/app-release.apk"
           test -s "$APK_SOURCE"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK_SOURCE"
           APK_NAME="IIE-Android-${GITHUB_REF_NAME}.apk"
           cp "$APK_SOURCE" "$APK_NAME"
           sha256sum "$APK_NAME" > "$APK_NAME.sha256"
