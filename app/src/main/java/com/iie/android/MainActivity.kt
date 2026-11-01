@@ -1053,6 +1053,10 @@ private fun AssetDetailDialog(
                     }
                 }
 
+                DetailSection("Riesgo histórico", "Métricas calculadas sobre una única serie canónica de proveedor. No son pronósticos ni una recomendación.") {
+                    AssetHistoricalRiskDetails(coinPaprika = dailyHistory, coinMarketCap = coinMarketCapDailyHistory)
+                }
+
                 DetailSection("Evolución del precio", "Histórico diario disponible; no representa velas OHLCV ni precios ejecutables.") {
                     MarketSparkline(dailyHistory, chartHeight = 150.dp)
                     Text(
@@ -1152,6 +1156,53 @@ private fun AssetDetailDialog(
 
 
 @Composable
+private fun AssetHistoricalRiskDetails(
+    coinPaprika: List<CoinPaprikaHistoricalPoint>,
+    coinMarketCap: List<CoinPaprikaHistoricalPoint>
+) {
+    val canonical = remember(coinPaprika, coinMarketCap) {
+        chooseCanonicalHistoricalSeries(coinPaprika, coinMarketCap)
+    }
+    val metrics = remember(canonical) { canonical?.let { HistoricalRiskAnalyzer().analyze(it.points) } }
+    val points = canonical?.points.orEmpty().sortedBy { it.timestampEpochMs }
+    if (metrics == null || points.size < 2) {
+        EmptyState("Riesgo no calculable: se necesitan al menos dos observaciones válidas.")
+        return
+    }
+    val firstDate = points.first().timestampEpochMs
+    val lastDate = points.last().timestampEpochMs
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = IIEDesign.surfaceElevated)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("SERIE UTILIZADA", fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelSmall, color = IIEDesign.accentSecondary)
+            Text("Proveedor: \${canonical?.sourceId?.removePrefix("source:")?.uppercase() ?: "N/D"} · \${metrics.observations} observaciones · \${metrics.dailyReturns} retornos",
+                style = MaterialTheme.typography.bodySmall)
+            Text("Ventana: \${DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(firstDate))} – \${DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(lastDate))}",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricCard("Volatilidad anualizada", metrics.annualizedVolatilityPercent?.let {
+                    String.format(java.util.Locale.US, "%.2f%%", it)
+                } ?: "Muestra insuficiente", Modifier.weight(1f))
+                MetricCard("Drawdown máximo", metrics.maximumDrawdownPercent?.let {
+                    String.format(java.util.Locale.US, "%.2f%%", it)
+                } ?: "N/D", Modifier.weight(1f))
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricCard("VaR diario 95%", metrics.historicalVar95Percent?.let {
+                    String.format(java.util.Locale.US, "%.2f%%", it)
+                } ?: "Requiere ≥30 retornos", Modifier.weight(1f))
+                MetricCard("ES diario 95%", metrics.historicalExpectedShortfall95Percent?.let {
+                    String.format(java.util.Locale.US, "%.2f%%", it)
+                } ?: "Requiere ≥30 retornos", Modifier.weight(1f))
+            }
+            Text("VaR estima un umbral de pérdida diaria en la cola histórica; ES estima la pérdida media más allá del umbral. Drawdown mide caída desde un máximo previo. No son pronósticos ni límites de pérdida futura.",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
 private fun RoutescanTokenSupplyDetails(
     state: RoutescanTokenSupplyUiState?,
     onRefresh: () -> Unit
@@ -1242,6 +1293,48 @@ private fun ResearchDossierDetails(dossier: AssetResearchDossier?) {
         Text("Fundamentos: ${dossier.fundamentals} · Tokenomics: ${dossier.tokenomics}")
         dossier.tokenomicsEvidence?.let { evidence ->
             Text("EVIDENCIA TOKENÓMICA · CoinMarketCap", fontWeight = FontWeight.SemiBold)
+            val circulating = evidence.circulatingSupply.value?.takeIf { it.isFinite() && it > 0.0 }
+            val total = evidence.totalSupply.value?.takeIf { it.isFinite() && it > 0.0 }
+            val maximum = evidence.maxSupply.value?.takeIf { it.isFinite() && it > 0.0 }
+            val marketCap = evidence.marketCapUsd.value?.takeIf { it.isFinite() && it > 0.0 }
+            val fdv = evidence.fullyDilutedMarketCapUsd.value?.takeIf { it.isFinite() && it > 0.0 }
+            val circulatingRatio = if (circulating != null && total != null && circulating <= total) circulating / total * 100.0 else null
+            val fdvMultiple = if (fdv != null && marketCap != null) fdv / marketCap else null
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = IIEDesign.surfaceElevated)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("ESTRUCTURA DE SUMINISTRO", fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelSmall, color = IIEDesign.accentSecondary)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MetricCard("En circulación", circulating?.let { String.format(java.util.Locale.US, "%,.3f", it) } ?: "N/D", Modifier.weight(1f))
+                        MetricCard("Suministro total", total?.let { String.format(java.util.Locale.US, "%,.3f", it) } ?: "N/D", Modifier.weight(1f))
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MetricCard("Máximo declarado", maximum?.let { String.format(java.util.Locale.US, "%,.3f", it) } ?: "No declarado", Modifier.weight(1f))
+                        MetricCard("Circulante / total", circulatingRatio?.let { String.format(java.util.Locale.US, "%.2f%%", it) } ?: "No calculable", Modifier.weight(1f))
+                    }
+                    Text(
+                        when {
+                            circulating == null || total == null -> "Cobertura incompleta: proporción no calculable."
+                            circulating > total -> "Inconsistencia: el circulante supera el suministro total."
+                            else -> "El \${String.format(java.util.Locale.US, "%.2f", circulatingRatio)}% del suministro total figura como circulante; no equivale a liquidez disponible."
+                        },
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text("VALORACIÓN DILUIDA · NO ES UNA TASACIÓN", fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelSmall, color = IIEDesign.accentSecondary)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MetricCard("Capitalización", marketCap?.let { formatCompactUsd(it) } ?: "N/D", Modifier.weight(1f))
+                        MetricCard("FDV", fdv?.let { formatCompactUsd(it) } ?: "N/D", Modifier.weight(1f))
+                    }
+                    Text(fdvMultiple?.takeIf { it.isFinite() }?.let {
+                        "FDV / capitalización: \${String.format(java.util.Locale.US, "%.2fx", it)}"
+                    } ?: "Relación FDV / capitalización no calculable.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Una relación FDV/capitalización elevada puede indicar exposición a suministro no circulante; no informa calendario de emisiones ni presión vendedora.",
+                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             listOf(
                 evidence.circulatingSupply,
                 evidence.totalSupply,
