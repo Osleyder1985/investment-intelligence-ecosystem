@@ -41,11 +41,6 @@ android {
     }
 
     buildTypes {
-        // Keep CI/debug builds installable alongside the signed personal-use release APK.
-        getByName("debug") {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
-        }
         getByName("release") {
             isMinifyEnabled = false
             if (hasReleaseSigning) {
