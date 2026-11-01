@@ -4,7 +4,6 @@ import com.iie.android.domain.model.ExactTokenAmount
 import java.math.BigInteger
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
 import org.json.JSONObject
 
 /**
@@ -38,7 +37,7 @@ class RoutescanTokenSupplyClient(
     override fun fetch(
         chainId: String,
         contractAddress: String,
-        apiKey: String? = null
+        apiKey: String?
     ): RoutescanTokenSupplyObservation {
         require(chainId.matches(Regex("[1-9][0-9]*"))) { "Invalid EVM chain ID" }
         require(contractAddress.matches(Regex("0x[0-9a-fA-F]{40}"))) {
