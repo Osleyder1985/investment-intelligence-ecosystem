@@ -8,6 +8,7 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.iie.android.data.local.entity.AssetEntity
+import com.iie.android.data.local.entity.AssetIdentifierEntity
 import com.iie.android.data.local.entity.AssetResearchDossierSnapshotEntity
 import com.iie.android.domain.model.AssetResearchDossier
 import com.iie.android.domain.model.MarketResearchSection
@@ -84,12 +85,58 @@ class IIEDatabaseTest {
         assertEquals("PROVIDER_ID_CONFIRMED", usdcProviderId?.verificationStatus)
         assertEquals("PROVIDER_ID_CONFIRMED", usdtProviderId?.verificationStatus)
 
+        database.dataSourceDao().insertSource(
+            DataSourceEntity(
+                "source:iie-demo-fixture", "iie-local-demo-fixture-v1", "Retired fixture",
+                "LOCAL_FIXTURE", null, null, "Synthetic", "INTERNAL_DEMO_ONLY", 100L
+            )
+        )
+        database.assetIdentifierDao().insertIdentifier(
+            AssetIdentifierEntity(
+                "identifier:fixture:btc", "fixture:btc", "asset:bitcoin",
+                "source:iie-demo-fixture", "iie-demo-fixture", "btc", null, null, "DEMO_ONLY"
+            )
+        )
+        database.assetObservationDao().insertObservation(
+            AssetObservationEntity(
+                "observation:fixture:btc", "asset:bitcoin", null, "source:iie-demo-fixture",
+                "IDENTITY_FIXTURE", 100L, 100L, "DEMO", "UNVERIFIED", 1, "{}", null, null
+            )
+        )
+        database.assetObservationDao().insertObservation(
+            AssetObservationEntity(
+                "observation:coinpaprika:btc:preserved", "asset:bitcoin", null,
+                "source:coinpaprika", "MARKET_QUOTE", 100L, 110L, "ACCEPTED",
+                "PROVIDER_SCHEMA_VALIDATED", 1, "{}", null, "https://coinpaprika.com/terms-api"
+            )
+        )
+        database.watchlistDao().add(WatchlistEntryEntity("asset:bitcoin", 120L, null))
+
+        catalog.synchronize()
+
         assertEquals(null, database.dataSourceDao().getSource("source:iie-demo-fixture"))
-        assertEquals(0, database.assetObservationDao().observeForAsset("asset:bitcoin").first().size)
+        assertEquals(null, database.assetObservationDao().getLatest("asset:bitcoin", "IDENTITY_FIXTURE"))
+        assertEquals(
+            null,
+            database.assetIdentifierDao().findIdentifier(
+                "source:iie-demo-fixture", "iie-demo-fixture", "btc"
+            )
+        )
+        assertNotNull(
+            database.assetObservationDao().getLatestForSource(
+                "asset:bitcoin", "MARKET_QUOTE", "source:coinpaprika"
+            )
+        )
+        assertNotNull(database.watchlistDao().getEntry("asset:bitcoin"))
 
         catalog.synchronize()
         assertEquals(5, database.assetDao().countAssets())
-        assertEquals(0, database.assetObservationDao().observeForAsset("asset:bitcoin").first().size)
+        assertNotNull(
+            database.assetObservationDao().getLatestForSource(
+                "asset:bitcoin", "MARKET_QUOTE", "source:coinpaprika"
+            )
+        )
+        assertNotNull(database.watchlistDao().getEntry("asset:bitcoin"))
     }
 
     @Test
