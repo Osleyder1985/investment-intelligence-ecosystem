@@ -412,6 +412,187 @@ class RoomAssetRepository(
         return observation
     }
 
+    /**
+     * Imports CMC Basic daily quotes independently from CoinPaprika.
+     * The CMC numeric asset ID is resolved only from a confirmed registry mapping.
+     */
+    suspend fun downloadAndPersistCoinMarketCapDailyHistory(
+        assetId: String,
+        expectedSymbol: String,
+        start: LocalDate,
+        end: LocalDate,
+        apiKey: String,
+        client: com.iie.android.data.market.CoinMarketCapHistoricalQuotesClient
+    ): CoinPaprikaHistorySyncResult {
+        require(!end.isBefore(start)) { "Historical end date precedes start date" }
+        val sourceId = "source:coinmarketcap"
+        val source = database.dataSourceDao().getSource(sourceId)
+            ?: error("CoinMarketCap source is not registered")
+        check(source.permittedUseStatus == "PERSONAL_USE_ONLY") {
+            "CoinMarketCap source is not enabled for this app's personal-use scope"
+        }
+        val asset = database.assetDao().getAsset(assetId)
+            ?: error("Cannot download history for an unknown IIE asset")
+        require(asset.symbol.equals(expectedSymbol, ignoreCase = true)) {
+            "Expected symbol does not match the canonical asset"
+        }
+        val identifier = database.assetIdentifierDao().findForAsset(
+            assetId = assetId, sourceId = sourceId, namespace = "coinmarketcap"
+        ) ?: error("No CoinMarketCap numeric ID is mapped to this asset")
+        check(identifier.verificationStatus == "PROVIDER_ID_CONFIRMED") {
+            "CoinMarketCap provider identifier is not confirmed"
+        }
+        val cmcAssetId = identifier.identifierValue.toLongOrNull()
+            ?.takeIf { it > 0L } ?: error("CoinMarketCap provider ID must be a positive number")
+        val retrievedAt = nowEpochMs()
+        require(retrievedAt > 0L) { "Invalid local retrieval clock" }
+        val todayUtc = java.time.Instant.ofEpochMilli(retrievedAt).atZone(ZoneOffset.UTC).toLocalDate()
+        require(!end.isAfter(todayUtc)) { "Historical end date cannot be in the future" }
+        require(!start.isBefore(todayUtc.minusYears(1))) {
+            "CoinMarketCap Basic daily history is limited to one year"
+        }
+        val points = client.fetchDaily(cmcAssetId, apiKey, start, end, retrievedAt)
+        require(points.all { it.sourceId == sourceId && it.providerId == cmcAssetId.toString() }) {
+            "CoinMarketCap returned points with mismatched source or asset identity"
+        }
+        val inserted = persistDailyHistoryForConfirmedSource(
+            assetId = assetId,
+            expectedSymbol = expectedSymbol,
+            sourceId = sourceId,
+            namespace = "coinmarketcap",
+            points = points
+        )
+        return CoinPaprikaHistorySyncResult(points.size, inserted, points.size - inserted)
+    }
+
+    /**
+     * Source-neutral immutable persistence. Source and provider identities are both
+     * checked against the registry before a single observation is committed.
+     */
+    private suspend fun persistDailyHistoryForConfirmedSource(
+        assetId: String,
+        expectedSymbol: String,
+        sourceId: String,
+        namespace: String,
+        points: List<CoinPaprikaHistoricalPoint>
+    ): Int {
+        require(points.size <= 500) { "Historical batch exceeds the configured point limit" }
+        if (points.isEmpty()) return 0
+        val source = database.dataSourceDao().getSource(sourceId)
+            ?: error("Historical source is not registered")
+        check(source.permittedUseStatus == "PERSONAL_USE_ONLY") {
+            "Historical source is not enabled for this app's personal-use scope"
+        }
+        val asset = database.assetDao().getAsset(assetId)
+            ?: error("Cannot persist history for an unknown IIE asset")
+        require(asset.symbol.equals(expectedSymbol, ignoreCase = true)) {
+            "Expected symbol does not match the canonical asset"
+        }
+        val identifier = database.assetIdentifierDao().findForAsset(
+            assetId = assetId, sourceId = sourceId, namespace = namespace
+        ) ?: error("No confirmed provider identifier is mapped to this asset")
+        check(identifier.verificationStatus == "PROVIDER_ID_CONFIRMED") {
+            "Historical provider identifier is not confirmed"
+        }
+        val now = nowEpochMs()
+        require(now > 0L) { "Invalid local retrieval clock" }
+        require(points.map { it.timestampEpochMs }.distinct().size == points.size) {
+            "Historical batch contains duplicate timestamps"
+        }
+        require(points.all { point ->
+            point.sourceId == sourceId && point.providerId == identifier.identifierValue &&
+                point.retrievedAtEpochMs in 1L..now &&
+                point.timestampEpochMs > 0L && point.timestampEpochMs <= point.retrievedAtEpochMs &&
+                point.priceUsd.isFinite() && point.priceUsd > 0.0 &&
+                (point.volume24hUsd == null || (point.volume24hUsd.isFinite() && point.volume24hUsd >= 0.0)) &&
+                (point.marketCapUsd == null || (point.marketCapUsd.isFinite() && point.marketCapUsd >= 0.0))
+        }) { "Historical batch contains an invalid or mismatched point" }
+
+        val observations = points.map { point ->
+            val payload = JSONObject()
+                .put("schema", "iie.market-history-daily.v1")
+                .put("sourceId", sourceId)
+                .put("providerId", point.providerId)
+                .put("symbol", asset.symbol.uppercase())
+                .put("interval", "1d")
+                .put("quoteCurrency", "USD")
+                .put("priceUsd", point.priceUsd)
+                .put("volume24hUsd", point.volume24hUsd ?: JSONObject.NULL)
+                .put("marketCapUsd", point.marketCapUsd ?: JSONObject.NULL)
+                .put("providerTimestampEpochMs", point.timestampEpochMs)
+                .put("retrievedAtEpochMs", point.retrievedAtEpochMs)
+                .toString()
+            val identity = listOf(sourceId, assetId, point.providerId,
+                point.timestampEpochMs.toString(), "1d", "USD", "iie.market-history-daily.v1")
+                .joinToString("|")
+            val idHash = MessageDigest.getInstance("SHA-256")
+                .digest(identity.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+            val digest = MessageDigest.getInstance("SHA-256")
+                .digest(payload.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+            AssetObservationEntity(
+                observationId = "observation:market-history:$idHash",
+                assetId = assetId,
+                deploymentId = null,
+                sourceId = sourceId,
+                observationType = MARKET_HISTORY_DAILY_OBSERVATION_TYPE,
+                observedAtEpochMs = point.timestampEpochMs,
+                retrievedAtEpochMs = point.retrievedAtEpochMs,
+                status = "ACCEPTED",
+                quality = "PROVIDER_SCHEMA_VALIDATED",
+                valueSchemaVersion = 1,
+                valueJson = payload,
+                payloadSha256 = digest,
+                licenseReference = source.termsUrl
+            )
+        }
+        return database.withTransaction {
+            database.assetObservationDao().insertHistoricalObservationsIfAbsent(observations)
+                .count { it != -1L }
+        }
+    }
+
+    suspend fun getLatestCoinMarketCapDailyHistory(
+        assetId: String,
+        limit: Int = 30
+    ): List<CoinPaprikaHistoricalPoint> {
+        require(limit in 1..500) { "History query limit must be between 1 and 500" }
+        val sourceId = "source:coinmarketcap"
+        val asset = database.assetDao().getAsset(assetId) ?: return emptyList()
+        val source = database.dataSourceDao().getSource(sourceId) ?: return emptyList()
+        if (source.permittedUseStatus != "PERSONAL_USE_ONLY") return emptyList()
+        val identifier = database.assetIdentifierDao().findForAsset(
+            assetId = assetId, sourceId = sourceId, namespace = "coinmarketcap"
+        ) ?: return emptyList()
+        if (identifier.verificationStatus != "PROVIDER_ID_CONFIRMED") return emptyList()
+        return database.assetObservationDao().getLatestHistoryForSource(
+            assetId = assetId, sourceId = sourceId,
+            observationType = MARKET_HISTORY_DAILY_OBSERVATION_TYPE, limit = limit
+        ).mapNotNull { observation ->
+            try {
+                val payload = JSONObject(observation.valueJson)
+                val digest = MessageDigest.getInstance("SHA-256")
+                    .digest(observation.valueJson.toByteArray(Charsets.UTF_8))
+                    .joinToString("") { "%02x".format(it) }
+                if (payload.optString("schema") != "iie.market-history-daily.v1" ||
+                    payload.optString("sourceId") != sourceId || observation.sourceId != sourceId ||
+                    payload.optString("providerId") != identifier.identifierValue ||
+                    !payload.optString("symbol").equals(asset.symbol, true) ||
+                    payload.optString("interval") != "1d" || payload.optString("quoteCurrency") != "USD" ||
+                    observation.payloadSha256 != digest) return@mapNotNull null
+                val price = payload.optDouble("priceUsd", Double.NaN)
+                val timestamp = payload.optLong("providerTimestampEpochMs", -1L)
+                val retrieved = payload.optLong("retrievedAtEpochMs", -1L)
+                val volume = if (payload.isNull("volume24hUsd")) null else payload.optDouble("volume24hUsd", Double.NaN)
+                val marketCap = if (payload.isNull("marketCapUsd")) null else payload.optDouble("marketCapUsd", Double.NaN)
+                if (!price.isFinite() || price <= 0.0 || timestamp <= 0L || retrieved < timestamp ||
+                    (volume != null && (!volume.isFinite() || volume < 0.0)) ||
+                    (marketCap != null && (!marketCap.isFinite() || marketCap < 0.0))) return@mapNotNull null
+                CoinPaprikaHistoricalPoint(identifier.identifierValue, timestamp, price, volume,
+                    marketCap, retrieved, sourceId)
+            } catch (_: Exception) { null }
+        }
+    }
+
     suspend fun getLatestCoinMarketCapQuote(assetId: String): Pair<AssetObservationEntity, String>? {
         val sourceId = "source:coinmarketcap"
         val asset = database.assetDao().getAsset(assetId) ?: return null
