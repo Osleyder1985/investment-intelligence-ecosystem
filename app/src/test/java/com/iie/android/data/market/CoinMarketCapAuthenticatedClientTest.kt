@@ -21,9 +21,14 @@ class CoinMarketCapAuthenticatedClientTest {
           "id": 1,
           "name": "Bitcoin",
           "symbol": "BTC",
+          "circulating_supply": 19500000,
+          "total_supply": 19500000,
+          "max_supply": 21000000,
           "quote": [{
             "symbol": "USD",
             "price": $price,
+            "market_cap": 1300000000000,
+            "fully_diluted_market_cap": 1400000000000,
             "last_updated": "$timestamp"
           }]
         }
@@ -40,7 +45,32 @@ class CoinMarketCapAuthenticatedClientTest {
         assertEquals("Bitcoin", result.name)
         assertEquals("BTC", result.symbol)
         assertEquals(67_000.25, result.priceUsd, 0.0)
+        assertEquals(19_500_000.0, result.circulatingSupply!!, 0.0)
+        assertEquals(19_500_000.0, result.totalSupply!!, 0.0)
+        assertEquals(21_000_000.0, result.maxSupply!!, 0.0)
+        assertEquals(1_300_000_000_000.0, result.marketCapUsd!!, 0.0)
+        assertEquals(1_400_000_000_000.0, result.fullyDilutedMarketCapUsd!!, 0.0)
         assertEquals(1_798_000_000_000L, result.retrievedAtEpochMs)
+    }
+
+    @Test
+    fun missingSupplyFieldsRemainNull() {
+        val noSupply = bitcoin()
+            .replace("\"circulating_supply\": 19500000,", "")
+            .replace("\"total_supply\": 19500000,", "")
+            .replace("\"max_supply\": 21000000,", "")
+        val result = client.parse(payload(noSupply), "BTC", 1_798_000_000_000L)
+        org.junit.Assert.assertNull(result.circulatingSupply)
+        org.junit.Assert.assertNull(result.totalSupply)
+        org.junit.Assert.assertNull(result.maxSupply)
+    }
+
+    @Test
+    fun rejectsNegativeSupplyValues() {
+        val invalid = bitcoin().replace("\"circulating_supply\": 19500000", "\"circulating_supply\": -1")
+        assertThrows(IOException::class.java) {
+            client.parse(payload(invalid), "BTC", 1_798_000_000_000L)
+        }
     }
 
     @Test
