@@ -397,7 +397,7 @@ private fun InvestorDashboard(
             }
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                MetricCard("Volatilidad realizada mediana", medianVolatility?.let { String.format(java.util.Locale.US, "%.1f%%", it) } ?: "Sin datos suficientes", Modifier.weight(1f))
+                MetricCard("Volatilidad anualizada mediana", medianVolatility?.let { String.format(java.util.Locale.US, "%.1f%%", it) } ?: "Sin datos suficientes", Modifier.weight(1f))
                 MetricCard("Históricos disponibles", "$historyCoverage / ${assets.size}", Modifier.weight(1f))
             }
             Spacer(Modifier.height(6.dp))
@@ -450,7 +450,10 @@ private fun InvestorDashboard(
 private fun historicalVolatilityPercent(points: List<CoinPaprikaHistoricalPoint>): Double? {
     val ordered = points.sortedBy { it.timestampEpochMs }
     val returns = ordered.zipWithNext { previous, next ->
-        if (previous.priceUsd > 0.0) next.priceUsd / previous.priceUsd - 1.0 else Double.NaN
+        val elapsedMs = next.timestampEpochMs - previous.timestampEpochMs
+        if (elapsedMs in 20L * 60L * 60L * 1000L..28L * 60L * 60L * 1000L && previous.priceUsd > 0.0) {
+            next.priceUsd / previous.priceUsd - 1.0
+        } else Double.NaN
     }.filter { it.isFinite() }
     if (returns.size < 7) return null
     val mean = returns.average()
