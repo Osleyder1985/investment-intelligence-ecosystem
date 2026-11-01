@@ -74,7 +74,7 @@ jobs:
   android-instrumented-tests:
     needs: android-build
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -107,7 +107,7 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_2
-          emulator-boot-timeout: 1200
+          emulator-boot-timeout: 300
           emulator-options: "-no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -camera-back none"
           disable-animations: true
           script: |
