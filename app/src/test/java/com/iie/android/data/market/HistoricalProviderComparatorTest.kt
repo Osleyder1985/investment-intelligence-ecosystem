@@ -18,7 +18,7 @@ class HistoricalProviderComparatorTest {
             listOf(point("source:coinmarketcap", timestamp, 101.0))
         )
         assertEquals(1, result.matchedObservations)
-        assertEquals(timestamp, result.latestTimestampEpochMs)
+        assertEquals(timestamp, result.latestTimestampEpochMs ?: -1L)
         assertEquals(100.0, result.coinPaprikaPriceUsd!!, 0.0)
         assertEquals(101.0, result.coinMarketCapPriceUsd!!, 0.0)
         assertEquals(200.0 / 201.0, result.latestSymmetricDivergencePercent!!, 0.000001)
@@ -76,7 +76,7 @@ class HistoricalProviderComparatorTest {
             )
         )
         assertEquals(2, result.matchedObservations)
-        assertEquals(timestamp + day, result.latestTimestampEpochMs)
+        assertEquals(timestamp + day, result.latestTimestampEpochMs ?: -1L)
         assertEquals(110.0, result.coinPaprikaPriceUsd!!, 0.0)
         assertEquals(111.0, result.coinMarketCapPriceUsd!!, 0.0)
     }
