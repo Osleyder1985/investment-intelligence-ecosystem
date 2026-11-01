@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.iie.android.data.security.CoinMarketCapApiKeyStore
+import com.iie.android.data.market.CoinMarketCapAuthenticatedClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -38,6 +39,7 @@ fun CoinMarketCapSettingsScreen() {
     var apiKey by remember { mutableStateOf("") }
     var configured by remember { mutableStateOf(store.hasKey()) }
     var busy by remember { mutableStateOf(false) }
+    var testing by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
 
     Column(
@@ -103,6 +105,37 @@ fun CoinMarketCapSettingsScreen() {
                 if (configured) {
                     OutlinedButton(
                         onClick = {
+                            if (testing || busy) return@OutlinedButton
+                            testing = true
+                            status = "Comprobando conexión segura con CoinMarketCap…"
+                            scope.launch {
+                                val result = runCatching {
+                                    withContext(Dispatchers.IO) {
+                                        val credential = store.read()
+                                            ?: error("No hay una API key guardada en este dispositivo.")
+                                        CoinMarketCapAuthenticatedClient().fetchLatestQuote(
+                                            apiKey = credential,
+                                            expectedSymbol = "BTC"
+                                        )
+                                    }
+                                }
+                                testing = false
+                                status = result.fold(
+                                    onSuccess = { quote ->
+                                        "Conexión autenticada correcta · ${quote.name} (${quote.symbol}) · USD ${quote.priceUsd} · " +
+                                            "dato actualizado ${quote.providerUpdatedAtEpochMs}."
+                                    },
+                                    onFailure = { error ->
+                                        "No se pudo validar la API key: ${error.message ?: "error de conexión"}"
+                                    }
+                                )
+                            }
+                        },
+                        enabled = !busy && !testing,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(if (testing) "Validando…" else "Probar conexión con CoinMarketCap") }
+                    OutlinedButton(
+                        onClick = {
                             if (busy) return@OutlinedButton
                             busy = true
                             scope.launch {
@@ -131,9 +164,9 @@ fun CoinMarketCapSettingsScreen() {
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            "Importante: esta pantalla configura el almacenamiento seguro. La conexión autenticada " +
-                "con los endpoints de CoinMarketCap se habilitará en el siguiente paso y respetará " +
-                "los límites y permisos de tu plan.",
+            "La prueba consulta BTC mediante GET /v3/cryptocurrency/quotes/latest y la cabecera " +
+                "X-CMC_PRO_API_KEY. No guarda la respuesta ni muestra la clave. El acceso efectivo " +
+                "depende de los permisos y límites de tu plan CoinMarketCap.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
