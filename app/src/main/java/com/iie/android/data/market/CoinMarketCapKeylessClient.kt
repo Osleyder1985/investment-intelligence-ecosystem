@@ -7,6 +7,8 @@ import java.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -138,10 +140,14 @@ class CoinMarketCapKeylessClient(
             if (updatedAt <= 0L || updatedAt > retrievedAtEpochMs + 60_000L) {
                 throw IOException("CoinMarketCap timestamp is outside accepted bounds for $symbol")
             }
-            val usd = try {
-                item["quote"]?.jsonObject?.get("USD")?.jsonObject
-            } catch (error: Exception) {
-                null
+            val quoteElement = item["quote"]
+                ?: throw IOException("CoinMarketCap quote is missing for $symbol")
+            val usd = when (quoteElement) {
+                is JsonObject -> quoteElement["USD"]?.jsonObject
+                is JsonArray -> quoteElement.firstOrNull { quote ->
+                    quote.jsonObject["symbol"]?.jsonPrimitive?.contentOrNull == "USD"
+                }?.jsonObject
+                else -> null
             } ?: throw IOException("CoinMarketCap USD quote is missing for $symbol")
             val price = usd["price"]?.jsonPrimitive?.doubleOrNull
             if (price == null || !price.isFinite() || price <= 0.0) {
