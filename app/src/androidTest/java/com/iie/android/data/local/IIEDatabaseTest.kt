@@ -8,6 +8,7 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.iie.android.data.local.entity.AssetEntity
+import com.iie.android.data.local.entity.AssetIdentifierEntity
 import com.iie.android.data.local.entity.AssetResearchDossierSnapshotEntity
 import com.iie.android.domain.model.AssetResearchDossier
 import com.iie.android.domain.model.MarketResearchSection
@@ -53,6 +54,90 @@ class IIEDatabaseTest {
     }
 
 
+
+    @Test
+    fun initialAssetCatalogCreatesCanonicalAssetsWithoutSyntheticEvidenceAndIsIdempotent() = runBlocking {
+        val catalog = InitialAssetCatalog(database) { 1_700_000_000_000L }
+
+        catalog.synchronize()
+
+        assertEquals(5, database.assetDao().countAssets())
+        val bitcoin = database.assetDao().getAsset("asset:bitcoin")
+        assertNotNull(bitcoin)
+        assertEquals("crypto:bitcoin", bitcoin?.canonicalKey)
+        assertEquals("RESOLVED", bitcoin?.identityStatus)
+
+        val usdc = database.assetDao().getAsset("asset:usd-coin")
+        val usdt = database.assetDao().getAsset("asset:tether")
+        assertNotNull(usdc)
+        assertNotNull(usdt)
+        assertEquals("USDC", usdc?.symbol)
+        assertEquals("USDT", usdt?.symbol)
+        assertEquals("RESOLVED_WITH_LIMITATIONS", usdc?.identityStatus)
+        assertEquals("RESOLVED_WITH_LIMITATIONS", usdt?.identityStatus)
+
+        val usdcProviderId = database.assetIdentifierDao()
+            .findForAsset("asset:usd-coin", "source:coinpaprika", "coinpaprika")
+        val usdtProviderId = database.assetIdentifierDao()
+            .findForAsset("asset:tether", "source:coinpaprika", "coinpaprika")
+        assertEquals("usdc-usd-coin", usdcProviderId?.identifierValue)
+        assertEquals("usdt-tether", usdtProviderId?.identifierValue)
+        assertEquals("PROVIDER_ID_CONFIRMED", usdcProviderId?.verificationStatus)
+        assertEquals("PROVIDER_ID_CONFIRMED", usdtProviderId?.verificationStatus)
+
+        database.dataSourceDao().insertSource(
+            DataSourceEntity(
+                "source:iie-demo-fixture", "iie-local-demo-fixture-v1", "Retired fixture",
+                "LOCAL_FIXTURE", null, null, "Synthetic", "INTERNAL_DEMO_ONLY", 100L
+            )
+        )
+        database.assetIdentifierDao().insertIdentifier(
+            AssetIdentifierEntity(
+                "identifier:fixture:btc", "fixture:btc", "asset:bitcoin",
+                "source:iie-demo-fixture", "iie-demo-fixture", "btc", null, null, "DEMO_ONLY"
+            )
+        )
+        database.assetObservationDao().insertObservation(
+            AssetObservationEntity(
+                "observation:fixture:btc", "asset:bitcoin", null, "source:iie-demo-fixture",
+                "IDENTITY_FIXTURE", 100L, 100L, "DEMO", "UNVERIFIED", 1, "{}", null, null
+            )
+        )
+        database.assetObservationDao().insertObservation(
+            AssetObservationEntity(
+                "observation:coinpaprika:btc:preserved", "asset:bitcoin", null,
+                "source:coinpaprika", "MARKET_QUOTE", 100L, 110L, "ACCEPTED",
+                "PROVIDER_SCHEMA_VALIDATED", 1, "{}", null, "https://coinpaprika.com/terms-api"
+            )
+        )
+        database.watchlistDao().add(WatchlistEntryEntity("asset:bitcoin", 120L, null))
+
+        catalog.synchronize()
+
+        assertEquals(null, database.dataSourceDao().getSource("source:iie-demo-fixture"))
+        assertEquals(null, database.assetObservationDao().getLatest("asset:bitcoin", "IDENTITY_FIXTURE"))
+        assertEquals(
+            null,
+            database.assetIdentifierDao().findIdentifier(
+                "source:iie-demo-fixture", "iie-demo-fixture", "btc"
+            )
+        )
+        assertNotNull(
+            database.assetObservationDao().getLatestForSource(
+                "asset:bitcoin", "MARKET_QUOTE", "source:coinpaprika"
+            )
+        )
+        assertNotNull(database.watchlistDao().getEntry("asset:bitcoin"))
+
+        catalog.synchronize()
+        assertEquals(5, database.assetDao().countAssets())
+        assertNotNull(
+            database.assetObservationDao().getLatestForSource(
+                "asset:bitcoin", "MARKET_QUOTE", "source:coinpaprika"
+            )
+        )
+        assertNotNull(database.watchlistDao().getEntry("asset:bitcoin"))
+    }
 
     @Test
     fun dossierSnapshotCodecRoundTripsNullableFieldsAndDeploymentReference() {
