@@ -324,6 +324,57 @@ class RoomAssetRepository(
         )
     }
 
+    suspend fun getLatestCoinPaprikaDailyHistory(
+        assetId: String,
+        limit: Int = 30
+    ): List<CoinPaprikaHistoricalPoint> {
+        require(limit in 1..500) { "History query limit must be between 1 and 500" }
+        val sourceId = "source:coinpaprika"
+        val asset = database.assetDao().getAsset(assetId) ?: return emptyList()
+        val source = database.dataSourceDao().getSource(sourceId) ?: return emptyList()
+        if (source.permittedUseStatus != "PERSONAL_USE_ONLY") return emptyList()
+        val identifier = database.assetIdentifierDao().findForAsset(
+            assetId = assetId, sourceId = sourceId, namespace = "coinpaprika"
+        ) ?: return emptyList()
+        if (identifier.verificationStatus != "PROVIDER_ID_CONFIRMED") return emptyList()
+        return database.assetObservationDao().getLatestHistoryForSource(
+            assetId = assetId,
+            sourceId = sourceId,
+            observationType = MARKET_HISTORY_DAILY_OBSERVATION_TYPE,
+            limit = limit
+        ).mapNotNull { observation ->
+            try {
+                val payload = JSONObject(observation.valueJson)
+                if (payload.optString("schema") != "iie.market-history-daily.v1" ||
+                    payload.optString("providerId") != identifier.identifierValue ||
+                    !payload.optString("symbol").equals(asset.symbol, ignoreCase = true) ||
+                    payload.optString("interval") != "1d" ||
+                    payload.optString("quoteCurrency") != "USD" ||
+                    observation.payloadSha256.isNullOrBlank()
+                ) return@mapNotNull null
+                val price = payload.optDouble("priceUsd", Double.NaN)
+                val timestamp = payload.optLong("providerTimestampEpochMs", -1L)
+                val retrieved = payload.optLong("retrievedAtEpochMs", -1L)
+                val volume = if (payload.isNull("volume24hUsd")) null else payload.optDouble("volume24hUsd", Double.NaN)
+                val marketCap = if (payload.isNull("marketCapUsd")) null else payload.optDouble("marketCapUsd", Double.NaN)
+                if (!price.isFinite() || price <= 0.0 || timestamp <= 0L || retrieved < timestamp ||
+                    (volume != null && (!volume.isFinite() || volume < 0.0)) ||
+                    (marketCap != null && (!marketCap.isFinite() || marketCap < 0.0))
+                ) return@mapNotNull null
+                CoinPaprikaHistoricalPoint(
+                    providerId = identifier.identifierValue,
+                    timestampEpochMs = timestamp,
+                    priceUsd = price,
+                    volume24hUsd = volume,
+                    marketCapUsd = marketCap,
+                    retrievedAtEpochMs = retrieved
+                )
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
     suspend fun getLatestCoinPaprikaQuote(assetId: String): Pair<AssetObservationEntity, String>? {
         val sourceId = "source:coinpaprika"
         val asset = database.assetDao().getAsset(assetId) ?: return null
