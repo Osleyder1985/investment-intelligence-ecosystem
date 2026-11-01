@@ -61,6 +61,9 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     private val _marketQuotes = MutableStateFlow<Map<String, MarketQuoteUiState>>(emptyMap())
     val marketQuotes: StateFlow<Map<String, MarketQuoteUiState>> = _marketQuotes.asStateFlow()
 
+    private val _dashboardRefreshStatus = MutableStateFlow<String?>(null)
+    val dashboardRefreshStatus: StateFlow<String?> = _dashboardRefreshStatus.asStateFlow()
+
     private val _coinMarketCapQuotes = MutableStateFlow<Map<String, MarketQuoteUiState>>(emptyMap())
     val coinMarketCapQuotes: StateFlow<Map<String, MarketQuoteUiState>> = _coinMarketCapQuotes.asStateFlow()
 
@@ -274,48 +277,66 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     }
 
     fun refreshMarketQuote(assetId: String, symbol: String) {
+        markQuoteLoading(assetId)
+        viewModelScope.launch { refreshMarketQuoteNow(assetId, symbol) }
+    }
+
+    fun refreshAllMarketQuotes(assets: List<Asset>) {
+        if (_dashboardRefreshStatus.value?.startsWith("Actualizando") == true) return
+        if (assets.isEmpty()) {
+            _dashboardRefreshStatus.value = "No hay activos en el universo para actualizar."
+            return
+        }
+        viewModelScope.launch {
+            _dashboardRefreshStatus.value = "Actualizando 0/\${assets.size} activos…"
+            assets.forEachIndexed { index, asset ->
+                markQuoteLoading(asset.assetId)
+                refreshMarketQuoteNow(asset.assetId, asset.symbol)
+                _dashboardRefreshStatus.value = "Actualizando \${index + 1}/\${assets.size} · \${asset.symbol.uppercase()}"
+            }
+            _dashboardRefreshStatus.value = "Actualización finalizada · \${assets.size} activos revisados."
+        }
+    }
+
+    private fun markQuoteLoading(assetId: String) {
         _marketQuotes.value = _marketQuotes.value + (assetId to
             (_marketQuotes.value[assetId] ?: MarketQuoteUiState()).copy(isLoading = true, error = null))
         _coinMarketCapQuotes.value = _coinMarketCapQuotes.value + (assetId to
             (_coinMarketCapQuotes.value[assetId] ?: MarketQuoteUiState()).copy(isLoading = true, error = null))
-        viewModelScope.launch {
-            try {
-                val observation = withContext(Dispatchers.IO) {
-                    repository.fetchAndPersistCoinPaprikaQuote(assetId, symbol, coinPaprikaClient)
-                }
-                val attribution = withContext(Dispatchers.IO) {
-                    repository.getLatestCoinPaprikaQuote(assetId)?.second ?: "CoinPaprika"
-                }
-                val state = observation.toUiState(attribution)
-                _marketQuotes.value = _marketQuotes.value + (assetId to state)
-            } catch (error: Exception) {
-                val previous = _marketQuotes.value[assetId] ?: MarketQuoteUiState()
-                _marketQuotes.value = _marketQuotes.value + (assetId to previous.copy(
-                    isLoading = false,
-                    error = error.message ?: "No se pudo actualizar la cotización"
-                ))
-            }
+    }
 
-            try {
-                val cmcObservation = withContext(Dispatchers.IO) {
-                    repository.fetchAndPersistCoinMarketCapQuote(
-                        assetId = assetId,
-                        expectedSymbol = symbol,
-                        client = coinMarketCapClient
-                    )
-                }
-                val attribution = withContext(Dispatchers.IO) {
-                    repository.getLatestCoinMarketCapQuote(assetId)?.second ?: "CoinMarketCap"
-                }
-                _coinMarketCapQuotes.value = _coinMarketCapQuotes.value +
-                    (assetId to cmcObservation.toUiState(attribution))
-            } catch (error: Exception) {
-                val previous = _coinMarketCapQuotes.value[assetId] ?: MarketQuoteUiState()
-                _coinMarketCapQuotes.value = _coinMarketCapQuotes.value + (assetId to previous.copy(
-                    isLoading = false,
-                    error = error.message ?: "No se pudo actualizar CoinMarketCap"
-                ))
+    private suspend fun refreshMarketQuoteNow(assetId: String, symbol: String) {
+        try {
+            val observation = withContext(Dispatchers.IO) {
+                repository.fetchAndPersistCoinPaprikaQuote(assetId, symbol, coinPaprikaClient)
             }
+            val attribution = withContext(Dispatchers.IO) {
+                repository.getLatestCoinPaprikaQuote(assetId)?.second ?: "CoinPaprika"
+            }
+            _marketQuotes.value = _marketQuotes.value + (assetId to observation.toUiState(attribution))
+        } catch (error: Exception) {
+            val previous = _marketQuotes.value[assetId] ?: MarketQuoteUiState()
+            _marketQuotes.value = _marketQuotes.value + (assetId to previous.copy(
+                isLoading = false,
+                error = error.message ?: "No se pudo actualizar la cotización"
+            ))
+        }
+
+        try {
+            val observation = withContext(Dispatchers.IO) {
+                repository.fetchAndPersistCoinMarketCapQuote(assetId, symbol, coinMarketCapClient)
+            }
+            val attribution = withContext(Dispatchers.IO) {
+                repository.getLatestCoinMarketCapQuote(assetId)?.second ?: "CoinMarketCap"
+            }
+            _coinMarketCapQuotes.value = _coinMarketCapQuotes.value +
+                (assetId to observation.toUiState(attribution))
+        } catch (error: Exception) {
+            val previous = _coinMarketCapQuotes.value[assetId] ?: MarketQuoteUiState()
+            _coinMarketCapQuotes.value = _coinMarketCapQuotes.value + (assetId to previous.copy(
+                isLoading = false,
+                error = error.message ?: "No se pudo actualizar CoinMarketCap"
+            ))
         }
     }
 
@@ -449,6 +470,11 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             retrievedAtEpochMs = retrievedAtEpochMs,
             attribution = attribution,
             providerId = json.getString("providerId"),
+            marketCapUsd = json.nullableNonNegativeFiniteDouble("marketCapUsd"),
+            fullyDilutedMarketCapUsd = json.nullableNonNegativeFiniteDouble("fullyDilutedMarketCapUsd"),
+            circulatingSupply = json.nullableNonNegativeFiniteDouble("circulatingSupply"),
+            totalSupply = json.nullableNonNegativeFiniteDouble("totalSupply"),
+            maxSupply = json.nullableNonNegativeFiniteDouble("maxSupply"),
             freshnessStatus = quoteFreshnessEvaluator.evaluate(
                 json.optLong("providerUpdatedAtEpochMs").takeIf { it > 0L },
                 System.currentTimeMillis()
@@ -459,6 +485,12 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             ).reason,
             isLoading = false
         )
+    }
+
+    private fun JSONObject.nullableNonNegativeFiniteDouble(key: String): Double? {
+        if (!has(key) || isNull(key)) return null
+        val value = optDouble(key, Double.NaN)
+        return value.takeIf { it.isFinite() && it >= 0.0 }
     }
 
     fun updateSearchQuery(value: String) {
@@ -488,6 +520,11 @@ data class MarketQuoteUiState(
     val retrievedAtEpochMs: Long? = null,
     val attribution: String? = null,
     val providerId: String? = null,
+    val marketCapUsd: Double? = null,
+    val fullyDilutedMarketCapUsd: Double? = null,
+    val circulatingSupply: Double? = null,
+    val totalSupply: Double? = null,
+    val maxSupply: Double? = null,
     val freshnessStatus: String = "UNKNOWN",
     val freshnessReason: String = "Frescura no evaluada",
     val isLoading: Boolean = false,
