@@ -17,20 +17,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.iie.android.data.market.CoinMarketCapApiKeyStore
+import com.iie.android.data.market.CoinMarketCapApiKeyValidator
+import kotlinx.coroutines.launch
 
 @Composable
 fun CoinMarketCapSettingsScreen() {
     val context = LocalContext.current
     val keyStore = remember(context) { CoinMarketCapApiKeyStore(context) }
+    val validator = remember { CoinMarketCapApiKeyValidator() }
+    val scope = rememberCoroutineScope()
     var apiKey by remember { mutableStateOf("") }
     var hasStoredKey by remember { mutableStateOf(keyStore.hasKey()) }
     var status by remember { mutableStateOf<String?>(null) }
+    var statusIsError by remember { mutableStateOf(false) }
+    var isValidating by remember { mutableStateOf(false) }
+    var usageSummary by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -62,7 +70,7 @@ fun CoinMarketCapSettingsScreen() {
                 )
                 OutlinedTextField(
                     value = apiKey,
-                    onValueChange = { apiKey = it; status = null },
+                    onValueChange = { apiKey = it; status = null; statusIsError = false },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("CoinMarketCap API key") },
                     placeholder = { Text("Pega aquí tu API key") },
@@ -71,17 +79,41 @@ fun CoinMarketCapSettingsScreen() {
                 )
                 Button(
                     onClick = {
-                        runCatching { keyStore.save(apiKey) }
-                            .onSuccess {
-                                apiKey = ""
-                                hasStoredKey = true
-                                status = "API key guardada cifrada en este dispositivo."
+                        if (!isValidating) {
+                            isValidating = true
+                            status = "Validando credencial con CoinMarketCap…"
+                            statusIsError = false
+                            usageSummary = null
+                            scope.launch {
+                                try {
+                                    // Validate first; never persist a credential that CMC rejects.
+                                    val validation = validator.validate(apiKey.trim())
+                                    keyStore.save(apiKey)
+                                    apiKey = ""
+                                    hasStoredKey = true
+                                    val left = validation.monthlyCreditsLeft
+                                    val limit = validation.monthlyCreditLimit
+                                    usageSummary = if (left != null && limit != null) {
+                                        "Créditos mensuales restantes informados por CMC: " +
+                                            "%,d / %,d".format(java.util.Locale.US, left, limit)
+                                    } else {
+                                        "Credencial aceptada. CMC no devolvió el detalle de cuota mensual."
+                                    }
+                                    status = "Credencial válida y guardada cifrada en este dispositivo."
+                                } catch (error: Exception) {
+                                    status = error.message ?: "No se pudo validar o guardar la credencial."
+                                    statusIsError = true
+                                } finally {
+                                    isValidating = false
+                                }
                             }
-                            .onFailure { status = it.message ?: "No se pudo guardar la API key." }
+                        }
                     },
-                    enabled = apiKey.isNotBlank(),
+                    enabled = apiKey.isNotBlank() && !isValidating,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("Guardar API key de forma segura") }
+                ) {
+                    Text(if (isValidating) "Verificando…" else "Verificar y guardar API key")
+                }
 
                 Text(
                     if (hasStoredKey) "Estado: credencial almacenada localmente" else "Estado: falta configurar la API key",
@@ -104,7 +136,7 @@ fun CoinMarketCapSettingsScreen() {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
                 Text(
-                    "La protección local reduce la exposición en reposo, pero una API key utilizada por una aplicación cliente no puede considerarse secreta frente a un dispositivo comprometido o instrumentado.",
+                    "La verificación usa /v1/key/info: CMC indica que no consume créditos de datos, aunque sí ocupa una solicitud del límite por minuto. Confirma la credencial y la cuota informada, no garantiza que cada endpoint histórico esté incluido en tu plan.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
