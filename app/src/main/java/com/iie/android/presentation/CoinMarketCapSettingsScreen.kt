@@ -64,7 +64,7 @@ fun CoinMarketCapSettingsScreen(onCredentialSaved: () -> Unit = {}) {
             ) {
                 Text("Plan Basic · histórico diario", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "La API autenticada permite consultar cotizaciones históricas diarias (precio, volumen y capitalización) dentro de la cobertura del plan. Esta integración no presupone acceso a velas OHLCV ni a histórico intradía.",
+                    "La API autenticada permite consultar snapshots históricos diarios (precio, volumen y capitalización) dentro de la cobertura del plan. El intervalo daily devuelve la primera cotización disponible de cada día UTC; no equivale al cierre diario ni a una vela OHLCV. Esta integración no presupone acceso a histórico intradía.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
