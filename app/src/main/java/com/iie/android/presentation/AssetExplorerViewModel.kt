@@ -492,7 +492,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             }
             loadDailyMarketHistory(assetId)
             _marketHistorySync.value = _marketHistorySync.value + (assetId to MarketHistorySyncUiState(
-                isLoading = false,
+                isLoading = true,
                 pointsReceived = result.pointsReceived,
                 pointsInserted = result.pointsInserted,
                 pointsAlreadyPresent = result.pointsAlreadyPresent,
@@ -501,7 +501,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
         } catch (error: Exception) {
             val previous = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
             _marketHistorySync.value = _marketHistorySync.value + (assetId to previous.copy(
-                isLoading = false,
+                isLoading = true,
                 error = error.message ?: "No se pudo descargar el histórico",
                 message = "La importación de CoinPaprika no se completó."
             ))
@@ -514,6 +514,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             if (apiKey.isNullOrBlank()) {
                 val previous = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
                 _marketHistorySync.value = _marketHistorySync.value + (assetId to previous.copy(
+                    isLoading = false,
                     coinMarketCapError = "API key de CoinMarketCap no configurada; histórico CMC omitido."
                 ))
             } else {
@@ -531,6 +532,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                 loadCoinMarketCapDailyHistory(assetId)
                 val previous = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
                 _marketHistorySync.value = _marketHistorySync.value + (assetId to previous.copy(
+                    isLoading = false,
                     coinMarketCapPointsReceived = cmcResult.pointsReceived,
                     coinMarketCapPointsInserted = cmcResult.pointsInserted,
                     coinMarketCapPointsAlreadyPresent = cmcResult.pointsAlreadyPresent,
@@ -540,6 +542,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
         } catch (error: Exception) {
             val previous = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
             _marketHistorySync.value = _marketHistorySync.value + (assetId to previous.copy(
+                isLoading = false,
                 coinMarketCapError = error.message ?: "No se pudo importar el histórico de CoinMarketCap"
             ))
         }
