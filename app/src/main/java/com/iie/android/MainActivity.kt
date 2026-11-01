@@ -46,11 +46,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetObservationProvenance
 import com.iie.android.domain.model.AssetResearchDossier
-import com.iie.android.domain.model.FreshnessEvaluation
-import com.iie.android.domain.model.ObservationPayloadValidation
-import com.iie.android.domain.model.ObservationQualityEvaluation
 import com.iie.android.presentation.AssetExplorerViewModel
-import com.iie.android.presentation.EvidenceEvaluationUiState
 import com.iie.android.presentation.MarketQuoteUiState
 import com.iie.android.presentation.MarketHistorySyncUiState
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
@@ -181,14 +177,14 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Text(
-                            "ENTORNO DE DEMOSTRACIÓN",
+                            "CATÁLOGO DE ACTIVOS",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                         Spacer(Modifier.height(5.dp))
                         Text(
-                            "El catálogo incluye datos locales de demostración. Las cotizaciones solo se muestran cuando se consultan al proveedor; no se generan señales ni recomendaciones.",
+                            "El catálogo inicial conserva identificadores canónicos y referencias de proveedor. Los datos de mercado solo se muestran tras consultarlos; no se generan señales ni recomendaciones.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
@@ -504,7 +500,6 @@ private fun AssetDetailDialog(
         .collectAsState(initial = emptyList())
     val provenance by viewModel.observeProvenance(asset.assetId)
         .collectAsState(initial = emptyList())
-    val evidenceState by viewModel.evidenceEvaluation.collectAsState()
     val marketQuotes by viewModel.marketQuotes.collectAsState()
     val marketQuote = marketQuotes[asset.assetId]
     val historySyncStates by viewModel.marketHistorySync.collectAsState()
@@ -515,7 +510,6 @@ private fun AssetDetailDialog(
 
     LaunchedEffect(asset.assetId) {
         viewModel.loadLatestResearchDossier(asset.assetId)
-        viewModel.evaluateLatestEvidence(asset.assetId)
         viewModel.loadLatestMarketQuote(asset.assetId)
         viewModel.loadDailyMarketHistory(asset.assetId)
     }
@@ -526,7 +520,7 @@ private fun AssetDetailDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text("ID local: ${asset.assetId}")
-                Text("Clave canónica de demostración: ${asset.canonicalKey}")
+                Text("Clave canónica: ${asset.canonicalKey}")
                 Text("Estado de identidad: ${asset.identityStatus}")
                 Spacer(Modifier.height(8.dp))
                 Text("Redes y representaciones:", fontWeight = FontWeight.SemiBold)
@@ -593,20 +587,7 @@ private fun AssetDetailDialog(
                 }
 
                 Spacer(Modifier.height(12.dp))
-                Text("Evaluación de evidencia", fontWeight = FontWeight.SemiBold)
-                val currentEvidenceState = evidenceState?.takeIf { it.assetId == asset.assetId }
-                when {
-                    currentEvidenceState == null ->
-                        Text("Preparando evaluación…", style = MaterialTheme.typography.bodySmall)
-                    currentEvidenceState.isLoading ->
-                        Text("Evaluando observación local…", style = MaterialTheme.typography.bodySmall)
-                    currentEvidenceState.message != null ->
-                        Text(currentEvidenceState.message, style = MaterialTheme.typography.bodySmall)
-                    currentEvidenceState.evaluation != null ->
-                        EvidenceEvaluationDetails(currentEvidenceState)
-                    else ->
-                        Text("No hay evaluación disponible.", style = MaterialTheme.typography.bodySmall)
-                }
+
             }
         },
         confirmButton = {
@@ -779,57 +760,6 @@ private fun MarketHistoryPoints(points: List<CoinPaprikaHistoricalPoint>) {
                 style = MaterialTheme.typography.labelSmall
             )
         }
-    }
-}
-
-@Composable
-private fun EvidenceEvaluationDetails(state: EvidenceEvaluationUiState) {
-    val result = state.evaluation ?: return
-    when (val payload = result.payload) {
-        is ObservationPayloadValidation.Valid ->
-            Text("Payload: VÁLIDO · contrato ${payload.observationType} v${payload.schemaVersion}",
-                style = MaterialTheme.typography.bodySmall)
-        is ObservationPayloadValidation.Invalid -> {
-            Text("Payload: INVÁLIDO", fontWeight = FontWeight.Medium)
-            payload.issues.forEach { issue ->
-                Text("${issue.code} en ${issue.path}: ${issue.detail}",
-                    style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        is ObservationPayloadValidation.NotEvaluated ->
-            Text("Payload: NO EVALUADO · ${payload.reason}",
-                style = MaterialTheme.typography.bodySmall)
-    }
-
-    Spacer(Modifier.height(6.dp))
-    when (val quality = result.quality) {
-        is ObservationQualityEvaluation.Evaluated -> {
-            Text("Calidad: ${quality.assessment.outcome}",
-                fontWeight = FontWeight.Medium)
-            Text("Política: ${quality.assessment.policyId} v${quality.assessment.policyVersion} · uso: ${quality.assessment.intendedUse}",
-                style = MaterialTheme.typography.bodySmall)
-            quality.assessment.findings.forEach { finding ->
-                Text("${finding.severity} · ${finding.code}: ${finding.detail}",
-                    style = MaterialTheme.typography.bodySmall)
-            }
-            if (quality.assessment.intendedUse == "LOCAL_CATALOG_DISPLAY") {
-                Text("Alcance: solo visualización local de datos sintéticos; no autoriza análisis de mercado.",
-                    style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        is ObservationQualityEvaluation.NotEvaluated ->
-            Text("Calidad: NO EVALUADA · ${quality.reason}",
-                style = MaterialTheme.typography.bodySmall)
-    }
-
-    Spacer(Modifier.height(6.dp))
-    when (val freshness = result.freshness) {
-        is FreshnessEvaluation.Evaluated ->
-            Text("Frescura: ${freshness.assessment.status} · política ${freshness.assessment.policyId} v${freshness.assessment.policyVersion}",
-                style = MaterialTheme.typography.bodySmall)
-        is FreshnessEvaluation.NotEvaluated ->
-            Text("Frescura: NO EVALUADA · ${freshness.reason}. No se ha definido una vigencia para esta fuente y finalidad.",
-                style = MaterialTheme.typography.bodySmall)
     }
 }
 
