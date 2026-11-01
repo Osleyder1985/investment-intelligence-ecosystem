@@ -103,6 +103,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
     val globalMarket by viewModel.globalMarket.collectAsState()
     val marketHistorySync by viewModel.marketHistorySync.collectAsState()
     val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
+    val coinMarketCapDailyHistoryByAsset by viewModel.coinMarketCapDailyHistory.collectAsState()
     var selectedAsset by remember { mutableStateOf<Asset?>(null) }
     var destination by remember { mutableStateOf("Resumen") }
 
@@ -122,6 +123,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
             assets.forEach { asset ->
                 viewModel.loadLatestMarketQuote(asset.assetId)
                 viewModel.loadDailyMarketHistory(asset.assetId)
+                viewModel.loadCoinMarketCapDailyHistory(asset.assetId)
             }
         }
     }
@@ -779,6 +781,7 @@ private fun AssetDetailDialog(
     val historySync = historySyncStates[asset.assetId]
     val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
     val dailyHistory = dailyHistoryByAsset[asset.assetId].orEmpty()
+    val coinMarketCapDailyHistory = coinMarketCapDailyHistoryByAsset[asset.assetId].orEmpty()
     val researchDossiers by viewModel.researchDossiers.collectAsState()
     val routescanTokenSupplies by viewModel.routescanTokenSupplies.collectAsState()
 
@@ -786,6 +789,7 @@ private fun AssetDetailDialog(
         viewModel.loadLatestResearchDossier(asset.assetId)
         viewModel.loadLatestMarketQuote(asset.assetId)
         viewModel.loadDailyMarketHistory(asset.assetId)
+        viewModel.loadCoinMarketCapDailyHistory(asset.assetId)
     }
     LaunchedEffect(deployments) {
         deployments.filter { it.representationKind == "ERC20" }.forEach { deployment ->
@@ -848,6 +852,10 @@ private fun AssetDetailDialog(
                     )
                     MarketHistorySyncDetails(state = historySync,
                         onDownload = { viewModel.downloadDailyMarketHistory(asset.assetId, asset.symbol) })
+                    HistoricalProviderComparison(
+                        coinPaprika = dailyHistory,
+                        coinMarketCap = coinMarketCapDailyHistory
+                    )
                     if (dailyHistory.isNotEmpty()) MarketHistoryPoints(points = dailyHistory)
                 }
 
@@ -1170,8 +1178,49 @@ private fun MarketHistorySyncDetails(
             style = MaterialTheme.typography.bodySmall
         )
     }
+    state?.coinMarketCapPointsReceived?.takeIf { it > 0 }?.let { received ->
+        Text("CoinMarketCap · $received puntos recibidos · ${state.coinMarketCapPointsInserted} nuevos · ${state.coinMarketCapPointsAlreadyPresent} existentes",
+            style = MaterialTheme.typography.bodySmall)
+    }
+    state?.coinMarketCapError?.let {
+        Text("CoinMarketCap: $it", color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall)
+    }
     TextButton(onClick = onDownload, enabled = state?.isLoading != true) {
-        Text(if (state?.isLoading == true) "Descargando e importando…" else "Descargar último año")
+        Text(if (state?.isLoading == true) "Descargando e importando…" else "Descargar último año · ambos proveedores")
+    }
+}
+
+
+@Composable
+private fun HistoricalProviderComparison(
+    coinPaprika: List<CoinPaprikaHistoricalPoint>,
+    coinMarketCap: List<CoinPaprikaHistoricalPoint>
+) {
+    val paprikaByDay = coinPaprika.associateBy { Math.floorDiv(it.timestampEpochMs, 86_400_000L) }
+    val cmcByDay = coinMarketCap.associateBy { Math.floorDiv(it.timestampEpochMs, 86_400_000L) }
+    val commonDays = paprikaByDay.keys.intersect(cmcByDay.keys)
+    val latestDay = commonDays.maxOrNull()
+    val divergence = latestDay?.let { day ->
+        val a = paprikaByDay[day]?.priceUsd
+        val b = cmcByDay[day]?.priceUsd
+        if (a != null && b != null && a > 0.0 && b > 0.0) {
+            200.0 * kotlin.math.abs(a - b) / (a + b)
+        } else null
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Text("Contraste histórico independiente", fontWeight = FontWeight.SemiBold)
+        Text("CoinPaprika: ${coinPaprika.size} puntos · CoinMarketCap: ${coinMarketCap.size} puntos",
+            style = MaterialTheme.typography.bodySmall)
+        Text("Fechas UTC coincidentes: ${commonDays.size}",
+            style = MaterialTheme.typography.bodySmall)
+        Text(divergence?.let { "Divergencia simétrica en la fecha común más reciente: ${String.format(java.util.Locale.US, "%.3f", it)}%" }
+            ?: "Divergencia no calculable: faltan fechas coincidentes o precios válidos.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Las series permanecen separadas. No se promedian ni se sustituyen precios entre proveedores.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
