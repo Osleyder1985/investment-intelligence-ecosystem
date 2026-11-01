@@ -185,11 +185,11 @@ fun CoinMarketCapSettingsScreen(onCredentialSaved: () -> Unit = {}) {
 
 private fun formatCoinMarketCapUsage(validation: com.iie.android.data.market.CoinMarketCapKeyValidation): String {
     val numberFormat = java.text.NumberFormat.getIntegerInstance(java.util.Locale.US)
-    val monthly = validation.monthlyCreditsLeft?.let(numberFormat::format)
-    val monthlyLimit = validation.monthlyCreditLimit?.let(numberFormat::format)
-    val daily = validation.dailyCreditsLeft?.let(numberFormat::format)
-    val requests = validation.minuteRequestsLeft?.let(numberFormat::format)
-    val rate = validation.minuteRateLimit?.let(numberFormat::format)
+    val monthly = validation.monthlyCreditsLeft?.let { numberFormat.format(it) }
+    val monthlyLimit = validation.monthlyCreditLimit?.let { numberFormat.format(it) }
+    val daily = validation.dailyCreditsLeft?.let { numberFormat.format(it) }
+    val requests = validation.minuteRequestsLeft?.let { numberFormat.format(it) }
+    val rate = validation.minuteRateLimit?.let { numberFormat.format(it) }
     return buildList {
         if (monthly != null && monthlyLimit != null) add("Créditos mensuales: $monthly / $monthlyLimit")
         if (daily != null) add("Créditos diarios restantes: $daily")
