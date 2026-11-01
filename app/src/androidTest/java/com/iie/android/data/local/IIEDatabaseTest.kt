@@ -270,6 +270,8 @@ class IIEDatabaseTest {
         assertEquals(19_500_000.0, restored.tokenomicsEvidence?.circulatingSupply?.value)
         assertEquals("source:coinmarketcap", restored.tokenomicsEvidence?.maxSupply?.sourceId)
         assertEquals(ResearchFieldStatus.UNKNOWN, restored.tokenomicsEvidence?.annualInflationPercent?.status)
+        assertEquals(1_300_000_000_000.0, restored.tokenomicsEvidence?.marketCapUsd?.value)
+        assertEquals(1_400_000_000_000.0, restored.tokenomicsEvidence?.fullyDilutedMarketCapUsd?.value)
     }
 
     @Test
