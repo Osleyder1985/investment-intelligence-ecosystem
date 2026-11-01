@@ -43,7 +43,13 @@ object AssetResearchDossierSnapshotCodec {
                 .put("latestDailyReturnPercent", market.latestDailyReturnPercent ?: JSONObject.NULL)
                 .put("periodReturnPercent", market.periodReturnPercent ?: JSONObject.NULL)
                 .put("periodHighUsd", market.periodHighUsd ?: JSONObject.NULL)
-                .put("periodLowUsd", market.periodLowUsd ?: JSONObject.NULL))
+                .put("periodLowUsd", market.periodLowUsd ?: JSONObject.NULL)
+                .put("quoteComparisonStatus", market.quoteComparisonStatus)
+                .put("quoteDifferencePercent", market.quoteDifferencePercent ?: JSONObject.NULL)
+                .put("quoteDifferenceThresholdPercent", market.quoteDifferenceThresholdPercent ?: JSONObject.NULL)
+                .put("quoteComparisonPrimaryObservationId", market.quoteComparisonPrimaryObservationId ?: JSONObject.NULL)
+                .put("quoteComparisonSecondaryObservationId", market.quoteComparisonSecondaryObservationId ?: JSONObject.NULL)
+                .put("quoteComparedAtEpochMs", market.quoteComparedAtEpochMs ?: JSONObject.NULL))
             .put("fundamentals", dossier.fundamentals.name)
             .put("tokenomics", dossier.tokenomics.name)
             .put("security", dossier.security.name)
@@ -81,7 +87,13 @@ object AssetResearchDossierSnapshotCodec {
             latestDailyReturnPercent = nullableDouble(m, "latestDailyReturnPercent"),
             periodReturnPercent = nullableDouble(m, "periodReturnPercent"),
             periodHighUsd = nullableDouble(m, "periodHighUsd"),
-            periodLowUsd = nullableDouble(m, "periodLowUsd")
+            periodLowUsd = nullableDouble(m, "periodLowUsd"),
+            quoteComparisonStatus = m.optString("quoteComparisonStatus", "NOT_AVAILABLE"),
+            quoteDifferencePercent = nullableDouble(m, "quoteDifferencePercent"),
+            quoteDifferenceThresholdPercent = nullableDouble(m, "quoteDifferenceThresholdPercent"),
+            quoteComparisonPrimaryObservationId = nullableString(m, "quoteComparisonPrimaryObservationId"),
+            quoteComparisonSecondaryObservationId = nullableString(m, "quoteComparisonSecondaryObservationId"),
+            quoteComparedAtEpochMs = nullableLong(m, "quoteComparedAtEpochMs")
         )
         return AssetResearchDossier(
             assetId = root.getString("assetId"),
