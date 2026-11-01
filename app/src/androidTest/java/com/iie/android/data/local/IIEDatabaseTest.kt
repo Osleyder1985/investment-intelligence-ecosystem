@@ -485,7 +485,7 @@ class IIEDatabaseTest {
 
     @Test
     fun fileBackedDatabaseRetainsCatalogAndWatchlistAfterReopen() = runBlocking {
-        DemoAssetSeeder(database) { 100L }.seed()
+        InitialAssetCatalog(database) { 100L }.synchronize()
         database.watchlistDao().add(
             WatchlistEntryEntity("asset:bitcoin", addedAtEpochMs = 150L, note = "persist me")
         )
@@ -500,66 +500,23 @@ class IIEDatabaseTest {
         assertNotNull(entry)
         assertEquals(150L, entry?.addedAtEpochMs)
         assertEquals("persist me", entry?.note)
-        val provenance = database.assetObservationDao()
-            .getLatest("asset:bitcoin", "IDENTITY_FIXTURE")
-        assertNotNull(provenance)
-        assertEquals(100L, provenance?.retrievedAtEpochMs)
-        assertEquals("DEMO", provenance?.status)
+        assertEquals(null, database.assetObservationDao()
+            .getLatest("asset:bitcoin", "IDENTITY_FIXTURE"))
     }
 
     @Test
-    fun provenanceQueryJoinsObservationToRegisteredSource() = runBlocking {
-        DemoAssetSeeder(database) { 300L }.seed()
-
-        val observations = database.assetObservationDao()
-            .observeProvenanceForAsset("asset:bitcoin").first()
-
-        assertEquals(1, observations.size)
-        assertEquals("IIE local demonstration fixture", observations.single().sourceDisplayName)
-        assertEquals("LOCAL_FIXTURE", observations.single().sourceProviderType)
-        assertEquals("INTERNAL_DEMO_ONLY", observations.single().sourcePermittedUseStatus)
-        assertEquals("IDENTITY_FIXTURE", observations.single().observationType)
-        assertEquals("DEMO", observations.single().status)
-        assertEquals("UNVERIFIED", observations.single().quality)
-    }
-
-    @Test
-    fun repositoryMapsPersistedObservationAndSourceUseForEvidenceEvaluation(): Unit = runBlocking {
-        DemoAssetSeeder(database) { 400L }.seed()
-        val repository = com.iie.android.data.repository.RoomAssetRepository(database)
-
-        val record = repository.getLatestObservationForEvaluation(
-            assetId = "asset:bitcoin",
-            observationType = "IDENTITY_FIXTURE"
-        )
-
-        assertNotNull(record)
-        assertEquals("observation:demo:asset:bitcoin", record?.first?.observationId)
-        assertEquals("source:iie-demo-fixture", record?.first?.sourceId)
-        assertEquals("UNVERIFIED", record?.first?.quality)
-        assertEquals("INTERNAL_DEMO_ONLY", record?.second)
-        assertEquals(
-            """{"recordType":"synthetic_demo_fixture","marketData":false}""",
-            record?.first?.valueJson
-        )
-    }
-
-    @Test
-    fun demoSeederIsIdempotentAndPreservesUserWatchlistData() = runBlocking {
-        DemoAssetSeeder(database) { 100L }.seed()
+    fun initialCatalogIsIdempotentAndPreservesUserWatchlistData() = runBlocking {
+        InitialAssetCatalog(database) { 100L }.synchronize()
         database.watchlistDao().add(
             WatchlistEntryEntity("asset:bitcoin", addedAtEpochMs = 150L, note = "user note")
         )
 
-        DemoAssetSeeder(database) { 200L }.seed()
+        InitialAssetCatalog(database) { 200L }.synchronize()
 
         assertEquals(5, database.assetDao().countAssets())
         assertNotNull(database.assetDeploymentDao().getDeployment("deployment:bitcoin-native"))
-        val provenance = database.assetObservationDao()
-            .getLatest("asset:bitcoin", "IDENTITY_FIXTURE")
-        assertNotNull(provenance)
-        assertEquals(100L, provenance?.retrievedAtEpochMs)
-        assertEquals("source:iie-demo-fixture", provenance?.sourceId)
+        assertEquals(null, database.assetObservationDao()
+            .getLatest("asset:bitcoin", "IDENTITY_FIXTURE"))
         val entry = database.watchlistDao().getEntry("asset:bitcoin")
         assertNotNull(entry)
         assertEquals(150L, entry?.addedAtEpochMs)
@@ -567,8 +524,8 @@ class IIEDatabaseTest {
     }
 
     @Test
-    fun usdcAndUsdtHaveIndependentDemoIdentitiesAndNoAssumedDeployments() = runBlocking {
-        DemoAssetSeeder(database) { 250L }.seed()
+    fun usdcAndUsdtHaveIndependentCanonicalIdentitiesAndNoAssumedDeployments() = runBlocking {
+        InitialAssetCatalog(database) { 250L }.synchronize()
         val usdc = database.assetDao().getAsset("asset:usd-coin")
         val usdt = database.assetDao().getAsset("asset:tether")
         assertNotNull(usdc)
@@ -581,18 +538,20 @@ class IIEDatabaseTest {
         org.junit.Assert.assertNotEquals(usdc?.canonicalKey, usdt?.canonicalKey)
         assertEquals(0, database.assetDeploymentDao().observeSummariesForAsset("asset:usd-coin").first().size)
         assertEquals(0, database.assetDeploymentDao().observeSummariesForAsset("asset:tether").first().size)
-        val usdcIdentifier = database.assetIdentifierDao().findIdentifier("source:iie-demo-fixture", "iie-demo-fixture", "usd-coin")
-        val usdtIdentifier = database.assetIdentifierDao().findIdentifier("source:iie-demo-fixture", "iie-demo-fixture", "tether")
+        val usdcIdentifier = database.assetIdentifierDao()
+            .findForAsset("asset:usd-coin", "source:coinpaprika", "coinpaprika")
+        val usdtIdentifier = database.assetIdentifierDao()
+            .findForAsset("asset:tether", "source:coinpaprika", "coinpaprika")
         assertNotNull(usdcIdentifier)
         assertNotNull(usdtIdentifier)
-        assertEquals("asset:usd-coin", usdcIdentifier?.assetId)
-        assertEquals("asset:tether", usdtIdentifier?.assetId)
-        org.junit.Assert.assertNotEquals(usdcIdentifier?.identifierValue, usdtIdentifier?.identifierValue)
+        assertEquals("usdc-usd-coin", usdcIdentifier?.identifierValue)
+        assertEquals("usdt-tether", usdtIdentifier?.identifierValue)
+        org.junit.Assert.assertNotEquals(usdcIdentifier?.assetId, usdtIdentifier?.assetId)
     }
 
     @Test
     fun coinPaprikaMapsUsdcAndUsdtToDifferentProviderIds() = runBlocking {
-        DemoAssetSeeder(database) { 300L }.seed()
+        InitialAssetCatalog(database) { 300L }.synchronize()
         val usdc = database.assetIdentifierDao().findIdentifier("source:coinpaprika", "coinpaprika", "usdc-usd-coin")
         val usdt = database.assetIdentifierDao().findIdentifier("source:coinpaprika", "coinpaprika", "usdt-tether")
         assertNotNull(usdc)
@@ -609,7 +568,7 @@ class IIEDatabaseTest {
 
     @Test
     fun coinPaprikaMapsBtcEthAndSolToConfirmedProviderIds() = runBlocking {
-        DemoAssetSeeder(database) { 300L }.seed()
+        InitialAssetCatalog(database) { 300L }.synchronize()
         val expected = mapOf(
             "asset:bitcoin" to ("btc-bitcoin" to "BTC"),
             "asset:ethereum" to ("eth-ethereum" to "ETH"),
@@ -628,8 +587,8 @@ class IIEDatabaseTest {
 
     @Test
     fun repeatedSeederPreservesAllCoinPaprikaProviderMappings() = runBlocking {
-        DemoAssetSeeder(database) { 100L }.seed()
-        DemoAssetSeeder(database) { 200L }.seed()
+        InitialAssetCatalog(database) { 100L }.synchronize()
+        InitialAssetCatalog(database) { 200L }.synchronize()
 
         assertEquals("btc-bitcoin", database.assetIdentifierDao()
             .findForAsset("asset:bitcoin", "source:coinpaprika", "coinpaprika")?.identifierValue)
@@ -645,7 +604,7 @@ class IIEDatabaseTest {
 
     @Test
     fun marketQuoteObservationsRemainSeparateForUsdcAndUsdt() = runBlocking {
-        DemoAssetSeeder(database) { 1_800_000_000_000L }.seed()
+        InitialAssetCatalog(database) { 1_800_000_000_000L }.synchronize()
         val sourceId = "source:coinpaprika"
         val dao = database.assetObservationDao()
         dao.insertObservations(
@@ -694,7 +653,7 @@ class IIEDatabaseTest {
     @Test
     fun recentMarketQuoteIsServedFromLocalCacheWithoutNetworkRefresh() = runBlocking {
         val retrievedAt = 1_800_000_000_000L
-        DemoAssetSeeder(database) { retrievedAt }.seed()
+        InitialAssetCatalog(database) { retrievedAt }.synchronize()
         val cachedPayload = """{"schema":"iie.market-quote.v1","providerId":"usdc-usd-coin","symbol":"USDC","quoteCurrency":"USD","price":1.0,"providerUpdatedAtEpochMs":1800000000000,"retrievedAtEpochMs":1800000000000}"""
         database.assetObservationDao().insertObservation(
             AssetObservationEntity(
@@ -730,7 +689,7 @@ class IIEDatabaseTest {
 
     @Test
     fun coinPaprikaQuoteReadRejectsObservationFromAnotherSource() = runBlocking {
-        DemoAssetSeeder(database) { 1_800_000_000_000L }.seed()
+        InitialAssetCatalog(database) { 1_800_000_000_000L }.synchronize()
         database.dataSourceDao().insertSource(
             DataSourceEntity(
                 sourceId = "source:other-market",
@@ -755,7 +714,7 @@ class IIEDatabaseTest {
 
     @Test
     fun coinPaprikaQuoteReadRejectsMismatchedProviderId() = runBlocking {
-        DemoAssetSeeder(database) { 1_800_000_000_000L }.seed()
+        InitialAssetCatalog(database) { 1_800_000_000_000L }.synchronize()
         insertQuote("observation:wrong-provider", "asset:usd-coin", "source:coinpaprika",
             "usdt-tether", "USDC")
 
@@ -767,7 +726,7 @@ class IIEDatabaseTest {
 
     @Test
     fun coinPaprikaQuoteReadRejectsPayloadHashMismatch() = runBlocking {
-        DemoAssetSeeder(database) { 1_800_000_000_000L }.seed()
+        InitialAssetCatalog(database) { 1_800_000_000_000L }.synchronize()
         insertQuote(
             "observation:tampered-payload",
             "asset:usd-coin",
@@ -785,7 +744,7 @@ class IIEDatabaseTest {
 
     @Test
     fun coinPaprikaQuoteReadRejectsMismatchedSymbol() = runBlocking {
-        DemoAssetSeeder(database) { 1_800_000_000_000L }.seed()
+        InitialAssetCatalog(database) { 1_800_000_000_000L }.synchronize()
         insertQuote("observation:wrong-symbol", "asset:usd-coin", "source:coinpaprika",
             "usdc-usd-coin", "USDT")
 
@@ -798,7 +757,7 @@ class IIEDatabaseTest {
     @Test
     fun coinPaprikaDailyHistoryPersistenceIsIdempotentAndKeepsUsdcUsdtSeparate() = runBlocking {
         val now = 1_800_000_000_000L
-        DemoAssetSeeder(database) { now }.seed()
+        InitialAssetCatalog(database) { now }.synchronize()
         val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
         val usdcPoints = listOf(
             CoinPaprikaHistoricalPoint("usdc-usd-coin", now - 172_800_000L, 1.0001, 1200.0, 45_000_000_000.0, now),
@@ -836,7 +795,7 @@ class IIEDatabaseTest {
     @Test
     fun latestPersistedDailyHistoryIsReadInDescendingOrderAndRemainsAssetScoped() = runBlocking {
         val now = 1_800_000_000_000L
-        DemoAssetSeeder(database) { now }.seed()
+        InitialAssetCatalog(database) { now }.synchronize()
         val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
         val usdc = listOf(
             CoinPaprikaHistoricalPoint("usdc-usd-coin", now - 172_800_000L, 1.0001, 100.0, 45_000.0, now),
@@ -861,7 +820,7 @@ class IIEDatabaseTest {
     @Test
     fun coinPaprikaDailyHistoryRejectsWrongProviderAndFutureTimestamp() = runBlocking {
         val now = 1_800_000_000_000L
-        DemoAssetSeeder(database) { now }.seed()
+        InitialAssetCatalog(database) { now }.synchronize()
         val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
 
         assertThrows(IllegalArgumentException::class.java) {
@@ -888,7 +847,7 @@ class IIEDatabaseTest {
     @Test
     fun coinPaprikaDailyHistoryRejectsDuplicateTimestampsWithinBatch(): Unit = runBlocking {
         val now = 1_800_000_000_000L
-        DemoAssetSeeder(database) { now }.seed()
+        InitialAssetCatalog(database) { now }.synchronize()
         val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
         val duplicate = CoinPaprikaHistoricalPoint("usdc-usd-coin", now - 1_000L, 1.0, null, null, now)
 
@@ -905,7 +864,7 @@ class IIEDatabaseTest {
     @Test
     fun controlledHistoryDownloadUsesConfirmedProviderIdAndReportsInsertCounts(): Unit = runBlocking {
         val now = 1_800_000_000_000L
-        DemoAssetSeeder(database) { now }.seed()
+        InitialAssetCatalog(database) { now }.synchronize()
         val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
         val requestedProviderIds = mutableListOf<String>()
         val start = LocalDate.ofEpochDay(now / 86_400_000L - 2L)
@@ -947,7 +906,7 @@ class IIEDatabaseTest {
     @Test
     fun controlledHistoryDownloadRejectsSymbolMismatchBeforeCallingFetcher(): Unit = runBlocking {
         val now = 1_800_000_000_000L
-        DemoAssetSeeder(database) { now }.seed()
+        InitialAssetCatalog(database) { now }.synchronize()
         val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
         var fetchCalled = false
         val fetcher = object : CoinPaprikaDailyHistoryFetcher {
@@ -976,7 +935,7 @@ class IIEDatabaseTest {
     @Test
     fun controlledHistoryDownloadRejectsRequestsOlderThanOneYearBeforeCallingFetcher(): Unit = runBlocking {
         val now = 1_800_000_000_000L
-        DemoAssetSeeder(database) { now }.seed()
+        InitialAssetCatalog(database) { now }.synchronize()
         val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
         var fetchCalled = false
         val fetcher = object : CoinPaprikaDailyHistoryFetcher {
