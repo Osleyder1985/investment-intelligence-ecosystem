@@ -116,8 +116,10 @@ object AssetResearchDossierSnapshotCodec {
                 circulatingSupply = decodeDoubleEvidence(json.getJSONObject("circulatingSupply")),
                 totalSupply = decodeDoubleEvidence(json.getJSONObject("totalSupply")),
                 maxSupply = decodeDoubleEvidence(json.getJSONObject("maxSupply")),
-                marketCapUsd = decodeDoubleEvidence(json.getJSONObject("marketCapUsd")),
-                fullyDilutedMarketCapUsd = decodeDoubleEvidence(json.getJSONObject("fullyDilutedMarketCapUsd")),
+                marketCapUsd = json.optJSONObject("marketCapUsd")?.let(::decodeDoubleEvidence)
+                    ?: unknownDoubleEvidence("marketCapUsd"),
+                fullyDilutedMarketCapUsd = json.optJSONObject("fullyDilutedMarketCapUsd")?.let(::decodeDoubleEvidence)
+                    ?: unknownDoubleEvidence("fullyDilutedMarketCapUsd"),
                 annualInflationPercent = decodeDoubleEvidence(json.getJSONObject("annualInflationPercent")),
                 emissionSchedule = decodeStringEvidence(json.getJSONObject("emissionSchedule")),
                 unlockEvents = (0 until json.getJSONArray("unlockEvents").length()).map { index ->
@@ -147,6 +149,20 @@ object AssetResearchDossierSnapshotCodec {
         .digest(value.toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }
 
+
+    private fun unknownDoubleEvidence(fieldKey: String) = ResearchEvidence<Double>(
+        fieldKey = fieldKey,
+        value = null,
+        status = ResearchFieldStatus.UNKNOWN,
+        sourceId = null,
+        sourceName = null,
+        sourceUrl = null,
+        licenseReference = null,
+        permittedUseStatus = "UNKNOWN",
+        observedAtEpochMs = null,
+        retrievedAtEpochMs = null,
+        qualityStatus = "NOT_AVAILABLE"
+    )
 
     private fun encodeDoubleEvidence(evidence: ResearchEvidence<Double>): JSONObject =
         encodeEvidence(evidence).put("value", evidence.value ?: JSONObject.NULL)
