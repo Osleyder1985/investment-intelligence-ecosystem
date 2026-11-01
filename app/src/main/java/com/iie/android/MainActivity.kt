@@ -654,7 +654,9 @@ private fun ResearchDossierDetails(dossier: AssetResearchDossier?) {
             listOf(
                 evidence.circulatingSupply,
                 evidence.totalSupply,
-                evidence.maxSupply
+                evidence.maxSupply,
+                evidence.marketCapUsd,
+                evidence.fullyDilutedMarketCapUsd
             ).forEach { field ->
                 val valueText = field.value?.let {
                     String.format(java.util.Locale.US, "%,.8f", it)
