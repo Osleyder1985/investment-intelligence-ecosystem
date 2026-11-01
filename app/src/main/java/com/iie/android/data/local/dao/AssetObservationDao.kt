@@ -91,6 +91,9 @@ interface AssetObservationDao {
         limit: Int
     ): List<AssetObservationEntity>
 
+    @Query("DELETE FROM asset_observations WHERE sourceId = :sourceId AND observationType = :observationType")
+    suspend fun deleteBySourceAndType(sourceId: String, observationType: String)
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertObservation(observation: AssetObservationEntity)
 
