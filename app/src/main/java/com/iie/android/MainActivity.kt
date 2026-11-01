@@ -45,6 +45,7 @@ import com.iie.android.domain.model.ObservationQualityEvaluation
 import com.iie.android.presentation.AssetExplorerViewModel
 import com.iie.android.presentation.EvidenceEvaluationUiState
 import com.iie.android.presentation.MarketQuoteUiState
+import com.iie.android.presentation.MarketHistorySyncUiState
 import java.text.DateFormat
 import java.util.Date
 
@@ -178,6 +179,8 @@ private fun AssetDetailDialog(
     val evidenceState by viewModel.evidenceEvaluation.collectAsState()
     val marketQuotes by viewModel.marketQuotes.collectAsState()
     val marketQuote = marketQuotes[asset.assetId]
+    val historySyncStates by viewModel.marketHistorySync.collectAsState()
+    val historySync = historySyncStates[asset.assetId]
 
     LaunchedEffect(asset.assetId) {
         viewModel.evaluateLatestEvidence(asset.assetId)
@@ -218,6 +221,19 @@ private fun AssetDetailDialog(
                     quote = marketQuote,
                     onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) }
                 )
+
+                if (asset.symbol == "USDC" || asset.symbol == "USDT") {
+                    Spacer(Modifier.height(10.dp))
+                    Text("Histórico diario · CoinPaprika", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Importa hasta un año de puntos diarios de precio, volumen y capitalización. No son velas OHLCV ni precios ejecutables.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    MarketHistorySyncDetails(
+                        state = historySync,
+                        onDownload = { viewModel.downloadDailyMarketHistory(asset.assetId, asset.symbol) }
+                    )
+                }
 
                 Spacer(Modifier.height(12.dp))
                 Text("Procedencia de los datos", fontWeight = FontWeight.SemiBold)
@@ -295,6 +311,27 @@ private fun MarketQuoteDetails(
     }
     TextButton(onClick = onRefresh, enabled = quote?.isLoading != true) {
         Text(if (quote?.isLoading == true) "Consultando proveedor…" else "Actualizar cotización")
+    }
+}
+
+
+@Composable
+private fun MarketHistorySyncDetails(
+    state: MarketHistorySyncUiState?,
+    onDownload: () -> Unit
+) {
+    state?.message?.let {
+        Text(it, style = MaterialTheme.typography.bodySmall)
+    }
+    if (state?.error != null) {
+        Text(
+            "Error de histórico: ${state.error}",
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+    TextButton(onClick = onDownload, enabled = state?.isLoading != true) {
+        Text(if (state?.isLoading == true) "Descargando e importando…" else "Descargar último año")
     }
 }
 
