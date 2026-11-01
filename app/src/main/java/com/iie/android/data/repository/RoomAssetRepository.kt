@@ -9,6 +9,7 @@ import com.iie.android.data.market.CoinMarketCapAuthenticatedClient
 import com.iie.android.data.market.CoinPaprikaQuote
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.CoinPaprikaDailyHistoryFetcher
+import com.iie.android.data.market.RoutescanTokenSupplyClient
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.security.MessageDigest
@@ -122,6 +123,137 @@ class RoomAssetRepository(
         ) to source.permittedUseStatus
     }
 
+
+    /**
+     * Reads ERC-20 supply only through a registered, verified deployment. The raw uint256
+     * remains a decimal string in the immutable observation payload.
+     */
+    suspend fun fetchAndPersistRoutescanTokenSupply(
+        assetId: String,
+        deploymentId: String,
+        client: RoutescanTokenSupplyClient
+    ): AssetObservationEntity {
+        val sourceId = "source:routescan"
+        val source = database.dataSourceDao().getSource(sourceId)
+            ?: error("Routescan source is not registered")
+        check(source.permittedUseStatus == "PERSONAL_USE_ONLY") {
+            "Routescan source is not enabled for this app's personal-use scope"
+        }
+        val asset = database.assetDao().getAsset(assetId)
+            ?: error("Cannot query an unknown IIE asset")
+        val deployment = database.assetDeploymentDao().getDeployment(deploymentId)
+            ?: error("No verified deployment is registered for this asset")
+        require(deployment.assetId == assetId) { "Deployment does not belong to this asset" }
+        require(deployment.representationKind == "ERC20" && deployment.namespace == "eip155") {
+            "Routescan ERC-20 supply requires an EVM contract deployment"
+        }
+        val contractAddress = deployment.reference
+            ?: error("Verified deployment is missing its contract address")
+        val network = database.networkDao().getNetwork(deployment.networkId)
+            ?: error("Deployment network is not registered")
+        val chainId = network.chainId
+            ?: error("Deployment network is missing its EVM chain ID")
+        require(chainId.matches(Regex("[1-9][0-9]*"))) { "Invalid registered EVM chain ID" }
+
+        val cached = database.assetObservationDao().getLatestForSource(
+            assetId = assetId,
+            observationType = ROUTESCAN_TOKEN_SUPPLY_OBSERVATION_TYPE,
+            sourceId = sourceId
+        )
+        val now = nowEpochMs()
+        if (cached != null && cached.deploymentId == deploymentId &&
+            now >= cached.retrievedAtEpochMs &&
+            now - cached.retrievedAtEpochMs < ON_CHAIN_SUPPLY_CACHE_TTL_MS &&
+            cachedRoutescanSupplyMatches(cached, chainId, contractAddress)
+        ) return cached
+
+        val result = client.fetch(chainId = chainId, contractAddress = contractAddress)
+        require(result.chainId == chainId && result.contractAddress.equals(contractAddress, true)) {
+            "Routescan response does not match the registered deployment"
+        }
+        require(deployment.decimals == null || deployment.decimals == result.amount.decimals) {
+            "On-chain decimals do not match the verified deployment metadata"
+        }
+        val retrievedAt = nowEpochMs()
+        require(result.retrievedAtEpochMs in 1L..retrievedAt) {
+            "Routescan retrieval timestamp is outside accepted bounds"
+        }
+        val payload = JSONObject()
+            .put("schema", "iie.onchain-token-supply.v1")
+            .put("assetSymbol", asset.symbol.uppercase())
+            .put("deploymentId", deploymentId)
+            .put("chainId", result.chainId)
+            .put("contractAddress", result.contractAddress)
+            .put("rawAmount", result.amount.rawAmount)
+            .put("decimals", result.amount.decimals)
+            .put("decimalAmount", result.amount.toDecimalString())
+            .put("blockNumber", result.blockNumber)
+            .put("retrievedAtEpochMs", result.retrievedAtEpochMs)
+            .toString()
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(payload.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        val observation = AssetObservationEntity(
+            observationId = "observation:routescan:${UUID.randomUUID()}",
+            assetId = assetId,
+            deploymentId = deploymentId,
+            sourceId = sourceId,
+            observationType = ROUTESCAN_TOKEN_SUPPLY_OBSERVATION_TYPE,
+            observedAtEpochMs = null,
+            retrievedAtEpochMs = result.retrievedAtEpochMs,
+            status = "ACCEPTED",
+            quality = "PINNED_BLOCK_RPC_RESULT",
+            valueSchemaVersion = 1,
+            valueJson = payload,
+            payloadSha256 = digest,
+            licenseReference = source.termsUrl
+        )
+        database.assetObservationDao().insertObservation(observation)
+        return observation
+    }
+
+    suspend fun getLatestRoutescanTokenSupply(
+        assetId: String,
+        deploymentId: String
+    ): AssetObservationEntity? {
+        val sourceId = "source:routescan"
+        val deployment = database.assetDeploymentDao().getDeployment(deploymentId) ?: return null
+        if (deployment.assetId != assetId || deployment.representationKind != "ERC20") return null
+        val observation = database.assetObservationDao().getLatestForSource(
+            assetId = assetId,
+            observationType = ROUTESCAN_TOKEN_SUPPLY_OBSERVATION_TYPE,
+            sourceId = sourceId
+        ) ?: return null
+        val network = database.networkDao().getNetwork(deployment.networkId) ?: return null
+        val chainId = network.chainId ?: return null
+        val contractAddress = deployment.reference ?: return null
+        return observation.takeIf {
+            it.deploymentId == deploymentId &&
+                cachedRoutescanSupplyMatches(it, chainId, contractAddress)
+        }
+    }
+
+    private fun cachedRoutescanSupplyMatches(
+        observation: AssetObservationEntity,
+        expectedChainId: String,
+        expectedContractAddress: String
+    ): Boolean = try {
+        val payload = JSONObject(observation.valueJson)
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(observation.valueJson.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        payload.optString("schema") == "iie.onchain-token-supply.v1" &&
+            payload.optString("chainId") == expectedChainId &&
+            payload.optString("contractAddress").equals(expectedContractAddress, true) &&
+            payload.optString("rawAmount").matches(Regex("0|[1-9][0-9]*")) &&
+            payload.optInt("decimals", -1) in 0..255 &&
+            payload.optLong("blockNumber", -1L) > 0L &&
+            payload.optLong("retrievedAtEpochMs", -1L) == observation.retrievedAtEpochMs &&
+            observation.status == "ACCEPTED" &&
+            observation.payloadSha256 == digest
+    } catch (_: Exception) {
+        false
+    }
 
     /**
      * Fetches by the registered CoinPaprika identifier (never by ticker symbol),
@@ -575,6 +707,8 @@ class RoomAssetRepository(
 
     companion object {
         const val MARKET_QUOTE_OBSERVATION_TYPE = "MARKET_QUOTE"
+        const val ROUTESCAN_TOKEN_SUPPLY_OBSERVATION_TYPE = "ONCHAIN_TOKEN_SUPPLY"
+        const val ON_CHAIN_SUPPLY_CACHE_TTL_MS = 10 * 60 * 1000L
         const val MARKET_HISTORY_DAILY_OBSERVATION_TYPE = "MARKET_HISTORY_DAILY"
         const val QUOTE_CACHE_TTL_MS = 10 * 60 * 1000L
     }
