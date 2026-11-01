@@ -1,6 +1,7 @@
 package com.iie.android.data.market
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -15,7 +16,7 @@ class HistoricalRiskAnalyzerTest {
     @Test fun calculatesAnnualizedVolatilityFromConsecutiveDailyReturns() {
         val result = analyzer.analyze(points(listOf(100.0, 101.0, 100.0, 102.0, 101.0, 103.0, 102.0, 104.0, 103.0)))
         assertEquals(8, result.dailyReturns)
-        assertEquals(true, result.annualizedVolatilityPercent != null)
+        assertNotNull(result.annualizedVolatilityPercent)
     }
 
     @Test fun calculatesPeakToTroughMaximumDrawdown() {
@@ -28,8 +29,8 @@ class HistoricalRiskAnalyzerTest {
         assertNull(short.historicalVar95Percent)
         assertNull(short.historicalExpectedShortfall95Percent)
         val enough = analyzer.analyze(points((0..31).map { 100.0 + it * 0.2 + if (it == 20) -5.0 else 0.0 }))
-        assertEquals(true, enough.historicalVar95Percent != null)
-        assertEquals(true, enough.historicalExpectedShortfall95Percent != null)
+        assertNotNull(enough.historicalVar95Percent)
+        assertNotNull(enough.historicalExpectedShortfall95Percent)
     }
 
     @Test fun ignoresGapsAndDuplicateTimestampsForReturnCalculations() {
@@ -38,8 +39,9 @@ class HistoricalRiskAnalyzerTest {
             if (index >= 4) point.copy(timestampEpochMs = point.timestampEpochMs + day * 4) else point
         } + all.first()
         val result = analyzer.analyze(withGap)
+        // The five-day gap is excluded, while the seven remaining daily intervals are retained.
         assertEquals(7, result.dailyReturns)
-        assertNull(result.annualizedVolatilityPercent)
+        assertNotNull(result.annualizedVolatilityPercent)
     }
 
     @Test fun rejectsInvalidPricesAndReturnsUnknownRiskForInsufficientHistory() {
