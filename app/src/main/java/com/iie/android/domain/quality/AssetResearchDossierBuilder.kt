@@ -10,6 +10,7 @@ import com.iie.android.domain.model.ResearchFieldStatus
 import com.iie.android.domain.model.ResearchQuoteInput
 import com.iie.android.domain.model.ResearchMarketHistoryPoint
 import com.iie.android.domain.model.ResearchQuoteComparisonInput
+import com.iie.android.domain.model.TokenomicsResearchSection
 
 /** Builds a transparent dossier from provider-validated observations; never infers investment merit. */
 class AssetResearchDossierBuilder {
@@ -20,7 +21,8 @@ class AssetResearchDossierBuilder {
         history: List<ResearchMarketHistoryPoint>,
         provenance: List<AssetObservationProvenance>,
         generatedAtEpochMs: Long,
-        quoteComparison: ResearchQuoteComparisonInput? = null
+        quoteComparison: ResearchQuoteComparisonInput? = null,
+        tokenomicsEvidence: TokenomicsResearchSection? = null
     ): AssetResearchDossier {
         require(generatedAtEpochMs > 0L)
         val validQuote = quote?.priceUsd?.takeIf { it.isFinite() && it > 0.0 }
@@ -73,6 +75,21 @@ class AssetResearchDossierBuilder {
                 quoteComparisonSecondaryObservationId = quoteComparison?.secondaryObservationId,
                 quoteComparedAtEpochMs = comparison.comparedAtEpochMs
             ),
+            tokenomics = when {
+                tokenomicsEvidence == null -> ResearchFieldStatus.UNKNOWN
+                listOf(
+                    tokenomicsEvidence.circulatingSupply,
+                    tokenomicsEvidence.totalSupply,
+                    tokenomicsEvidence.maxSupply
+                ).any { it.status == ResearchFieldStatus.CONFLICTED } -> ResearchFieldStatus.CONFLICTED
+                listOf(
+                    tokenomicsEvidence.circulatingSupply,
+                    tokenomicsEvidence.totalSupply,
+                    tokenomicsEvidence.maxSupply
+                ).all { it.status == ResearchFieldStatus.KNOWN } -> ResearchFieldStatus.KNOWN
+                else -> ResearchFieldStatus.UNKNOWN
+            },
+            tokenomicsEvidence = tokenomicsEvidence,
             evidenceCount = provenance.size,
             generatedAtEpochMs = generatedAtEpochMs
         )
