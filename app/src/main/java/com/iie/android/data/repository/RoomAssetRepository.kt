@@ -495,7 +495,8 @@ class RoomAssetRepository(
             "Historical batch contains duplicate timestamps"
         }
         require(points.all { point ->
-            point.providerId == identifier.identifierValue &&
+            point.sourceId == sourceId &&
+                point.providerId == identifier.identifierValue &&
                 point.retrievedAtEpochMs in 1L..now &&
                 point.timestampEpochMs > 0L &&
                 point.timestampEpochMs <= point.retrievedAtEpochMs &&
@@ -507,6 +508,7 @@ class RoomAssetRepository(
         val observations = points.distinctBy { it.timestampEpochMs }.map { point ->
             val payload = JSONObject()
                 .put("schema", "iie.market-history-daily.v1")
+                .put("sourceId", point.sourceId)
                 .put("providerId", point.providerId)
                 .put("symbol", asset.symbol.uppercase())
                 .put("interval", "1d")
@@ -623,6 +625,10 @@ class RoomAssetRepository(
                     .digest(observation.valueJson.toByteArray(Charsets.UTF_8))
                     .joinToString("") { "%02x".format(it) }
                 if (payload.optString("schema") != "iie.market-history-daily.v1" ||
+                    // Older v1 snapshots predate the explicit field; their Room sourceId
+                    // is authoritative and remains a safe migration fallback.
+                    payload.optString("sourceId", sourceId) != sourceId ||
+                    observation.sourceId != sourceId ||
                     payload.optString("providerId") != identifier.identifierValue ||
                     !payload.optString("symbol").equals(asset.symbol, ignoreCase = true) ||
                     payload.optString("interval") != "1d" ||
@@ -644,7 +650,8 @@ class RoomAssetRepository(
                     priceUsd = price,
                     volume24hUsd = volume,
                     marketCapUsd = marketCap,
-                    retrievedAtEpochMs = retrieved
+                    retrievedAtEpochMs = retrieved,
+                    sourceId = sourceId
                 )
             } catch (_: Exception) {
                 null

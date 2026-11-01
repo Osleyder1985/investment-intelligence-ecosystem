@@ -70,6 +70,44 @@ class HistoricalRiskAnalyzerTest {
         assertEquals(forward.maximumDrawdownPercent!!, reversed.maximumDrawdownPercent!!, 0.0)
     }
 
+
+    @Test fun keepsSameTimestampPriceDivergenceAcrossDifferentSources() {
+        val start = 1_700_000_000_000L
+        val observations = listOf(
+            CoinPaprikaHistoricalPoint("btc-bitcoin", start, 100.0, null, null, start, "source:coinpaprika"),
+            CoinPaprikaHistoricalPoint("btc-bitcoin", start + day, 110.0, null, null, start, "source:coinpaprika"),
+            CoinPaprikaHistoricalPoint("btc-bitcoin", start, 101.0, null, null, start, "source:coinmarketcap"),
+            CoinPaprikaHistoricalPoint("btc-bitcoin", start + day, 111.0, null, null, start, "source:coinmarketcap")
+        )
+
+        val bySource = analyzer.analyzeBySource(observations)
+        assertEquals(setOf("source:coinmarketcap", "source:coinpaprika"), bySource.keys)
+        assertEquals(2, bySource.getValue("source:coinpaprika").observations)
+        assertEquals(2, bySource.getValue("source:coinmarketcap").observations)
+        assertEquals(1, bySource.getValue("source:coinpaprika").dailyReturns)
+        assertEquals(1, bySource.getValue("source:coinmarketcap").dailyReturns)
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            analyzer.analyze(observations)
+        }
+
+        val canonical = analyzer.selectCanonicalSeries(
+            observations,
+            listOf("source:coinmarketcap", "source:coinpaprika")
+        )
+        assertEquals("source:coinmarketcap", canonical?.sourceId)
+        assertEquals(101.0, canonical?.points?.first()?.priceUsd ?: 0.0, 0.0)
+    }
+
+    @Test fun canonicalSelectionDoesNotInventFallbackSourcesOrBlendSeries() {
+        val start = 1_700_000_000_000L
+        val points = listOf(
+            CoinPaprikaHistoricalPoint("btc-bitcoin", start, 100.0, null, null, start, "source:coinpaprika"),
+            CoinPaprikaHistoricalPoint("btc-bitcoin", start + day, 110.0, null, null, start, "source:coinpaprika")
+        )
+        assertNull(analyzer.selectCanonicalSeries(points, listOf("source:coinmarketcap")))
+        assertEquals("source:coinpaprika", analyzer.selectCanonicalSeries(points, listOf("source:coinmarketcap", "source:coinpaprika"))?.sourceId)
+    }
+
     @Test fun rejectsInvalidPricesAndReturnsUnknownRiskForInsufficientHistory() {
         val result = analyzer.analyze(listOf(
             CoinPaprikaHistoricalPoint("btc-bitcoin", 1L, -1.0, null, null, 1L),

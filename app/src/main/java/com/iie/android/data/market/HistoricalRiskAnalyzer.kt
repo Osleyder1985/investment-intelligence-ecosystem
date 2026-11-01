@@ -15,6 +15,16 @@ data class AssetRiskMetrics(
     val historicalExpectedShortfall95Percent: Double?
 )
 
+/**
+ * A canonical historical series is always sourced from exactly one provider.
+ * The priority list is an explicit policy; observations from different sources
+ * are never averaged or interleaved to manufacture a price path.
+ */
+data class CanonicalHistoricalSeries(
+    val sourceId: String,
+    val points: List<CoinPaprikaHistoricalPoint>
+)
+
 class HistoricalRiskAnalyzer(
     private val minimumVolatilityReturns: Int = 7,
     private val minimumTailReturns: Int = 30
@@ -24,11 +34,20 @@ class HistoricalRiskAnalyzer(
         require(minimumTailReturns >= minimumVolatilityReturns)
     }
 
+    /**
+     * Analyze one provider's observations. Mixing sources is a caller error:
+     * use analyzeBySource() or selectCanonicalSeries() first.
+     */
     fun analyze(points: List<CoinPaprikaHistoricalPoint>): AssetRiskMetrics {
-        // A timestamp with conflicting prices is ambiguous: discard the entire bucket
+        val sourceIds = points.map { it.sourceId }.distinct()
+        require(sourceIds.size <= 1 && sourceIds.none { it.isBlank() }) {
+            "Historical risk analysis requires one explicit data source; separate providers before analysis"
+        }
+        // A timestamp with conflicting prices inside this provider is ambiguous:
+        // discard the entire bucket
         // rather than letting input order decide which observation survives.
         val ordered = points.asSequence()
-            .filter { it.priceUsd.isFinite() && it.priceUsd > 0.0 && it.timestampEpochMs > 0L }
+            .filter { it.sourceId.isNotBlank() && it.priceUsd.isFinite() && it.priceUsd > 0.0 && it.timestampEpochMs > 0L }
             .groupBy { it.timestampEpochMs }
             .values
             .mapNotNull { sameTimestamp ->
@@ -72,6 +91,37 @@ class HistoricalRiskAnalyzer(
             historicalVar95Percent = var95?.takeIf { it.isFinite() },
             historicalExpectedShortfall95Percent = expectedShortfall?.takeIf { it.isFinite() }
         )
+    }
+
+    /** Preserve and analyze each provider independently, including same-time price divergences. */
+    fun analyzeBySource(points: List<CoinPaprikaHistoricalPoint>): Map<String, AssetRiskMetrics> =
+        points.asSequence()
+            .filter { it.sourceId.isNotBlank() }
+            .groupBy { it.sourceId }
+            .toSortedMap()
+            .mapValues { (_, sourcePoints) -> analyze(sourcePoints) }
+
+    /**
+     * Select one complete provider series using caller-supplied priority.
+     * No implicit averaging, timestamp-level cross-provider deduplication, or fallback
+     * to an unlisted provider is permitted.
+     */
+    fun selectCanonicalSeries(
+        points: List<CoinPaprikaHistoricalPoint>,
+        sourcePriority: List<String>
+    ): CanonicalHistoricalSeries? {
+        require(sourcePriority.none { it.isBlank() } && sourcePriority.distinct().size == sourcePriority.size) {
+            "Source priority must contain unique, non-blank source IDs"
+        }
+        val grouped = points.filter { it.sourceId.isNotBlank() }.groupBy { it.sourceId }
+        for (sourceId in sourcePriority) {
+            val candidate = grouped[sourceId] ?: continue
+            val valid = candidate.filter {
+                it.timestampEpochMs > 0L && it.priceUsd.isFinite() && it.priceUsd > 0.0
+            }.sortedBy { it.timestampEpochMs }
+            if (valid.size >= 2) return CanonicalHistoricalSeries(sourceId, valid)
+        }
+        return null
     }
 
     private fun percentile(sorted: List<Double>, probability: Double): Double {

@@ -19,6 +19,7 @@ class CoinPaprikaHistoricalTickerClientTest {
         val points = client.parse(valid, "usdc-usd-coin", retrieved, start, LocalDate.parse("2026-10-02"))
         assertEquals(2, points.size)
         assertEquals("usdc-usd-coin", points.first().providerId)
+        assertEquals(CoinPaprikaHistoricalTickerClient.SOURCE_ID, points.first().sourceId)
         assertEquals(0.999, points.first().priceUsd, 0.000001)
         assertEquals(retrieved, points.first().retrievedAtEpochMs)
         assertEquals(1_200.5, points.last().volume24hUsd!!, 0.000001)
