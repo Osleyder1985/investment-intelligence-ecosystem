@@ -58,7 +58,7 @@ class CoinMarketCapKeylessClientTest {
             "\"quote\": [{\n            \"symbol\": \"USD\","
         ).replace(
             "\n          }\n        }",
-            "\n          }]\n        }"
+            "\n          ]\n        }"
         )
         val arrayPayload = """
             {"status":{"error_code":"0"},"data":[$item]}
