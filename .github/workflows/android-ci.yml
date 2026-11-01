@@ -111,15 +111,7 @@ jobs:
           emulator-options: "-no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -camera-back none"
           disable-animations: true
           script: |
-            set +e
-            adb logcat -c
-            gradle :app:connectedDebugAndroidTest
-            test_exit_code=$?
-            mkdir -p app/build/diagnostics
-            adb logcat -d -v threadtime > app/build/diagnostics/emulator-logcat.txt
-            adb shell dumpsys activity processes > app/build/diagnostics/activity-processes.txt 2>&1
-            adb shell dumpsys package com.iie.android.test > app/build/diagnostics/test-package.txt 2>&1
-            exit "$test_exit_code"
+            bash -c 'set +e; adb logcat -c; gradle :app:connectedDebugAndroidTest; test_exit_code=$?; mkdir -p app/build/diagnostics; adb logcat -d -v threadtime > app/build/diagnostics/emulator-logcat.txt; adb shell dumpsys activity processes > app/build/diagnostics/activity-processes.txt 2>&1; adb shell dumpsys package com.iie.android.test > app/build/diagnostics/test-package.txt 2>&1; exit "$test_exit_code"'
 
       - name: Upload emulator diagnostics
         if: always()
