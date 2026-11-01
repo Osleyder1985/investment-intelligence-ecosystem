@@ -25,6 +25,96 @@ fun interface CoinMarketCapDailyHistoryFetcher {
     ): List<CoinPaprikaHistoricalPoint>
 }
 
+
+/** Usage metadata returned by CMC's zero-credit key-info endpoint. */
+data class CoinMarketCapKeyValidation(
+    val monthlyCreditLimit: Long?,
+    val monthlyCreditsLeft: Long?
+)
+
+/**
+ * Validates a credential without spending historical-data credits.
+ * CMC documents /v1/key/info as zero-credit, though it still consumes a minute-rate slot.
+ */
+class CoinMarketCapApiKeyValidator(
+    private val connectTimeoutMs: Int = 8_000,
+    private val readTimeoutMs: Int = 8_000,
+    private val maxResponseBytes: Int = 64 * 1024
+) {
+    suspend fun validate(apiKey: String): CoinMarketCapKeyValidation = withContext(Dispatchers.IO) {
+        require(apiKey.isNotBlank() && apiKey.length <= 256 && apiKey.none { it.isWhitespace() }) {
+            "El formato de la API key no es válido"
+        }
+        val connection = (URL(BASE_URL).openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = connectTimeoutMs
+            readTimeout = readTimeoutMs
+            instanceFollowRedirects = false
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("X-CMC_PRO_API_KEY", apiKey)
+            setRequestProperty("User-Agent", "IIE-Android-Personal/0.3")
+        }
+        try {
+            val statusCode = connection.responseCode
+            val stream = if (statusCode in 200..299) connection.inputStream else connection.errorStream
+            val payload = stream?.use { input ->
+                val output = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(4096)
+                var total = 0
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    if (total > maxResponseBytes) throw IOException("CoinMarketCap key-info response exceeds size limit")
+                    output.write(buffer, 0, count)
+                }
+                output.toString(Charsets.UTF_8.name())
+            }.orEmpty()
+            if (statusCode != HttpURLConnection.HTTP_OK) {
+                val code = runCatching {
+                    Json.parseToJsonElement(payload).jsonObject["status"]?.jsonObject
+                        ?.get("error_code")?.jsonPrimitive?.contentOrNull
+                }.getOrNull()
+                throw IOException("CoinMarketCap rechazó la credencial (HTTP $statusCode" +
+                    (code?.let { ", error $it" } ?: "") + ")")
+            }
+            parseKeyInfo(payload)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    internal fun parseKeyInfo(payload: String): CoinMarketCapKeyValidation {
+        val root = try { Json.parseToJsonElement(payload).jsonObject } catch (error: Exception) {
+            throw IOException("Respuesta de validación CoinMarketCap no válida", error)
+        }
+        val status = root["status"]?.jsonObject
+            ?: throw IOException("CoinMarketCap key-info response is missing status")
+        val errorCode = status["error_code"]?.jsonPrimitive?.contentOrNull
+        if (errorCode != null && errorCode != "0") {
+            throw IOException("CoinMarketCap key-info API error: $errorCode")
+        }
+        val data = root["data"]?.jsonObject
+            ?: throw IOException("CoinMarketCap key-info response is missing data")
+        val plan = data["plan"]?.jsonObject
+        val usage = data["usage"]?.jsonObject?.get("current_month")?.jsonObject
+        fun optionalLong(value: kotlinx.serialization.json.JsonElement?): Long? {
+            if (value == null || value.toString() == "null") return null
+            return value.jsonPrimitive.contentOrNull?.toLongOrNull()
+                ?.takeIf { it >= 0L }
+                ?: throw IOException("CoinMarketCap returned invalid monthly usage metadata")
+        }
+        return CoinMarketCapKeyValidation(
+            monthlyCreditLimit = optionalLong(plan?.get("credit_limit_monthly")),
+            monthlyCreditsLeft = optionalLong(usage?.get("credits_left"))
+        )
+    }
+
+    companion object {
+        const val BASE_URL = "https://pro-api.coinmarketcap.com/v1/key/info"
+    }
+}
+
 /** CMC Basic historical daily quotes; this is not an OHLCV candle adapter. */
 class CoinMarketCapHistoricalQuotesClient(
     private val connectTimeoutMs: Int = 8_000,
