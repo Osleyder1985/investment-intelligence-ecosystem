@@ -310,7 +310,7 @@ private fun MarketAssetRow(
                     Text(asset.symbol.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(quote?.priceUsd?.let { "$" + String.format(java.util.Locale.US, "%,.6f", it) } ?: "Cotización no disponible",
+                    Text(quote?.priceUsd?.let { "\$" + String.format(java.util.Locale.US, "%,.6f", it) } ?: "Cotización no disponible",
                         fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     Text(when { quote?.isLoading == true -> "ACTUALIZANDO"; quote?.freshnessStatus == "FRESH" -> "PRECIO ACTUALIZADO"; quote?.freshnessStatus != null -> quote.freshnessStatus; else -> "SIN DATOS DE MERCADO" },
                         style = MaterialTheme.typography.labelSmall, color = if (quote?.freshnessStatus == "FRESH") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -461,10 +461,10 @@ private fun historicalVolatilityPercent(points: List<CoinPaprikaHistoricalPoint>
 private fun formatCompactUsd(value: Double?): String {
     if (value == null || !value.isFinite()) return "Sin datos"
     return when {
-        value >= 1_000_000_000_000.0 -> "$" + String.format(java.util.Locale.US, "%.2f T", value / 1_000_000_000_000.0)
-        value >= 1_000_000_000.0 -> "$" + String.format(java.util.Locale.US, "%.2f B", value / 1_000_000_000.0)
-        value >= 1_000_000.0 -> "$" + String.format(java.util.Locale.US, "%.2f M", value / 1_000_000.0)
-        else -> "$" + String.format(java.util.Locale.US, "%,.0f", value)
+        value >= 1_000_000_000_000.0 -> "\$" + String.format(java.util.Locale.US, "%.2f T", value / 1_000_000_000_000.0)
+        value >= 1_000_000_000.0 -> "\$" + String.format(java.util.Locale.US, "%.2f B", value / 1_000_000_000.0)
+        value >= 1_000_000.0 -> "\$" + String.format(java.util.Locale.US, "%.2f M", value / 1_000_000.0)
+        else -> "\$" + String.format(java.util.Locale.US, "%,.0f", value)
     }
 }
 
@@ -711,7 +711,7 @@ private fun AssetDetailDialog(
                         Text("PRECIO DE MERCADO · USD", style = MaterialTheme.typography.labelSmall,
                             color = Color(0xFF9BB8AD), fontWeight = FontWeight.Bold)
                         Text(
-                            marketQuote?.priceUsd?.let { "$" + String.format(java.util.Locale.US, "%,.4f", it) }
+                            marketQuote?.priceUsd?.let { "\$" + String.format(java.util.Locale.US, "%,.4f", it) }
                                 ?: "Cotización no disponible",
                             style = MaterialTheme.typography.headlineMedium,
                             color = Color(0xFFF0F7F3), fontWeight = FontWeight.Bold
@@ -882,7 +882,7 @@ private fun ResearchDossierDetails(dossier: AssetResearchDossier?) {
         Text("Identidad: ${dossier.identityStatus} · evaluación: ${dossier.identityAssessment}")
         Text("Evidencias registradas: ${dossier.evidenceCount}")
         Text("Cotización: " + (market.priceUsd?.let {
-            "$" + String.format(java.util.Locale.US, "%.8f", it) + " USD"
+            "\$" + String.format(java.util.Locale.US, "%.8f", it) + " USD"
         } ?: "UNKNOWN"))
         Text("Fuente: ${market.provider ?: "UNKNOWN"} · frescura: ${market.freshnessStatus}")
         Text("Puntos históricos: ${market.historyPointCount}")
@@ -895,9 +895,9 @@ private fun ResearchDossierDetails(dossier: AssetResearchDossier?) {
             (market.quoteComparisonPrimaryObservationId ?: "N/D") + " / " +
             (market.quoteComparisonSecondaryObservationId ?: "N/D"))
         Text("Máximo / mínimo del histórico: " + (market.periodHighUsd?.let {
-            "$" + String.format(java.util.Locale.US, "%.6f", it)
+            "\$" + String.format(java.util.Locale.US, "%.6f", it)
         } ?: "UNKNOWN") + " / " + (market.periodLowUsd?.let {
-            "$" + String.format(java.util.Locale.US, "%.6f", it)
+            "\$" + String.format(java.util.Locale.US, "%.6f", it)
         } ?: "UNKNOWN"))
         Text("Fundamentos: ${dossier.fundamentals} · Tokenomics: ${dossier.tokenomics}")
         dossier.tokenomicsEvidence?.let { evidence ->
@@ -912,7 +912,7 @@ private fun ResearchDossierDetails(dossier: AssetResearchDossier?) {
                 val valueText = field.value?.let { value ->
                     when (field.fieldKey) {
                         "marketCapUsd", "fullyDilutedMarketCapUsd" ->
-                            "$" + String.format(java.util.Locale.US, "%,.2f", value) + " USD"
+                            "\$" + String.format(java.util.Locale.US, "%,.2f", value) + " USD"
                         else -> String.format(java.util.Locale.US, "%,.8f", value)
                     }
                 } ?: field.status.name
@@ -977,7 +977,7 @@ private fun MarketQuoteDetails(
     when {
         quote?.priceUsd != null -> {
             Text(
-                "$" + String.format(java.util.Locale.US, "%.8f", quote.priceUsd) + " USD",
+                "\$" + String.format(java.util.Locale.US, "%.8f", quote.priceUsd) + " USD",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
