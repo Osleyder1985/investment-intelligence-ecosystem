@@ -21,10 +21,21 @@ data class RoutescanTokenSupplyObservation(
     val retrievedAtEpochMs: Long
 )
 
+interface RoutescanTokenSupplyFetcher {
+    fun fetch(
+        chainId: String,
+        contractAddress: String,
+        apiKey: String? = null
+    ): RoutescanTokenSupplyObservation
+}
+
 class RoutescanTokenSupplyClient(
     private val nowEpochMs: () -> Long = { System.currentTimeMillis() }
-) {
-    fun fetch(
+) : RoutescanTokenSupplyFetcher {
+    @Volatile
+    private var lastRequestStartedAtEpochMs: Long = 0L
+
+    override fun fetch(
         chainId: String,
         contractAddress: String,
         apiKey: String? = null
@@ -41,6 +52,15 @@ class RoutescanTokenSupplyClient(
         val blockNumber = parseHexQuantity(blockHex, "block number")
         require(blockNumber <= BigInteger.valueOf(Long.MAX_VALUE)) { "Block number exceeds supported range" }
         val blockTag = "0x" + blockNumber.toString(16)
+
+        val contractCode = requestResult(
+            base,
+            "module=proxy&action=eth_getCode&address=$contractAddress&tag=$blockTag",
+            apiKey
+        )
+        require(hasContractBytecode(contractCode)) {
+            "Routescan address has no contract bytecode at the selected block"
+        }
 
         // ERC-20 ABI selectors: totalSupply() = 0x18160ddd, decimals() = 0x313ce567.
         val rawSupply = parseHexQuantity(
@@ -70,7 +90,12 @@ class RoutescanTokenSupplyClient(
         )
     }
 
+    @Synchronized
     private fun requestResult(base: String, query: String, apiKey: String?): String {
+        val now = System.currentTimeMillis()
+        val waitMs = MIN_REQUEST_INTERVAL_MS - (now - lastRequestStartedAtEpochMs)
+        if (lastRequestStartedAtEpochMs > 0L && waitMs > 0L) Thread.sleep(waitMs)
+        lastRequestStartedAtEpochMs = System.currentTimeMillis()
         val connection = (URL("$base?$query").openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 15_000
@@ -98,6 +123,11 @@ class RoutescanTokenSupplyClient(
     }
 
     companion object {
+        private const val MIN_REQUEST_INTERVAL_MS = 550L
+
+        internal fun hasContractBytecode(value: String): Boolean =
+            value.matches(Regex("0x(?:[0-9a-fA-F]{2})+"))
+
         internal fun parseHexQuantity(value: String, field: String): BigInteger {
             if (!value.matches(Regex("0x[0-9a-fA-F]{1,64}"))) {
                 throw java.io.IOException("Routescan returned invalid $field")
