@@ -23,6 +23,9 @@ import com.iie.android.data.local.entity.NetworkEntity
 import com.iie.android.data.local.entity.WatchlistEntryEntity
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.CoinPaprikaDailyHistoryFetcher
+import com.iie.android.data.market.RoutescanTokenSupplyFetcher
+import com.iie.android.data.market.RoutescanTokenSupplyObservation
+import com.iie.android.domain.model.ExactTokenAmount
 import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -104,6 +107,17 @@ class IIEDatabaseTest {
             "PERSONAL_USE_ONLY",
             database.dataSourceDao().getSource("source:coinmarketcap")?.permittedUseStatus
         )
+        assertEquals(
+            "PERSONAL_USE_ONLY",
+            database.dataSourceDao().getSource("source:routescan")?.permittedUseStatus
+        )
+        val usdcDeployment = database.assetDeploymentDao().getDeployment("deployment:usdc-ethereum-erc20")
+        val usdtDeployment = database.assetDeploymentDao().getDeployment("deployment:usdt-ethereum-erc20")
+        assertEquals("network:ethereum-mainnet", usdcDeployment?.networkId)
+        assertEquals("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", usdcDeployment?.reference)
+        assertEquals("0xdac17f958d2ee523a2206206994597c13d831ec7", usdtDeployment?.reference)
+        assertEquals(6, usdcDeployment?.decimals)
+        assertEquals(6, usdtDeployment?.decimals)
 
         database.dataSourceDao().insertSource(
             DataSourceEntity(
@@ -157,6 +171,66 @@ class IIEDatabaseTest {
             )
         )
         assertNotNull(database.watchlistDao().getEntry("asset:bitcoin"))
+    }
+
+    @Test
+    fun routescanSupplyPersistsExactRawAmountAndUsesDeploymentScopedCache() = runBlocking {
+        val now = 1_800_000_000_000L
+        InitialAssetCatalog(database) { now }.synchronize()
+        var fetchCount = 0
+        val fetcher = object : RoutescanTokenSupplyFetcher {
+            override fun fetch(
+                chainId: String,
+                contractAddress: String,
+                apiKey: String?
+            ): RoutescanTokenSupplyObservation {
+                fetchCount += 1
+                assertEquals("1", chainId)
+                assertEquals(
+                    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                    contractAddress
+                )
+                return RoutescanTokenSupplyObservation(
+                    chainId = chainId,
+                    contractAddress = contractAddress,
+                    amount = ExactTokenAmount("123456789012345678", 6),
+                    blockNumber = 23_456_789L,
+                    retrievedAtEpochMs = now
+                )
+            }
+        }
+        val repository = com.iie.android.data.repository.RoomAssetRepository(database) { now }
+
+        val first = repository.fetchAndPersistRoutescanTokenSupply(
+            "asset:usd-coin",
+            "deployment:usdc-ethereum-erc20",
+            fetcher
+        )
+        val repeated = repository.fetchAndPersistRoutescanTokenSupply(
+            "asset:usd-coin",
+            "deployment:usdc-ethereum-erc20",
+            fetcher
+        )
+        val payload = org.json.JSONObject(first.valueJson)
+        val restored = repository.getLatestRoutescanTokenSupply(
+            "asset:usd-coin",
+            "deployment:usdc-ethereum-erc20"
+        )
+
+        assertEquals(1, fetchCount)
+        assertEquals(first.observationId, repeated.observationId)
+        assertEquals("123456789012345678", payload.getString("rawAmount"))
+        assertEquals("123456789012.345678", payload.getString("decimalAmount"))
+        assertEquals(6, payload.getInt("decimals"))
+        assertEquals("1", payload.getString("chainId"))
+        assertEquals(23_456_789L, payload.getLong("blockNumber"))
+        assertEquals(null, first.observedAtEpochMs)
+        assertEquals(now, first.retrievedAtEpochMs)
+        assertEquals("source:routescan", first.sourceId)
+        assertEquals("deployment:usdc-ethereum-erc20", first.deploymentId)
+        assertEquals(true, first.payloadSha256?.matches(Regex("[a-f0-9]{64}")) == true)
+        assertNotNull(restored)
+        assertEquals(first.observationId, restored?.observationId)
     }
 
     @Test
