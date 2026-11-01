@@ -814,6 +814,7 @@ private fun AssetDetailDialog(
     val historySync = historySyncStates[asset.assetId]
     val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
     val dailyHistory = dailyHistoryByAsset[asset.assetId].orEmpty()
+    val coinMarketCapDailyHistoryByAsset by viewModel.coinMarketCapDailyHistory.collectAsState()
     val coinMarketCapDailyHistory = coinMarketCapDailyHistoryByAsset[asset.assetId].orEmpty()
     val researchDossiers by viewModel.researchDossiers.collectAsState()
     val routescanTokenSupplies by viewModel.routescanTokenSupplies.collectAsState()
