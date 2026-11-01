@@ -710,9 +710,16 @@ class RoomAssetRepository(
             "Free-plan daily history is limited to one year"
         }
 
+        val latestStored = getLatestCoinPaprikaDailyHistory(assetId, limit = 1).firstOrNull()
+        val incrementalStart = latestStored?.let {
+            java.time.Instant.ofEpochMilli(it.timestampEpochMs).atZone(ZoneOffset.UTC)
+                .toLocalDate().plusDays(1)
+        }?.let { if (it.isAfter(start)) it else start } ?: start
+        if (incrementalStart.isAfter(end)) return CoinPaprikaHistorySyncResult(0, 0, 0)
+
         val points = fetcher.fetchDaily(
             providerId = identifier.identifierValue,
-            start = start,
+            start = incrementalStart,
             end = end,
             retrievedAtEpochMs = retrievedAt
         )
