@@ -638,6 +638,11 @@ private fun ResearchDossierDetails(dossier: AssetResearchDossier?) {
         Text("Retorno del periodo disponible: " + (market.periodReturnPercent?.let {
             String.format(java.util.Locale.US, "%+.2f%%", it)
         } ?: "UNKNOWN"))
+        Text("Contraste de proveedores: " + market.quoteComparisonStatus +
+            (market.quoteDifferencePercent?.let { " · diferencia " + String.format(java.util.Locale.US, "%.3f", it) + "%" } ?: ""))
+        Text("Observaciones comparadas: " +
+            (market.quoteComparisonPrimaryObservationId ?: "N/D") + " / " +
+            (market.quoteComparisonSecondaryObservationId ?: "N/D"))
         Text("Máximo / mínimo del histórico: " + (market.periodHighUsd?.let {
             "$" + String.format(java.util.Locale.US, "%.6f", it)
         } ?: "UNKNOWN") + " / " + (market.periodLowUsd?.let {
