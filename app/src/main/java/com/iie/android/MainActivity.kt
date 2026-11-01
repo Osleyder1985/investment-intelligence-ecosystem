@@ -59,7 +59,13 @@ class MainActivity : ComponentActivity() {
         )[AssetExplorerViewModel::class.java]
 
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme(\n                primary = androidx.compose.ui.graphics.Color(0xFF79D6C3),\n                background = androidx.compose.ui.graphics.Color(0xFF0B1117),\n                surface = androidx.compose.ui.graphics.Color(0xFF141E27),\n                surfaceVariant = androidx.compose.ui.graphics.Color(0xFF1D2A35),\n                secondaryContainer = androidx.compose.ui.graphics.Color(0xFF203C3A)\n            )) { AssetExplorerScreen(explorerViewModel) }
+            MaterialTheme(colorScheme = darkColorScheme(
+                primary = androidx.compose.ui.graphics.Color(0xFF79D6C3),
+                background = androidx.compose.ui.graphics.Color(0xFF0B1117),
+                surface = androidx.compose.ui.graphics.Color(0xFF141E27),
+                surfaceVariant = androidx.compose.ui.graphics.Color(0xFF1D2A35),
+                secondaryContainer = androidx.compose.ui.graphics.Color(0xFF203C3A)
+            )) { AssetExplorerScreen(explorerViewModel) }
         }
     }
 }
