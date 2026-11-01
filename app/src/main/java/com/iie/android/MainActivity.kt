@@ -50,6 +50,7 @@ import com.iie.android.presentation.AssetExplorerViewModel
 import com.iie.android.presentation.CoinMarketCapSettingsScreen
 import com.iie.android.presentation.MarketQuoteUiState
 import com.iie.android.presentation.MarketHistorySyncUiState
+import com.iie.android.presentation.RoutescanTokenSupplyUiState
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import java.text.DateFormat
 import java.util.Date
@@ -513,11 +514,17 @@ private fun AssetDetailDialog(
     val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
     val dailyHistory = dailyHistoryByAsset[asset.assetId].orEmpty()
     val researchDossiers by viewModel.researchDossiers.collectAsState()
+    val routescanTokenSupplies by viewModel.routescanTokenSupplies.collectAsState()
 
     LaunchedEffect(asset.assetId) {
         viewModel.loadLatestResearchDossier(asset.assetId)
         viewModel.loadLatestMarketQuote(asset.assetId)
         viewModel.loadDailyMarketHistory(asset.assetId)
+    }
+    LaunchedEffect(deployments) {
+        deployments.filter { it.representationKind == "ERC20" }.forEach { deployment ->
+            viewModel.loadLatestRoutescanTokenSupply(asset.assetId, deployment.deploymentId)
+        }
     }
 
     AlertDialog(
@@ -545,6 +552,14 @@ private fun AssetDetailDialog(
                             "${deployment.networkName} · ${deployment.representationKind} · ${deployment.decimals ?: "N/D"} decimales",
                             style = MaterialTheme.typography.bodySmall
                         )
+                        if (deployment.representationKind == "ERC20") {
+                            RoutescanTokenSupplyDetails(
+                                state = routescanTokenSupplies[deployment.deploymentId],
+                                onRefresh = {
+                                    viewModel.refreshRoutescanTokenSupply(asset.assetId, deployment.deploymentId)
+                                }
+                            )
+                        }
                     }
                 }
 
@@ -616,6 +631,65 @@ private fun AssetDetailDialog(
             TextButton(onClick = onDismiss) { Text("Cerrar") }
         }
     )
+}
+
+
+@Composable
+private fun RoutescanTokenSupplyDetails(
+    state: RoutescanTokenSupplyUiState?,
+    onRefresh: () -> Unit
+) {
+    Column(
+        modifier = Modifier.padding(start = 12.dp, top = 6.dp, bottom = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        Text("Suministro on-chain · Routescan", fontWeight = FontWeight.SemiBold)
+        if (state?.decimalAmount != null) {
+            Text(
+                "Total supply: ${state.decimalAmount} tokens",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "Raw uint256: ${state.rawAmount} · Decimales: ${state.decimals}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text(
+                "Ethereum chain ID: ${state.chainId} · Bloque: ${state.blockNumber}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text(
+                "Contrato: ${state.contractAddress}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            state.retrievedAtEpochMs?.let {
+                Text(
+                    "Consultado: " + DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                        .format(Date(it)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            Text(
+                "Todavía no hay una observación on-chain guardada.",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        if (state?.error != null) {
+            Text(
+                "Error Routescan: ${state.error}",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        TextButton(
+            onClick = onRefresh,
+            enabled = state?.isLoading != true
+        ) {
+            Text(if (state?.isLoading == true) "Consultando Routescan…" else "Consultar / actualizar suministro")
+        }
+    }
 }
 
 
