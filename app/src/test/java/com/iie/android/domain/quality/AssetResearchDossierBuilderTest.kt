@@ -41,7 +41,7 @@ class AssetResearchDossierBuilderTest {
         val primary = ResearchQuoteInput(100.0, "CoinPaprika", 1_000L, 1_100L, "FRESH")
         val secondary = ResearchQuoteInput(104.0, "CoinMarketCap", 1_000L, 1_100L, "FRESH")
         val dossier = builder.build(asset, emptyList(), primary, emptyList(), emptyList(), 2_000L,
-            ResearchQuoteComparisonInput(primary, secondary, "obs-cp", "obs-cmc"))
+            com.iie.android.domain.model.ResearchQuoteComparisonInput(primary, secondary, "obs-cp", "obs-cmc"))
         assertEquals("CONFLICTED", dossier.market.quoteComparisonStatus)
         assertEquals(3.9215686, dossier.market.quoteDifferencePercent!!, 0.00001)
         assertEquals("obs-cp", dossier.market.quoteComparisonPrimaryObservationId)
