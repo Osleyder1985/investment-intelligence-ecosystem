@@ -32,7 +32,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 
 @Composable
-fun CoinMarketCapSettingsScreen() {
+fun CoinMarketCapSettingsScreen(onCredentialSaved: () -> Unit = {}) {
     val context = LocalContext.current
     val keyStore = remember(context) { CoinMarketCapApiKeyStore(context) }
     val validator = remember { CoinMarketCapApiKeyValidator() }
@@ -103,7 +103,8 @@ fun CoinMarketCapSettingsScreen() {
                                     } else {
                                         "Credencial aceptada. CMC no devolvió el detalle de cuota mensual."
                                     }
-                                    status = "Credencial válida y guardada cifrada en este dispositivo."
+                                    status = "Credencial válida y guardada cifrada en este dispositivo. Iniciando actualización de históricos…"
+                                    onCredentialSaved()
                                 } catch (error: Exception) {
                                     status = error.message ?: "No se pudo validar o guardar la credencial."
                                     statusIsError = true
