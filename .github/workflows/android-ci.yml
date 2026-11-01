@@ -8,6 +8,7 @@ on:
       - "settings.gradle.kts"
       - "gradle.properties"
       - ".github/workflows/android-ci.yml"
+      - ".github/workflows/android-release.yml"
 
 # A newer commit on this PR supersedes its previous validation run.
 concurrency:
