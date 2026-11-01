@@ -73,6 +73,12 @@ object ResearchEvidenceQualityGate {
         if (evidence.status != ResearchFieldStatus.KNOWN || evidence.value == null) {
             reasons += "VALUE_NOT_KNOWN"
         }
+        if (evidence.value is Double && !evidence.value.isFinite()) {
+            reasons += "NUMERIC_VALUE_NOT_FINITE"
+        }
+        if (evidence.value is Float && !evidence.value.isFinite()) {
+            reasons += "NUMERIC_VALUE_NOT_FINITE"
+        }
         if (evidence.sourceId.isNullOrBlank()) reasons += "SOURCE_ID_MISSING"
         if (evidence.sourceName.isNullOrBlank()) reasons += "SOURCE_NAME_MISSING"
         if (evidence.sourceUrl.isNullOrBlank()) reasons += "SOURCE_URL_MISSING"
@@ -92,10 +98,13 @@ object ResearchEvidenceQualityGate {
         ) {
             reasons += "OBSERVATION_AFTER_RETRIEVAL"
         }
-        if (evidence.permittedUseStatus == "PROHIBITED" ||
+        val permittedUse = evidence.permittedUseStatus.trim().uppercase()
+        if (permittedUse == "PROHIBITED" ||
             licenseStatus == ResearchLicenseStatus.PROHIBITED
         ) {
             reasons += "LICENSE_PROHIBITS_USE"
+        } else if (permittedUse !in setOf("APPROVED_FOR_INTENDED_USE", "ATTRIBUTION_REQUIRED")) {
+            reasons += "PERMITTED_USE_STATUS_UNRECOGNIZED"
         }
         if (licenseStatus == ResearchLicenseStatus.UNKNOWN ||
             licenseStatus == ResearchLicenseStatus.REVIEW_REQUIRED
@@ -108,7 +117,12 @@ object ResearchEvidenceQualityGate {
                 licenseStatus == ResearchLicenseStatus.ATTRIBUTION_REQUIRED)
         return EvidenceQualityResult(
             accepted = accepted,
-            status = if (accepted) ResearchFieldStatus.KNOWN else ResearchFieldStatus.UNKNOWN,
+            status = when {
+                accepted -> ResearchFieldStatus.KNOWN
+                evidence.status == ResearchFieldStatus.CONFLICTED -> ResearchFieldStatus.CONFLICTED
+                evidence.status == ResearchFieldStatus.NOT_ASSESSED -> ResearchFieldStatus.NOT_ASSESSED
+                else -> ResearchFieldStatus.UNKNOWN
+            },
             reasons = reasons
         )
     }
