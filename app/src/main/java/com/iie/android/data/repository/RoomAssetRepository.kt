@@ -451,7 +451,14 @@ class RoomAssetRepository(
         require(!start.isBefore(todayUtc.minusYears(1))) {
             "CoinMarketCap Basic daily history is limited to one year"
         }
-        val points = client.fetchDaily(cmcAssetId, apiKey, start, end, retrievedAt)
+        val latestStored = getLatestCoinMarketCapDailyHistory(assetId, limit = 1).firstOrNull()
+        val incrementalStart = latestStored?.let {
+            java.time.Instant.ofEpochMilli(it.timestampEpochMs).atZone(ZoneOffset.UTC)
+                .toLocalDate().plusDays(1)
+        }?.let { if (it.isAfter(start)) it else start } ?: start
+        if (incrementalStart.isAfter(end)) return CoinPaprikaHistorySyncResult(0, 0, 0)
+
+        val points = client.fetchDaily(cmcAssetId, apiKey, incrementalStart, end, retrievedAt)
         require(points.all { it.sourceId == sourceId && it.providerId == cmcAssetId.toString() }) {
             "CoinMarketCap returned points with mismatched source or asset identity"
         }
