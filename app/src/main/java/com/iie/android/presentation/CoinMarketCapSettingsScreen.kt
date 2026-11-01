@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import com.iie.android.data.market.CoinMarketCapApiKeyStore
 import com.iie.android.data.market.CoinMarketCapApiKeyValidator
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 @Composable
 fun CoinMarketCapSettingsScreen() {
@@ -123,13 +127,48 @@ fun CoinMarketCapSettingsScreen() {
                 if (hasStoredKey) {
                     TextButton(
                         onClick = {
+                            if (!isValidating) {
+                                isValidating = true
+                                status = "Comprobando credencial almacenada…"
+                                statusIsError = false
+                                scope.launch {
+                                    try {
+                                        val storedKey = withContext(Dispatchers.IO) { keyStore.read() }
+                                            ?: error("No hay una credencial almacenada.")
+                                        val validation = validator.validate(storedKey)
+                                        val left = validation.monthlyCreditsLeft
+                                        val limit = validation.monthlyCreditLimit
+                                        usageSummary = if (left != null && limit != null) {
+                                            "Créditos mensuales restantes informados por CMC: " +
+                                                "%,d / %,d".format(java.util.Locale.US, left, limit)
+                                        } else null
+                                        status = "La credencial almacenada sigue siendo válida."
+                                    } catch (error: Exception) {
+                                        status = error.message ?: "No se pudo validar la credencial almacenada."
+                                        statusIsError = true
+                                    } finally {
+                                        isValidating = false
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !isValidating
+                    ) { Text(if (isValidating) "Verificando…" else "Comprobar credencial guardada") }
+                    TextButton(
+                        onClick = {
                             runCatching { keyStore.delete() }
                                 .onSuccess {
                                     hasStoredKey = false
                                     status = "Credencial eliminada del almacenamiento local."
+                                    statusIsError = false
+                                    usageSummary = null
                                 }
-                                .onFailure { status = it.message ?: "No se pudo eliminar la credencial." }
-                        }
+                                .onFailure {
+                                    status = it.message ?: "No se pudo eliminar la credencial."
+                                    statusIsError = true
+                                }
+                        },
+                        enabled = !isValidating
                     ) { Text("Eliminar credencial guardada") }
                 }
                 status?.let {
