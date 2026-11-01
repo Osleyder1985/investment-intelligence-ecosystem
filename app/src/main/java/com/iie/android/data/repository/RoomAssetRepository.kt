@@ -9,6 +9,7 @@ import com.iie.android.data.market.CoinMarketCapKeylessClient
 import com.iie.android.data.market.CoinPaprikaQuote
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.CoinPaprikaDailyHistoryFetcher
+import com.iie.android.data.market.CoinMarketCapDailyHistoryFetcher
 import com.iie.android.data.market.RoutescanTokenSupplyFetcher
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -422,7 +423,7 @@ class RoomAssetRepository(
         start: LocalDate,
         end: LocalDate,
         apiKey: String,
-        client: com.iie.android.data.market.CoinMarketCapHistoricalQuotesClient
+        client: CoinMarketCapDailyHistoryFetcher
     ): CoinPaprikaHistorySyncResult {
         require(!end.isBefore(start)) { "Historical end date precedes start date" }
         val sourceId = "source:coinmarketcap"
