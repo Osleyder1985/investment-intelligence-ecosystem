@@ -33,7 +33,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 
 @Composable
-fun CoinMarketCapSettingsScreen(onCredentialSaved: () -> Unit = {}) {
+fun CoinMarketCapSettingsScreen(onHistoricalSyncRequested: () -> Unit = {}) {
     val context = LocalContext.current
     val keyStore = remember(context) { CoinMarketCapApiKeyStore(context) }
     val validator = remember { CoinMarketCapApiKeyValidator() }
@@ -98,8 +98,7 @@ fun CoinMarketCapSettingsScreen(onCredentialSaved: () -> Unit = {}) {
                                     apiKey = ""
                                     hasStoredKey = true
                                     usageSummary = formatCoinMarketCapUsage(validation)
-                                    status = "Credencial válida y guardada cifrada en este dispositivo. Iniciando actualización de históricos…"
-                                    onCredentialSaved()
+                                    status = "Credencial válida y guardada cifrada en este dispositivo. No se han iniciado descargas históricas ni consumido créditos de histórico."
                                 } catch (error: Exception) {
                                     status = error.message ?: "No se pudo validar o guardar la credencial."
                                     statusIsError = true
@@ -121,6 +120,24 @@ fun CoinMarketCapSettingsScreen(onCredentialSaved: () -> Unit = {}) {
                     color = if (hasStoredKey) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (hasStoredKey) {
+                    Button(
+                        onClick = {
+                            if (!isValidating) {
+                                status = "Sincronización histórica solicitada para los activos del dashboard."
+                                statusIsError = false
+                                onHistoricalSyncRequested()
+                            }
+                        },
+                        enabled = !isValidating,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Iniciar sincronización histórica de todos los activos")
+                    }
+                    Text(
+                        "La sincronización completa consulta hasta un año por activo y consume créditos según los puntos devueltos. Primero puedes probar el endpoint con BTC; la descarga masiva solo comienza al pulsar este botón.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     TextButton(
                         onClick = {
                             if (!isValidating) {
