@@ -366,9 +366,7 @@ class RoomAssetRepository(
             cachedCoinMarketCapMatches(cached, expectedProviderId, expectedSymbol)
         ) return cached
 
-        val listings = client.fetchListings(setOf(expectedSymbol))
-        val quote = listings.singleOrNull()
-            ?: error("CoinMarketCap did not return exactly one listing for $expectedSymbol")
+        val quote = client.fetchQuote(expectedProviderId)
         require(quote.providerId == expectedProviderId) {
             "CoinMarketCap response ID does not match the confirmed asset mapping"
         }
@@ -387,8 +385,8 @@ class RoomAssetRepository(
             .put("circulatingSupply", quote.circulatingSupply ?: JSONObject.NULL)
             .put("totalSupply", quote.totalSupply ?: JSONObject.NULL)
             .put("maxSupply", quote.maxSupply ?: JSONObject.NULL)
-            .put("marketCapUsd", JSONObject.NULL)
-            .put("fullyDilutedMarketCapUsd", JSONObject.NULL)
+            .put("marketCapUsd", quote.marketCapUsd ?: JSONObject.NULL)
+            .put("fullyDilutedMarketCapUsd", quote.fullyDilutedMarketCapUsd ?: JSONObject.NULL)
             .put("providerUpdatedAtEpochMs", quote.providerUpdatedAtEpochMs)
             .put("retrievedAtEpochMs", quote.retrievedAtEpochMs)
             .toString()
