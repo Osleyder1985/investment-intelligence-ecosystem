@@ -85,9 +85,8 @@ object FundamentalValuationEngine {
 
         when (input.applicability) {
             ValuationApplicability.NOT_APPLICABLE ->
-                return result(ValuationClassification.NOT_VALUABLE_WITH_AVAILABLE_EVIDENCE).also {
-                    reasons += "METHOD_NOT_APPLICABLE_TO_ASSET"
-                }
+                reasons += "METHOD_NOT_APPLICABLE_TO_ASSET"
+                return result(ValuationClassification.NOT_VALUABLE_WITH_AVAILABLE_EVIDENCE)
             ValuationApplicability.INSUFFICIENT_EVIDENCE ->
                 return result(ValuationClassification.INSUFFICIENT_EVIDENCE).also {
                     reasons += "METHOD_APPLICABILITY_NOT_ESTABLISHED"
