@@ -5,6 +5,7 @@ import com.iie.android.data.local.IIEDatabase
 import com.iie.android.data.local.entity.AssetObservationEntity
 import com.iie.android.data.local.entity.WatchlistEntryEntity
 import com.iie.android.data.market.CoinPaprikaTickerClient
+import com.iie.android.data.market.CoinMarketCapAuthenticatedClient
 import com.iie.android.data.market.CoinPaprikaQuote
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.CoinPaprikaDailyHistoryFetcher
@@ -184,6 +185,117 @@ class RoomAssetRepository(
         )
         database.assetObservationDao().insertObservation(observation)
         return observation
+    }
+
+    /**
+     * Fetches CoinMarketCap by its confirmed numeric provider ID and appends an immutable
+     * observation to the same provenance ledger used by CoinPaprika.
+     */
+    suspend fun fetchAndPersistCoinMarketCapQuote(
+        assetId: String,
+        expectedSymbol: String,
+        apiKey: String,
+        client: CoinMarketCapAuthenticatedClient
+    ): AssetObservationEntity {
+        val sourceId = "source:coinmarketcap"
+        val source = database.dataSourceDao().getSource(sourceId)
+            ?: error("CoinMarketCap source is not registered")
+        check(source.permittedUseStatus == "PERSONAL_USE_ONLY") {
+            "CoinMarketCap source is not enabled for this app's personal-use scope"
+        }
+        val asset = database.assetDao().getAsset(assetId)
+            ?: error("Cannot quote an unknown IIE asset")
+        require(asset.symbol.equals(expectedSymbol, ignoreCase = true)) {
+            "Expected symbol does not match the canonical asset"
+        }
+        val identifier = database.assetIdentifierDao().findForAsset(
+            assetId = assetId,
+            sourceId = sourceId,
+            namespace = "coinmarketcap"
+        ) ?: error("No confirmed CoinMarketCap numeric ID is mapped to this asset")
+        check(identifier.verificationStatus == "PROVIDER_ID_CONFIRMED") {
+            "CoinMarketCap provider identifier is not confirmed"
+        }
+        val expectedProviderId = identifier.identifierValue.toLongOrNull()
+            ?: error("CoinMarketCap provider ID must be numeric")
+
+        val cached = database.assetObservationDao().getLatestForSource(
+            assetId = assetId,
+            observationType = MARKET_QUOTE_OBSERVATION_TYPE,
+            sourceId = sourceId
+        )
+        val now = nowEpochMs()
+        if (cached != null && now >= cached.retrievedAtEpochMs &&
+            now - cached.retrievedAtEpochMs < QUOTE_CACHE_TTL_MS &&
+            cachedCoinMarketCapMatches(cached, expectedProviderId, expectedSymbol)
+        ) return cached
+
+        val quote = client.fetchLatestQuote(apiKey, expectedSymbol)
+        require(quote.providerId == expectedProviderId) {
+            "CoinMarketCap response ID does not match the confirmed asset mapping"
+        }
+        require(quote.symbol.equals(expectedSymbol, ignoreCase = true)) {
+            "CoinMarketCap response symbol does not match the canonical asset"
+        }
+        require(quote.retrievedAtEpochMs in 1L..nowEpochMs()) {
+            "CoinMarketCap retrieval timestamp is outside the accepted bounds"
+        }
+        val payload = JSONObject()
+            .put("schema", "iie.market-quote.v1")
+            .put("providerId", quote.providerId.toString())
+            .put("symbol", quote.symbol.uppercase())
+            .put("quoteCurrency", "USD")
+            .put("price", quote.priceUsd)
+            .put("providerUpdatedAtEpochMs", quote.providerUpdatedAtEpochMs)
+            .put("retrievedAtEpochMs", quote.retrievedAtEpochMs)
+            .toString()
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(payload.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        val observation = AssetObservationEntity(
+            observationId = "observation:coinmarketcap:${UUID.randomUUID()}",
+            assetId = assetId,
+            deploymentId = null,
+            sourceId = sourceId,
+            observationType = MARKET_QUOTE_OBSERVATION_TYPE,
+            observedAtEpochMs = quote.providerUpdatedAtEpochMs,
+            retrievedAtEpochMs = quote.retrievedAtEpochMs,
+            status = "ACCEPTED",
+            quality = "PROVIDER_SCHEMA_VALIDATED",
+            valueSchemaVersion = 1,
+            valueJson = payload,
+            payloadSha256 = digest,
+            licenseReference = source.termsUrl
+        )
+        database.assetObservationDao().insertObservation(observation)
+        return observation
+    }
+
+    private fun cachedCoinMarketCapMatches(
+        observation: AssetObservationEntity,
+        expectedProviderId: Long,
+        expectedSymbol: String
+    ): Boolean = try {
+        val payload = JSONObject(observation.valueJson)
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(observation.valueJson.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        val providerTimestamp = payload.optLong("providerUpdatedAtEpochMs", -1L)
+        val retrievedTimestamp = payload.optLong("retrievedAtEpochMs", -1L)
+        observation.sourceId == "source:coinmarketcap" &&
+            observation.observationType == MARKET_QUOTE_OBSERVATION_TYPE &&
+            observation.status == "ACCEPTED" &&
+            payload.optString("schema") == "iie.market-quote.v1" &&
+            payload.optString("providerId") == expectedProviderId.toString() &&
+            payload.optString("symbol").equals(expectedSymbol, ignoreCase = true) &&
+            payload.optString("quoteCurrency") == "USD" &&
+            payload.optDouble("price", Double.NaN).let { it.isFinite() && it > 0.0 } &&
+            observation.payloadSha256 == digest &&
+            providerTimestamp == observation.observedAtEpochMs &&
+            retrievedTimestamp == observation.retrievedAtEpochMs &&
+            providerTimestamp > 0L && retrievedTimestamp >= providerTimestamp
+    } catch (_: Exception) {
+        false
     }
 
     /**
