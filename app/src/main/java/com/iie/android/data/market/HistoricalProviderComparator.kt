@@ -14,7 +14,51 @@ data class HistoricalProviderComparisonResult(
     val latestSymmetricDivergencePercent: Double?
 )
 
+data class HistoricalProviderSeriesQuality(
+    val sourceId: String,
+    val receivedObservations: Int,
+    val validObservations: Int,
+    val invalidObservations: Int,
+    val conflictingTimestamps: Int,
+    val usableTimestamps: Int,
+    val latestTimestampEpochMs: Long?,
+    val latestRetrievedAtEpochMs: Long?
+)
+
 class HistoricalProviderComparator {
+    fun quality(
+        points: List<CoinPaprikaHistoricalPoint>,
+        expectedSourceId: String
+    ): HistoricalProviderSeriesQuality {
+        require(expectedSourceId == "source:coinpaprika" || expectedSourceId == "source:coinmarketcap")
+        val received = points.filter { it.sourceId == expectedSourceId }
+        val valid = received.filter {
+            it.providerId.isNotBlank() &&
+                it.timestampEpochMs > 0L &&
+                it.priceUsd.isFinite() && it.priceUsd > 0.0 &&
+                it.retrievedAtEpochMs >= it.timestampEpochMs
+        }
+        val groups = valid.groupBy { it.timestampEpochMs }
+        val conflicts = groups.values.count { sameTime ->
+            sameTime.map { it.priceUsd }.distinct().size > 1
+        }
+        val usable = groups.filterValues { sameTime ->
+            sameTime.map { it.priceUsd }.distinct().size == 1
+        }
+        val latest = usable.keys.maxOrNull()
+        return HistoricalProviderSeriesQuality(
+            sourceId = expectedSourceId,
+            receivedObservations = received.size,
+            validObservations = valid.size,
+            invalidObservations = received.size - valid.size,
+            conflictingTimestamps = conflicts,
+            usableTimestamps = usable.size,
+            latestTimestampEpochMs = latest,
+            latestRetrievedAtEpochMs = latest?.let { timestamp ->
+                usable.getValue(timestamp).maxOf { it.retrievedAtEpochMs }
+            }
+        )
+    }
     fun compare(
         coinPaprika: List<CoinPaprikaHistoricalPoint>,
         coinMarketCap: List<CoinPaprikaHistoricalPoint>
