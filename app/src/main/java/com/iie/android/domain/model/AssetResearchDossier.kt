@@ -18,7 +18,7 @@ data class AssetResearchDossier(
 ) {
     val overallEvidenceStatus: String
         get() = when {
-            identityAssessment == ResearchFieldStatus.CONFLICTED -> "CONFLICTED"
+            identityAssessment == ResearchFieldStatus.CONFLICTED || market.quoteComparisonStatus == "CONFLICTED" -> "CONFLICTED"
             identityAssessment != ResearchFieldStatus.KNOWN -> "INSUFFICIENT_EVIDENCE"
             market.quoteStatus != ResearchFieldStatus.KNOWN -> "INSUFFICIENT_EVIDENCE"
             else -> "PARTIAL_COVERAGE"
@@ -46,7 +46,13 @@ data class MarketResearchSection(
     val latestDailyReturnPercent: Double?,
     val periodReturnPercent: Double?,
     val periodHighUsd: Double?,
-    val periodLowUsd: Double?
+    val periodLowUsd: Double?,
+    val quoteComparisonStatus: String = "NOT_AVAILABLE",
+    val quoteDifferencePercent: Double? = null,
+    val quoteDifferenceThresholdPercent: Double? = null,
+    val quoteComparisonPrimaryObservationId: String? = null,
+    val quoteComparisonSecondaryObservationId: String? = null,
+    val quoteComparedAtEpochMs: Long? = null
 )
 
 /** Presentation-independent quote facts passed into the domain dossier builder. */
@@ -60,3 +66,14 @@ data class ResearchQuoteInput(
 
 /** Daily market point facts decoupled from provider adapter types. */
 data class ResearchMarketHistoryPoint(val timestampEpochMs: Long, val priceUsd: Double)
+
+
+/** Two independently persisted provider observations used for an auditable quote comparison. */
+data class ResearchQuoteComparisonInput(
+    val primaryQuote: ResearchQuoteInput?,
+    val secondaryQuote: ResearchQuoteInput?,
+    val primaryObservationId: String?,
+    val secondaryObservationId: String?,
+    val thresholdPercent: Double = 2.0,
+    val maxTimestampSkewMs: Long = 5 * 60 * 1000L
+)
