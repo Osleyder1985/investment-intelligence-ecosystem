@@ -1,0 +1,139 @@
+package com.iie.android.data.local
+
+import androidx.room.withTransaction
+import com.iie.android.data.local.entity.AssetDeploymentEntity
+import com.iie.android.data.local.entity.AssetEntity
+import com.iie.android.data.local.entity.AssetIdentifierEntity
+import com.iie.android.data.local.entity.DataSourceEntity
+import com.iie.android.data.local.entity.NetworkEntity
+
+/**
+ * Synchronizes the small built-in asset universe without creating synthetic observations.
+ *
+ * The catalog contains canonical IIE asset records and explicit CoinPaprika provider IDs.
+ * Provider IDs are identifiers, not proof of economic quality or investment merit.
+ */
+class InitialAssetCatalog(
+    private val database: IIEDatabase,
+    private val nowEpochMs: () -> Long = { System.currentTimeMillis() }
+) {
+    suspend fun synchronize() {
+        database.withTransaction {
+            val synchronizedAt = nowEpochMs()
+            require(synchronizedAt > 0L) { "Invalid local synchronization clock" }
+
+            // Remove only the retired local-demo fixture records. Market observations
+            // and user-owned watchlist/dossier data are deliberately preserved.
+            database.assetObservationDao().deleteBySourceAndType(
+                DEMO_SOURCE_ID,
+                DEMO_OBSERVATION_TYPE
+            )
+            database.assetIdentifierDao().deleteBySource(DEMO_SOURCE_ID)
+            database.dataSourceDao().deleteSource(DEMO_SOURCE_ID)
+
+            if (database.dataSourceDao().getSource(COINPAPRIKA_SOURCE_ID) == null) {
+                database.dataSourceDao().insertSource(
+                    DataSourceEntity(
+                        sourceId = COINPAPRIKA_SOURCE_ID,
+                        sourceKey = COINPAPRIKA_SOURCE_KEY,
+                        displayName = "CoinPaprika API",
+                        providerType = "MARKET_DATA_PROVIDER",
+                        homepageUrl = "https://coinpaprika.com",
+                        termsUrl = "https://coinpaprika.com/terms-api",
+                        attributionText = "Powered by CoinPaprika",
+                        permittedUseStatus = "PERSONAL_USE_ONLY",
+                        registeredAtEpochMs = synchronizedAt
+                    )
+                )
+            }
+
+            networks.forEach { network ->
+                val existing = database.networkDao().getNetwork(network.networkId)
+                if (existing == null) {
+                    database.networkDao().insertNetwork(network)
+                } else if (existing != network) {
+                    database.networkDao().updateNetwork(network)
+                }
+            }
+
+            assets.forEach { catalogAsset ->
+                val existing = database.assetDao().getAsset(catalogAsset.assetId)
+                if (existing == null) {
+                    database.assetDao().insertAsset(
+                        catalogAsset.copy(
+                            createdAtEpochMs = synchronizedAt,
+                            updatedAtEpochMs = synchronizedAt
+                        )
+                    )
+                } else {
+                    database.assetDao().updateAsset(
+                        existing.copy(
+                            canonicalKey = catalogAsset.canonicalKey,
+                            name = catalogAsset.name,
+                            symbol = catalogAsset.symbol,
+                            assetType = catalogAsset.assetType,
+                            identityStatus = catalogAsset.identityStatus,
+                            updatedAtEpochMs = synchronizedAt
+                        )
+                    )
+                }
+            }
+
+            deployments.forEach { catalogDeployment ->
+                val existing = database.assetDeploymentDao()
+                    .getDeployment(catalogDeployment.deploymentId)
+                if (existing == null) {
+                    database.assetDeploymentDao().insertDeployment(catalogDeployment)
+                } else if (existing != catalogDeployment) {
+                    database.assetDeploymentDao().updateDeployment(catalogDeployment)
+                }
+            }
+
+            providerIdentifiers.forEach { identifier ->
+                val existing = database.assetIdentifierDao().findIdentifier(
+                    identifier.sourceId,
+                    identifier.namespace,
+                    identifier.identifierValue
+                )
+                if (existing == null) {
+                    database.assetIdentifierDao().insertIdentifier(identifier)
+                }
+            }
+        }
+    }
+
+    private companion object {
+        const val DEMO_SOURCE_ID = "source:iie-demo-fixture"
+        const val DEMO_OBSERVATION_TYPE = "IDENTITY_FIXTURE"
+        const val COINPAPRIKA_SOURCE_ID = "source:coinpaprika"
+        const val COINPAPRIKA_SOURCE_KEY = "coinpaprika-api-v1"
+
+        val assets = listOf(
+            AssetEntity("asset:bitcoin", "crypto:bitcoin", "Bitcoin", "BTC", "CRYPTO_ASSET", "RESOLVED", 0L, 0L),
+            AssetEntity("asset:ethereum", "crypto:ethereum", "Ethereum", "ETH", "CRYPTO_ASSET", "RESOLVED", 0L, 0L),
+            AssetEntity("asset:solana", "crypto:solana", "Solana", "SOL", "CRYPTO_ASSET", "RESOLVED", 0L, 0L),
+            AssetEntity("asset:usd-coin", "crypto:usd-coin", "USD Coin", "USDC", "CRYPTO_ASSET", "RESOLVED_WITH_LIMITATIONS", 0L, 0L),
+            AssetEntity("asset:tether", "crypto:tether", "Tether", "USDT", "CRYPTO_ASSET", "RESOLVED_WITH_LIMITATIONS", 0L, 0L)
+        )
+
+        val networks = listOf(
+            NetworkEntity("network:bitcoin-mainnet", "network:bitcoin", "Bitcoin", "UTXO", null, "BTC"),
+            NetworkEntity("network:ethereum-mainnet", "network:ethereum", "Ethereum", "ACCOUNT", "1", "ETH"),
+            NetworkEntity("network:solana-mainnet", "network:solana", "Solana", "ACCOUNT", "mainnet-beta", "SOL")
+        )
+
+        val deployments = listOf(
+            AssetDeploymentEntity("deployment:bitcoin-native", "deployment:bitcoin:native", "asset:bitcoin", "network:bitcoin-mainnet", "NATIVE", "native", null, 8, null, null),
+            AssetDeploymentEntity("deployment:ethereum-native", "deployment:ethereum:native", "asset:ethereum", "network:ethereum-mainnet", "NATIVE", "native", null, 18, null, null),
+            AssetDeploymentEntity("deployment:solana-native", "deployment:solana:native", "asset:solana", "network:solana-mainnet", "NATIVE", "native", null, 9, null, null)
+        )
+
+        val providerIdentifiers = listOf(
+            AssetIdentifierEntity("identifier:coinpaprika:btc", "coinpaprika:btc-bitcoin", "asset:bitcoin", COINPAPRIKA_SOURCE_ID, "coinpaprika", "btc-bitcoin", null, null, "PROVIDER_ID_CONFIRMED"),
+            AssetIdentifierEntity("identifier:coinpaprika:eth", "coinpaprika:eth-ethereum", "asset:ethereum", COINPAPRIKA_SOURCE_ID, "coinpaprika", "eth-ethereum", null, null, "PROVIDER_ID_CONFIRMED"),
+            AssetIdentifierEntity("identifier:coinpaprika:sol", "coinpaprika:sol-solana", "asset:solana", COINPAPRIKA_SOURCE_ID, "coinpaprika", "sol-solana", null, null, "PROVIDER_ID_CONFIRMED"),
+            AssetIdentifierEntity("identifier:coinpaprika:usdc", "coinpaprika:usdc-usd-coin", "asset:usd-coin", COINPAPRIKA_SOURCE_ID, "coinpaprika", "usdc-usd-coin", null, null, "PROVIDER_ID_CONFIRMED"),
+            AssetIdentifierEntity("identifier:coinpaprika:usdt", "coinpaprika:usdt-tether", "asset:tether", COINPAPRIKA_SOURCE_ID, "coinpaprika", "usdt-tether", null, null, "PROVIDER_ID_CONFIRMED")
+        )
+    }
+}
