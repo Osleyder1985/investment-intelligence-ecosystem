@@ -437,7 +437,7 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             try {
                 val points = withContext(Dispatchers.IO) {
-                    repository.getLatestCoinPaprikaDailyHistory(assetId, limit = 30)
+                    repository.getLatestCoinPaprikaDailyHistory(assetId, limit = 370)
                 }
                 _dailyMarketHistory.value = _dailyMarketHistory.value + (assetId to points)
             } catch (error: Exception) {
