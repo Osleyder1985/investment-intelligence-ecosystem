@@ -11,6 +11,7 @@ data class AssetResearchDossier(
     val market: MarketResearchSection,
     val fundamentals: ResearchFieldStatus = ResearchFieldStatus.UNKNOWN,
     val tokenomics: ResearchFieldStatus = ResearchFieldStatus.UNKNOWN,
+    val tokenomicsEvidence: TokenomicsResearchSection? = null,
     val security: ResearchFieldStatus = ResearchFieldStatus.NOT_ASSESSED,
     val governance: ResearchFieldStatus = ResearchFieldStatus.NOT_ASSESSED,
     val evidenceCount: Int,
