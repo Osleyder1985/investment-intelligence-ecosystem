@@ -218,6 +218,22 @@ class IIEDatabaseTest {
                     permittedUseStatus = "PERSONAL_USE_ONLY", observedAtEpochMs = 1000L,
                     retrievedAtEpochMs = 1100L, qualityStatus = "PROVIDER_SCHEMA_VALIDATED"
                 ),
+                marketCapUsd = ResearchEvidence(
+                    fieldKey = "market_cap_usd", value = 1_300_000_000_000.0,
+                    status = ResearchFieldStatus.KNOWN, sourceId = "source:coinmarketcap",
+                    sourceName = "CoinMarketCap", sourceUrl = "https://coinmarketcap.com/",
+                    licenseReference = "https://coinmarketcap.com/api/terms/",
+                    permittedUseStatus = "PERSONAL_USE_ONLY", observedAtEpochMs = 1000L,
+                    retrievedAtEpochMs = 1100L, qualityStatus = "PROVIDER_SCHEMA_VALIDATED"
+                ),
+                fullyDilutedMarketCapUsd = ResearchEvidence(
+                    fieldKey = "fully_diluted_market_cap_usd", value = 1_400_000_000_000.0,
+                    status = ResearchFieldStatus.KNOWN, sourceId = "source:coinmarketcap",
+                    sourceName = "CoinMarketCap", sourceUrl = "https://coinmarketcap.com/",
+                    licenseReference = "https://coinmarketcap.com/api/terms/",
+                    permittedUseStatus = "PERSONAL_USE_ONLY", observedAtEpochMs = 1000L,
+                    retrievedAtEpochMs = 1100L, qualityStatus = "PROVIDER_SCHEMA_VALIDATED"
+                ),
                 annualInflationPercent = ResearchEvidence(
                     fieldKey = "annual_inflation_percent", value = null,
                     status = ResearchFieldStatus.UNKNOWN, sourceId = null, sourceName = null,
