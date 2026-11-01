@@ -21,7 +21,7 @@ fun interface CoinMarketCapDailyHistoryFetcher {
         apiKey: String,
         start: LocalDate,
         end: LocalDate,
-        retrievedAtEpochMs: Long = System.currentTimeMillis()
+        retrievedAtEpochMs: Long
     ): List<CoinPaprikaHistoricalPoint>
 }
 
