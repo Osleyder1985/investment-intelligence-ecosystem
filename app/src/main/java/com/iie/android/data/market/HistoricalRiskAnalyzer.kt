@@ -55,8 +55,8 @@ class HistoricalRiskAnalyzer(
         val var95 = tail?.let { percentile(it, 0.05) }?.let { maxOf(0.0, -it * 100.0) }
         val expectedShortfall = tail?.let { returns ->
             val threshold = percentile(returns, 0.05)
-            returns.filter { it <= threshold }.takeIf { it.isNotEmpty() }
-                ?.map { -it }.average().takeIf { it.isFinite() }?.times(100.0)
+            returns.filter { it <= threshold }.map { -it }
+                .takeIf { it.isNotEmpty() }?.average()?.times(100.0)
         }
 
         return AssetRiskMetrics(
