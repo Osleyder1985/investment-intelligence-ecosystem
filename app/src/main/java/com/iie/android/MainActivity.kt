@@ -649,6 +649,50 @@ private fun ResearchDossierDetails(dossier: AssetResearchDossier?) {
             "$" + String.format(java.util.Locale.US, "%.6f", it)
         } ?: "UNKNOWN"))
         Text("Fundamentos: ${dossier.fundamentals} · Tokenomics: ${dossier.tokenomics}")
+        dossier.tokenomicsEvidence?.let { evidence ->
+            Text("EVIDENCIA TOKENÓMICA · CoinMarketCap", fontWeight = FontWeight.SemiBold)
+            listOf(
+                evidence.circulatingSupply,
+                evidence.totalSupply,
+                evidence.maxSupply
+            ).forEach { field ->
+                val valueText = field.value?.let {
+                    String.format(java.util.Locale.US, "%,.8f", it)
+                } ?: field.status.name
+                Text(
+                    "${field.fieldKey}: $valueText · ${field.status}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    "Fuente: ${field.sourceName ?: "N/D"} · Observado: " +
+                        (field.observedAtEpochMs?.let {
+                            DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                                .format(Date(it))
+                        } ?: "N/D") +
+                        " · Recuperado: " +
+                        (field.retrievedAtEpochMs?.let {
+                            DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                                .format(Date(it))
+                        } ?: "N/D"),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (field.notes.isNotEmpty()) {
+                    Text(
+                        "Validación: ${field.notes.joinToString()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+            Text(
+                "Inflación anual, calendario de emisiones y desbloqueos: UNKNOWN; este endpoint no aporta esos datos.",
+                style = MaterialTheme.typography.bodySmall
+            )
+        } ?: Text(
+            "Suministros y emisiones: UNKNOWN · todavía no hay evidencia tokenómica de CoinMarketCap guardada.",
+            style = MaterialTheme.typography.bodySmall
+        )
         Text("Seguridad: ${dossier.security} · Gobernanza: ${dossier.governance}")
         Text("Redes/representaciones: ${dossier.deployments.size}")
         Text(
