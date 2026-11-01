@@ -15,6 +15,16 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
+fun interface CoinMarketCapDailyHistoryFetcher {
+    suspend fun fetchDaily(
+        cmcAssetId: Long,
+        apiKey: String,
+        start: LocalDate,
+        end: LocalDate,
+        retrievedAtEpochMs: Long = System.currentTimeMillis()
+    ): List<CoinPaprikaHistoricalPoint>
+}
+
 /** CMC Basic historical daily quotes; this is not an OHLCV candle adapter. */
 class CoinMarketCapHistoricalQuotesClient(
     private val connectTimeoutMs: Int = 8_000,
@@ -28,8 +38,8 @@ class CoinMarketCapHistoricalQuotesClient(
         require(maxResponseBytes in 1..8 * 1024 * 1024)
         require(maxPoints in 1..370)
     }
-    suspend fun fetchDaily(cmcAssetId: Long, apiKey: String, start: LocalDate, end: LocalDate,
-        retrievedAtEpochMs: Long = System.currentTimeMillis()): List<CoinPaprikaHistoricalPoint> =
+    override suspend fun fetchDaily(cmcAssetId: Long, apiKey: String, start: LocalDate, end: LocalDate,
+        retrievedAtEpochMs: Long): List<CoinPaprikaHistoricalPoint> =
         withContext(Dispatchers.IO) {
             require(cmcAssetId > 0L)
             require(apiKey.isNotBlank() && apiKey.length <= 256 && apiKey.none { it.isWhitespace() })
