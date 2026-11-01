@@ -25,7 +25,7 @@ class AssetResearchDossierBuilderTest {
     @Test fun marketReturnsUseChronologicalPoints() {
         val points = listOf(point(3L, 120.0), point(1L, 100.0), point(2L, 110.0))
         val quote = ResearchQuoteInput(
-            priceUsd = 121.0, attribution = "CoinPaprika",
+            priceUsd = 121.0, provider = "CoinPaprika",
             providerUpdatedAtEpochMs = 3L, retrievedAtEpochMs = 4L, freshnessStatus = "FRESH"
         )
         val dossier = builder.build(asset, emptyList(), quote, points, emptyList(), 5L)
@@ -40,7 +40,7 @@ class AssetResearchDossierBuilderTest {
     @Test fun unresolvedIdentityPreventsSufficientEvidence() {
         val dossier = builder.build(
             asset.copy(identityStatus = "UNVERIFIED"), emptyList(),
-            MarketQuoteUiState(priceUsd = 10.0), emptyList(), emptyList(), 10L
+            ResearchQuoteInput(priceUsd = 10.0, provider = null, providerUpdatedAtEpochMs = null, retrievedAtEpochMs = null, freshnessStatus = "UNKNOWN"), emptyList(), emptyList(), 10L
         )
         assertEquals(ResearchFieldStatus.UNKNOWN, dossier.identityAssessment)
         assertEquals("INSUFFICIENT_EVIDENCE", dossier.overallEvidenceStatus)
