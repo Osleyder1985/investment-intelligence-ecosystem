@@ -375,14 +375,14 @@ private fun MarketAssetRow(
             }
             if (quote?.attribution != null) {
                 Text(
-                    "Fuente: \${quote.attribution} · Frescura: \${quote.freshnessReason}",
+                    "Fuente: ${quote.attribution} · Frescura: ${quote.freshnessReason}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             if (quote?.error != null) {
                 Text(
-                    "Error: \${quote.error}",
+                    "Error: ${quote.error}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )
