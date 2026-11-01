@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.iie.android.data.local.entity.AssetDeploymentEntity
 import com.iie.android.data.local.entity.AssetEntity
 import com.iie.android.data.local.entity.AssetIdentifierEntity
+import com.iie.android.data.local.entity.AssetObservationEntity
 import com.iie.android.data.local.entity.DataSourceEntity
 import com.iie.android.data.local.entity.NetworkEntity
 
@@ -59,12 +60,36 @@ class DemoAssetSeeder(
                     database.assetIdentifierDao().insertIdentifier(identifier)
                 }
             }
+            // Record provenance for every demo asset. These are explicitly fixture
+            // observations, not provider observations or market-price measurements.
+            assets.forEach { asset ->
+                if (database.assetObservationDao().getLatest(asset.assetId, OBSERVATION_TYPE) == null) {
+                    database.assetObservationDao().insertObservation(
+                        AssetObservationEntity(
+                            observationId = "observation:demo:${asset.assetId}",
+                            assetId = asset.assetId,
+                            deploymentId = null,
+                            sourceId = SOURCE_ID,
+                            observationType = OBSERVATION_TYPE,
+                            observedAtEpochMs = seededAt,
+                            retrievedAtEpochMs = seededAt,
+                            status = "DEMO",
+                            quality = "UNVERIFIED",
+                            valueSchemaVersion = 1,
+                            valueJson = """{"recordType":"synthetic_demo_fixture","marketData":false}""",
+                            payloadSha256 = null,
+                            licenseReference = null
+                        )
+                    )
+                }
+            }
         }
     }
 
     private companion object {
         const val SOURCE_ID = "source:iie-demo-fixture"
         const val SOURCE_KEY = "iie-local-demo-fixture-v1"
+        const val OBSERVATION_TYPE = "IDENTITY_FIXTURE"
 
         val assets = listOf(
             AssetEntity("asset:bitcoin", "demo:bitcoin:native", "Bitcoin", "BTC", "CRYPTO_ASSET", "DEMO_UNVERIFIED", 0L, 0L),

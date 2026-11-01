@@ -10,6 +10,7 @@ import com.iie.android.data.local.IIEDatabaseProvider
 import com.iie.android.data.repository.RoomAssetRepository
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetDeploymentSummary
+import com.iie.android.domain.model.AssetObservationProvenance
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,6 +55,9 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
 
     fun observeDeployments(assetId: String): Flow<List<AssetDeploymentSummary>> =
         repository.observeDeployments(assetId)
+
+    fun observeProvenance(assetId: String): Flow<List<AssetObservationProvenance>> =
+        repository.observeProvenance(assetId)
 
     fun updateSearchQuery(value: String) {
         query.value = value

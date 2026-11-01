@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -35,7 +37,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.iie.android.domain.model.Asset
+import com.iie.android.domain.model.AssetObservationProvenance
 import com.iie.android.presentation.AssetExplorerViewModel
+import java.text.DateFormat
+import java.util.Date
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -162,17 +167,21 @@ private fun AssetDetailDialog(
 ) {
     val deployments by viewModel.observeDeployments(asset.assetId)
         .collectAsState(initial = emptyList())
+    val provenance by viewModel.observeProvenance(asset.assetId)
+        .collectAsState(initial = emptyList())
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("${asset.name} (${asset.symbol})") },
         text = {
-            Column {
+            Column(
+                Modifier.verticalScroll(rememberScrollState())
+            ) {
                 Text("ID local: ${asset.assetId}")
                 Text("Clave canónica de demostración: ${asset.canonicalKey}")
                 Text("Estado de identidad: ${asset.identityStatus}")
                 Spacer(Modifier.height(8.dp))
-                Text("Redes y representaciones:")
+                Text("Redes y representaciones:", fontWeight = FontWeight.SemiBold)
                 if (deployments.isEmpty()) {
                     Text(
                         if (asset.symbol == "USDC") {
@@ -190,8 +199,24 @@ private fun AssetDetailDialog(
                         )
                     }
                 }
-                Spacer(Modifier.height(8.dp))
-                Text("Procedencia: fixture local IIE; no verificado como fuente de producción.")
+
+                Spacer(Modifier.height(12.dp))
+                Text("Procedencia de los datos", fontWeight = FontWeight.SemiBold)
+                if (provenance.isEmpty()) {
+                    Text(
+                        "No hay observaciones de procedencia registradas.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                } else {
+                    provenance.forEach { observation ->
+                        ProvenanceObservation(observation)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+                Text(
+                    "Frescura: no evaluada. IIE aún no tiene una política de vigencia configurada para esta fuente.",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         },
         confirmButton = {
@@ -203,4 +228,22 @@ private fun AssetDetailDialog(
             TextButton(onClick = onDismiss) { Text("Cerrar") }
         }
     )
+}
+
+@Composable
+private fun ProvenanceObservation(observation: AssetObservationProvenance) {
+    val formatter = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+    Text("Fuente: ${observation.sourceName}", fontWeight = FontWeight.Medium)
+    Text("Tipo de fuente: ${observation.providerType}", style = MaterialTheme.typography.bodySmall)
+    Text("Uso permitido: ${observation.permittedUseStatus}", style = MaterialTheme.typography.bodySmall)
+    Text("Observación: ${observation.observationType}", style = MaterialTheme.typography.bodySmall)
+    Text(
+        "Recuperado: ${formatter.format(Date(observation.retrievedAtEpochMs))}",
+        style = MaterialTheme.typography.bodySmall
+    )
+    Text(
+        "Observado: ${observation.observedAtEpochMs?.let { formatter.format(Date(it)) } ?: "No informado"}",
+        style = MaterialTheme.typography.bodySmall
+    )
+    Text("Estado: ${observation.status} · Calidad: ${observation.quality}", style = MaterialTheme.typography.bodySmall)
 }
