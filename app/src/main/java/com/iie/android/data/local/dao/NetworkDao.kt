@@ -18,6 +18,9 @@ interface NetworkDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertNetwork(network: NetworkEntity)
 
+    @androidx.room.Update
+    suspend fun updateNetwork(network: NetworkEntity)
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertNetworks(networks: List<NetworkEntity>)
 }

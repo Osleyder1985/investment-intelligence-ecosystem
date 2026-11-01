@@ -40,6 +40,9 @@ interface AssetIdentifierDao {
     """)
     suspend fun findForAsset(assetId: String, sourceId: String, namespace: String): AssetIdentifierEntity?
 
+    @Query("DELETE FROM asset_identifiers WHERE sourceId = :sourceId")
+    suspend fun deleteBySource(sourceId: String)
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertIdentifier(identifier: AssetIdentifierEntity)
 

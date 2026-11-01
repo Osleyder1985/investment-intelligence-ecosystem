@@ -45,13 +45,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetObservationProvenance
-import com.iie.android.domain.model.FreshnessEvaluation
-import com.iie.android.domain.model.ObservationPayloadValidation
-import com.iie.android.domain.model.ObservationQualityEvaluation
+import com.iie.android.domain.model.AssetResearchDossier
 import com.iie.android.presentation.AssetExplorerViewModel
-import com.iie.android.presentation.EvidenceEvaluationUiState
+import com.iie.android.presentation.CoinMarketCapSettingsScreen
 import com.iie.android.presentation.MarketQuoteUiState
 import com.iie.android.presentation.MarketHistorySyncUiState
+import com.iie.android.presentation.RoutescanTokenSupplyUiState
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import java.text.DateFormat
 import java.util.Date
@@ -108,7 +107,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
         Scaffold(
             bottomBar = {
                 NavigationBar {
-                    listOf("Resumen", "Mercados", "Seguimiento").forEach { item ->
+                    listOf("Resumen", "Mercados", "Seguimiento", "Ajustes").forEach { item ->
                         NavigationBarItem(
                             selected = destination == item,
                             onClick = { destination = item },
@@ -117,7 +116,8 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                                     when (item) {
                                         "Resumen" -> "⌂"
                                         "Mercados" -> "◈"
-                                        else -> "☆"
+                                        "Seguimiento" -> "☆"
+                                        else -> "⚙"
                                     },
                                     style = MaterialTheme.typography.titleMedium
                                 )
@@ -151,7 +151,8 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                             when (destination) {
                                 "Resumen" -> "Centro de inversión"
                                 "Mercados" -> "Universo de activos"
-                                else -> "Tu seguimiento"
+                                "Seguimiento" -> "Tu seguimiento"
+                                else -> "Configuración"
                             },
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
@@ -180,14 +181,14 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Text(
-                            "ENTORNO DE DEMOSTRACIÓN",
+                            "CATÁLOGO DE ACTIVOS",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                         Spacer(Modifier.height(5.dp))
                         Text(
-                            "El catálogo incluye datos locales de demostración. Las cotizaciones solo se muestran cuando se consultan al proveedor; no se generan señales ni recomendaciones.",
+                            "El catálogo inicial conserva identificadores canónicos y referencias de proveedor. Los datos de mercado solo se muestran tras consultarlos; no se generan señales ni recomendaciones.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
@@ -202,6 +203,7 @@ private fun AssetExplorerScreen(viewModel: AssetExplorerViewModel) {
                 Spacer(Modifier.height(16.dp))
 
                 when (destination) {
+                    "Ajustes" -> CoinMarketCapSettingsScreen()
                     "Resumen" -> {
                         Text("VISTA GENERAL", style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -503,18 +505,26 @@ private fun AssetDetailDialog(
         .collectAsState(initial = emptyList())
     val provenance by viewModel.observeProvenance(asset.assetId)
         .collectAsState(initial = emptyList())
-    val evidenceState by viewModel.evidenceEvaluation.collectAsState()
     val marketQuotes by viewModel.marketQuotes.collectAsState()
     val marketQuote = marketQuotes[asset.assetId]
+    val coinMarketCapQuotes by viewModel.coinMarketCapQuotes.collectAsState()
+    val coinMarketCapQuote = coinMarketCapQuotes[asset.assetId]
     val historySyncStates by viewModel.marketHistorySync.collectAsState()
     val historySync = historySyncStates[asset.assetId]
     val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
     val dailyHistory = dailyHistoryByAsset[asset.assetId].orEmpty()
+    val researchDossiers by viewModel.researchDossiers.collectAsState()
+    val routescanTokenSupplies by viewModel.routescanTokenSupplies.collectAsState()
 
     LaunchedEffect(asset.assetId) {
-        viewModel.evaluateLatestEvidence(asset.assetId)
+        viewModel.loadLatestResearchDossier(asset.assetId)
         viewModel.loadLatestMarketQuote(asset.assetId)
         viewModel.loadDailyMarketHistory(asset.assetId)
+    }
+    LaunchedEffect(deployments) {
+        deployments.filter { it.representationKind == "ERC20" }.forEach { deployment ->
+            viewModel.loadLatestRoutescanTokenSupply(asset.assetId, deployment.deploymentId)
+        }
     }
 
     AlertDialog(
@@ -523,13 +533,13 @@ private fun AssetDetailDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text("ID local: ${asset.assetId}")
-                Text("Clave canónica de demostración: ${asset.canonicalKey}")
+                Text("Clave canónica: ${asset.canonicalKey}")
                 Text("Estado de identidad: ${asset.identityStatus}")
                 Spacer(Modifier.height(8.dp))
                 Text("Redes y representaciones:", fontWeight = FontWeight.SemiBold)
                 if (deployments.isEmpty()) {
                     Text(
-                        if (asset.symbol == "USDC") {
+                        if (asset.symbol == "USDC" || asset.symbol == "USDT") {
                             "Sin despliegue asignado: activo multi-red pendiente de resolución."
                         } else {
                             "No hay despliegues registrados para este activo."
@@ -546,10 +556,51 @@ private fun AssetDetailDialog(
                 }
 
                 Spacer(Modifier.height(12.dp))
+                Text("Expediente de investigación", fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Genera un resumen con las observaciones guardadas en este dispositivo. No descarga datos ni emite recomendaciones.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                TextButton(onClick = { viewModel.generateResearchDossier(asset.assetId) }) {
+                    Text("Generar expediente con datos guardados")
+                }
+                ResearchDossierDetails(researchDossiers[asset.assetId])
+
+                Spacer(Modifier.height(10.dp))
+                Text("Suministro total on-chain · evidencia del expediente", fontWeight = FontWeight.SemiBold)
+                val erc20Deployments = deployments.filter { it.representationKind == "ERC20" }
+                if (erc20Deployments.isEmpty()) {
+                    Text(
+                        "Sin contratos EVM verificados registrados para consultar suministro on-chain.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                } else {
+                    erc20Deployments.forEach { deployment ->
+                        RoutescanTokenSupplyDetails(
+                            state = routescanTokenSupplies[deployment.deploymentId],
+                            onRefresh = {
+                                viewModel.refreshRoutescanTokenSupply(asset.assetId, deployment.deploymentId)
+                            }
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
                 Text("Cotización de mercado · USD", fontWeight = FontWeight.SemiBold)
                 MarketQuoteDetails(
                     quote = marketQuote,
                     onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) }
+                )
+                Spacer(Modifier.height(8.dp))
+                Text("Cotización de CoinMarketCap · USD", fontWeight = FontWeight.SemiBold)
+                MarketQuoteDetails(
+                    quote = coinMarketCapQuote,
+                    providerName = "CoinMarketCap",
+                    onRefresh = { viewModel.refreshMarketQuote(asset.assetId, asset.symbol) }
+                )
+                MarketQuoteComparison(
+                    coinPaprika = marketQuote,
+                    coinMarketCap = coinMarketCapQuote
                 )
 
                 Spacer(Modifier.height(10.dp))
@@ -579,20 +630,7 @@ private fun AssetDetailDialog(
                 }
 
                 Spacer(Modifier.height(12.dp))
-                Text("Evaluación de evidencia", fontWeight = FontWeight.SemiBold)
-                val currentEvidenceState = evidenceState?.takeIf { it.assetId == asset.assetId }
-                when {
-                    currentEvidenceState == null ->
-                        Text("Preparando evaluación…", style = MaterialTheme.typography.bodySmall)
-                    currentEvidenceState.isLoading ->
-                        Text("Evaluando observación local…", style = MaterialTheme.typography.bodySmall)
-                    currentEvidenceState.message != null ->
-                        Text(currentEvidenceState.message, style = MaterialTheme.typography.bodySmall)
-                    currentEvidenceState.evaluation != null ->
-                        EvidenceEvaluationDetails(currentEvidenceState)
-                    else ->
-                        Text("No hay evaluación disponible.", style = MaterialTheme.typography.bodySmall)
-                }
+
             }
         },
         confirmButton = {
@@ -608,8 +646,165 @@ private fun AssetDetailDialog(
 
 
 @Composable
+private fun RoutescanTokenSupplyDetails(
+    state: RoutescanTokenSupplyUiState?,
+    onRefresh: () -> Unit
+) {
+    Column(
+        modifier = Modifier.padding(start = 12.dp, top = 6.dp, bottom = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        Text("Suministro on-chain · Routescan", fontWeight = FontWeight.SemiBold)
+        if (state?.decimalAmount != null) {
+            Text(
+                "Total supply: ${state.decimalAmount} tokens",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "Raw uint256: ${state.rawAmount} · Decimales: ${state.decimals}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text(
+                "Ethereum chain ID: ${state.chainId} · Bloque: ${state.blockNumber}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text(
+                "Contrato: ${state.contractAddress}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            state.retrievedAtEpochMs?.let {
+                Text(
+                    "Consultado: " + DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                        .format(Date(it)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            Text(
+                "Todavía no hay una observación on-chain guardada.",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        if (state?.error != null) {
+            Text(
+                "Error Routescan: ${state.error}",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        TextButton(
+            onClick = onRefresh,
+            enabled = state?.isLoading != true
+        ) {
+            Text(if (state?.isLoading == true) "Consultando Routescan…" else "Consultar / actualizar suministro")
+        }
+    }
+}
+
+
+@Composable
+private fun ResearchDossierDetails(dossier: AssetResearchDossier?) {
+    if (dossier == null) {
+        Text("Todavía no se ha generado un expediente.", style = MaterialTheme.typography.bodySmall)
+        return
+    }
+    val market = dossier.market
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Text("Estado: ${dossier.overallEvidenceStatus}", fontWeight = FontWeight.SemiBold)
+        Text("Identidad: ${dossier.identityStatus} · evaluación: ${dossier.identityAssessment}")
+        Text("Evidencias registradas: ${dossier.evidenceCount}")
+        Text("Cotización: " + (market.priceUsd?.let {
+            "$" + String.format(java.util.Locale.US, "%.8f", it) + " USD"
+        } ?: "UNKNOWN"))
+        Text("Fuente: ${market.provider ?: "UNKNOWN"} · frescura: ${market.freshnessStatus}")
+        Text("Puntos históricos: ${market.historyPointCount}")
+        Text("Retorno del periodo disponible: " + (market.periodReturnPercent?.let {
+            String.format(java.util.Locale.US, "%+.2f%%", it)
+        } ?: "UNKNOWN"))
+        Text("Contraste de proveedores: " + market.quoteComparisonStatus +
+            (market.quoteDifferencePercent?.let { " · diferencia " + String.format(java.util.Locale.US, "%.3f", it) + "%" } ?: ""))
+        Text("Observaciones comparadas: " +
+            (market.quoteComparisonPrimaryObservationId ?: "N/D") + " / " +
+            (market.quoteComparisonSecondaryObservationId ?: "N/D"))
+        Text("Máximo / mínimo del histórico: " + (market.periodHighUsd?.let {
+            "$" + String.format(java.util.Locale.US, "%.6f", it)
+        } ?: "UNKNOWN") + " / " + (market.periodLowUsd?.let {
+            "$" + String.format(java.util.Locale.US, "%.6f", it)
+        } ?: "UNKNOWN"))
+        Text("Fundamentos: ${dossier.fundamentals} · Tokenomics: ${dossier.tokenomics}")
+        dossier.tokenomicsEvidence?.let { evidence ->
+            Text("EVIDENCIA TOKENÓMICA · CoinMarketCap", fontWeight = FontWeight.SemiBold)
+            listOf(
+                evidence.circulatingSupply,
+                evidence.totalSupply,
+                evidence.maxSupply,
+                evidence.marketCapUsd,
+                evidence.fullyDilutedMarketCapUsd
+            ).forEach { field ->
+                val valueText = field.value?.let { value ->
+                    when (field.fieldKey) {
+                        "marketCapUsd", "fullyDilutedMarketCapUsd" ->
+                            "\$" + String.format(java.util.Locale.US, "%,.2f", value) + " USD"
+                        else -> String.format(java.util.Locale.US, "%,.8f", value)
+                    }
+                } ?: field.status.name
+                Text(
+                    "${field.fieldKey}: $valueText · ${field.status}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    "Fuente: ${field.sourceName ?: "N/D"} · Observado: " +
+                        (field.observedAtEpochMs?.let {
+                            DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                                .format(Date(it))
+                        } ?: "N/D") +
+                        " · Recuperado: " +
+                        (field.retrievedAtEpochMs?.let {
+                            DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                                .format(Date(it))
+                        } ?: "N/D"),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (field.notes.isNotEmpty()) {
+                    Text(
+                        "Validación: ${field.notes.joinToString()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+            Text(
+                "Inflación anual, calendario de emisiones y desbloqueos: UNKNOWN; este endpoint no aporta esos datos.",
+                style = MaterialTheme.typography.bodySmall
+            )
+        } ?: Text(
+            "Suministros y emisiones: UNKNOWN · todavía no hay evidencia tokenómica de CoinMarketCap guardada.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Text("Seguridad: ${dossier.security} · Gobernanza: ${dossier.governance}")
+        Text("Redes/representaciones: ${dossier.deployments.size}")
+        Text(
+            "Generado: " + DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                .format(Date(dossier.generatedAtEpochMs)),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            "Cobertura parcial: UNKNOWN/NOT_ASSESSED no se infieren ni se convierten en cero. Esto no es una valoración ni una recomendación.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+
+@Composable
 private fun MarketQuoteDetails(
     quote: MarketQuoteUiState?,
+    providerName: String = "CoinPaprika",
     onRefresh: () -> Unit
 ) {
     val formatter = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
@@ -620,14 +815,14 @@ private fun MarketQuoteDetails(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-            Text("Proveedor: CoinPaprika · ID: ${quote.providerId}", style = MaterialTheme.typography.bodySmall)
+            Text("Proveedor: ${providerName} · ID: ${quote.providerId}", style = MaterialTheme.typography.bodySmall)
             quote.providerUpdatedAtEpochMs?.let {
                 Text("Actualizado por el proveedor: ${formatter.format(Date(it))}", style = MaterialTheme.typography.bodySmall)
             }
             quote.retrievedAtEpochMs?.let {
                 Text("Recuperado y guardado localmente: ${formatter.format(Date(it))}", style = MaterialTheme.typography.bodySmall)
             }
-            Text(quote.attribution ?: "Powered by CoinPaprika", style = MaterialTheme.typography.bodySmall)
+            Text(quote.attribution ?: "Datos proporcionados por ${providerName}", style = MaterialTheme.typography.bodySmall)
             Text("Frescura local: ${quote.freshnessStatus} · ${quote.freshnessReason}", style = MaterialTheme.typography.bodySmall)
             Text("Política operativa local: FRESH hasta 10 min; STALE hasta 60 min; EXPIRED después. No certifica exactitud del precio.", style = MaterialTheme.typography.bodySmall)
             Text("Caché local: intervalo mínimo de 10 minutos entre consultas por activo.", style = MaterialTheme.typography.bodySmall)
@@ -643,6 +838,43 @@ private fun MarketQuoteDetails(
     }
 }
 
+
+@Composable
+private fun MarketQuoteComparison(
+    coinPaprika: MarketQuoteUiState?,
+    coinMarketCap: MarketQuoteUiState?
+) {
+    val paprikaPrice = coinPaprika?.priceUsd
+    val cmcPrice = coinMarketCap?.priceUsd
+    val paprikaTime = coinPaprika?.providerUpdatedAtEpochMs
+    val cmcTime = coinMarketCap?.providerUpdatedAtEpochMs
+    if (paprikaPrice == null || cmcPrice == null || paprikaTime == null || cmcTime == null) {
+        Text(
+            "Comparación entre proveedores: pendiente de dos cotizaciones válidas.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        return
+    }
+    val timeDifference = kotlin.math.abs(paprikaTime - cmcTime)
+    if (timeDifference > 5 * 60 * 1000L ||
+        coinPaprika?.freshnessStatus != "FRESH" ||
+        coinMarketCap?.freshnessStatus != "FRESH"
+    ) {
+        Text(
+            "Comparación: NO COMPARABLE · cotizaciones no suficientemente sincronizadas o frescas.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        return
+    }
+    val meanPrice = (paprikaPrice + cmcPrice) / 2.0
+    val differencePercent = kotlin.math.abs(paprikaPrice - cmcPrice) / meanPrice * 100.0
+    val status = if (differencePercent > 2.0) "CONFLICTED" else "CONSISTENT"
+    Text(
+        "Contraste CoinPaprika / CoinMarketCap: $status · diferencia ${String.format(java.util.Locale.US, "%.3f", differencePercent)}%. Umbral operativo: 2%. No se promedian precios.",
+        color = if (status == "CONFLICTED") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodySmall
+    )
+}
 
 @Composable
 private fun MarketHistorySyncDetails(
@@ -723,57 +955,6 @@ private fun MarketHistoryPoints(points: List<CoinPaprikaHistoricalPoint>) {
                 style = MaterialTheme.typography.labelSmall
             )
         }
-    }
-}
-
-@Composable
-private fun EvidenceEvaluationDetails(state: EvidenceEvaluationUiState) {
-    val result = state.evaluation ?: return
-    when (val payload = result.payload) {
-        is ObservationPayloadValidation.Valid ->
-            Text("Payload: VÁLIDO · contrato ${payload.observationType} v${payload.schemaVersion}",
-                style = MaterialTheme.typography.bodySmall)
-        is ObservationPayloadValidation.Invalid -> {
-            Text("Payload: INVÁLIDO", fontWeight = FontWeight.Medium)
-            payload.issues.forEach { issue ->
-                Text("${issue.code} en ${issue.path}: ${issue.detail}",
-                    style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        is ObservationPayloadValidation.NotEvaluated ->
-            Text("Payload: NO EVALUADO · ${payload.reason}",
-                style = MaterialTheme.typography.bodySmall)
-    }
-
-    Spacer(Modifier.height(6.dp))
-    when (val quality = result.quality) {
-        is ObservationQualityEvaluation.Evaluated -> {
-            Text("Calidad: ${quality.assessment.outcome}",
-                fontWeight = FontWeight.Medium)
-            Text("Política: ${quality.assessment.policyId} v${quality.assessment.policyVersion} · uso: ${quality.assessment.intendedUse}",
-                style = MaterialTheme.typography.bodySmall)
-            quality.assessment.findings.forEach { finding ->
-                Text("${finding.severity} · ${finding.code}: ${finding.detail}",
-                    style = MaterialTheme.typography.bodySmall)
-            }
-            if (quality.assessment.intendedUse == "LOCAL_CATALOG_DISPLAY") {
-                Text("Alcance: solo visualización local de datos sintéticos; no autoriza análisis de mercado.",
-                    style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        is ObservationQualityEvaluation.NotEvaluated ->
-            Text("Calidad: NO EVALUADA · ${quality.reason}",
-                style = MaterialTheme.typography.bodySmall)
-    }
-
-    Spacer(Modifier.height(6.dp))
-    when (val freshness = result.freshness) {
-        is FreshnessEvaluation.Evaluated ->
-            Text("Frescura: ${freshness.assessment.status} · política ${freshness.assessment.policyId} v${freshness.assessment.policyVersion}",
-                style = MaterialTheme.typography.bodySmall)
-        is FreshnessEvaluation.NotEvaluated ->
-            Text("Frescura: NO EVALUADA · ${freshness.reason}. No se ha definido una vigencia para esta fuente y finalidad.",
-                style = MaterialTheme.typography.bodySmall)
     }
 }
 

@@ -5,10 +5,14 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.iie.android.data.local.DemoAssetSeeder
 import com.iie.android.data.local.IIEDatabaseProvider
+import com.iie.android.data.local.InitialAssetCatalog
+import com.iie.android.data.local.AssetResearchDossierSnapshotCodec
+import com.iie.android.data.local.entity.AssetResearchDossierSnapshotEntity
 import com.iie.android.data.market.CoinPaprikaTickerClient
+import com.iie.android.data.market.CoinMarketCapKeylessClient
 import com.iie.android.data.market.CoinPaprikaHistoricalTickerClient
+import com.iie.android.data.market.RoutescanTokenSupplyClient
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.QuoteFreshnessEvaluator
 import org.json.JSONObject
@@ -16,7 +20,15 @@ import com.iie.android.data.repository.RoomAssetRepository
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetDeploymentSummary
 import com.iie.android.domain.model.AssetObservationProvenance
-import com.iie.android.domain.quality.LocalDemoEvidenceEvaluator
+import com.iie.android.domain.model.AssetResearchDossier
+import com.iie.android.domain.model.ResearchQuoteInput
+import com.iie.android.domain.model.ResearchMarketHistoryPoint
+import com.iie.android.domain.model.ResearchQuoteComparisonInput
+import com.iie.android.domain.model.ResearchEvidence
+import com.iie.android.domain.model.ResearchFieldStatus
+import com.iie.android.domain.model.TokenomicsResearchSection
+import com.iie.android.domain.quality.AssetResearchDossierBuilder
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -31,24 +43,35 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.ZoneOffset
+import java.util.UUID
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AssetExplorerViewModel(application: Application) : AndroidViewModel(application) {
     private val database = IIEDatabaseProvider.get(application)
     private val repository = RoomAssetRepository(database)
-    private val evidenceEvaluator = LocalDemoEvidenceEvaluator.create()
     private val coinPaprikaClient = CoinPaprikaTickerClient()
+    private val coinMarketCapClient = CoinMarketCapKeylessClient()
     private val coinPaprikaHistoryClient = CoinPaprikaHistoricalTickerClient()
+    private val routescanTokenSupplyClient = RoutescanTokenSupplyClient()
     private val quoteFreshnessEvaluator = QuoteFreshnessEvaluator()
+    private val dossierBuilder = AssetResearchDossierBuilder()
+    private val _researchDossiers = MutableStateFlow<Map<String, AssetResearchDossier>>(emptyMap())
+    val researchDossiers: StateFlow<Map<String, AssetResearchDossier>> = _researchDossiers.asStateFlow()
 
     private val _marketQuotes = MutableStateFlow<Map<String, MarketQuoteUiState>>(emptyMap())
     val marketQuotes: StateFlow<Map<String, MarketQuoteUiState>> = _marketQuotes.asStateFlow()
+
+    private val _coinMarketCapQuotes = MutableStateFlow<Map<String, MarketQuoteUiState>>(emptyMap())
+    val coinMarketCapQuotes: StateFlow<Map<String, MarketQuoteUiState>> = _coinMarketCapQuotes.asStateFlow()
 
     private val _marketHistorySync = MutableStateFlow<Map<String, MarketHistorySyncUiState>>(emptyMap())
     val marketHistorySync: StateFlow<Map<String, MarketHistorySyncUiState>> = _marketHistorySync.asStateFlow()
 
     private val _dailyMarketHistory = MutableStateFlow<Map<String, List<CoinPaprikaHistoricalPoint>>>(emptyMap())
     val dailyMarketHistory: StateFlow<Map<String, List<CoinPaprikaHistoricalPoint>>> = _dailyMarketHistory.asStateFlow()
+
+    private val _routescanTokenSupplies = MutableStateFlow<Map<String, RoutescanTokenSupplyUiState>>(emptyMap())
+    val routescanTokenSupplies: StateFlow<Map<String, RoutescanTokenSupplyUiState>> = _routescanTokenSupplies.asStateFlow()
 
     private val query = MutableStateFlow("")
     val searchQuery: StateFlow<String> = query.asStateFlow()
@@ -64,17 +87,158 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     private val _catalogStatus = MutableStateFlow("Preparando catálogo local…")
     val catalogStatus: StateFlow<String> = _catalogStatus.asStateFlow()
 
-    private val _evidenceEvaluation = MutableStateFlow<EvidenceEvaluationUiState?>(null)
-    val evidenceEvaluation: StateFlow<EvidenceEvaluationUiState?> = _evidenceEvaluation.asStateFlow()
-
     init {
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { DemoAssetSeeder(database).seed() }
-                _catalogStatus.value = "Catálogo local de demostración cargado"
+                withContext(Dispatchers.IO) { InitialAssetCatalog(database).synchronize() }
+                _catalogStatus.value = "Catálogo inicial sincronizado · identidades y proveedores separados"
             } catch (error: Exception) {
                 _catalogStatus.value =
                     "No se pudo inicializar el catálogo local: ${error.message ?: "error desconocido"}"
+            }
+        }
+    }
+
+    /** Builds a dossier only from observations already persisted on this device. */
+    fun generateResearchDossier(assetId: String) {
+        viewModelScope.launch {
+            try {
+                val dossier = withContext(Dispatchers.IO) {
+                    val asset = repository.observeAsset(assetId).first()
+                        ?: error("El activo ya no existe en el catálogo local")
+                    val deployments = repository.observeDeployments(assetId).first()
+                    val provenance = repository.observeProvenance(assetId).first()
+                    val quoteRecord = repository.getLatestCoinPaprikaQuote(assetId)
+                    val quote = quoteRecord?.let { (observation, attribution) -> observation.toUiState(attribution) }
+                    val cmcQuoteRecord = repository.getLatestCoinMarketCapQuote(assetId)
+                    val cmcQuote = cmcQuoteRecord?.let { (observation, attribution) -> observation.toUiState(attribution) }
+                    val tokenomicsEvidence = cmcQuoteRecord?.let { (observation, _) ->
+                        val payload = JSONObject(observation.valueJson)
+                        val circulating = payload.nullableNonNegativeDouble("circulatingSupply")
+                        val total = payload.nullableNonNegativeDouble("totalSupply")
+                        val maximum = payload.nullableNonNegativeDouble("maxSupply")
+                        val marketCap = payload.nullableNonNegativeDouble("marketCapUsd")
+                        val fullyDilutedMarketCap = payload.nullableNonNegativeDouble("fullyDilutedMarketCapUsd")
+                        val relationIssues = com.iie.android.domain.model.ResearchEvidenceQualityGate
+                            .validateSupplyRelations(circulating, total, maximum)
+                        fun supplyEvidence(field: String, value: Double?): ResearchEvidence<Double> =
+                            ResearchEvidence(
+                                fieldKey = field,
+                                value = value,
+                                status = when {
+                                    value == null -> ResearchFieldStatus.UNKNOWN
+                                    relationIssues.isNotEmpty() -> ResearchFieldStatus.CONFLICTED
+                                    else -> ResearchFieldStatus.KNOWN
+                                },
+                                sourceId = CoinMarketCapKeylessClient.SOURCE_ID,
+                                sourceName = "CoinMarketCap",
+                                sourceUrl = "https://coinmarketcap.com/",
+                                licenseReference = CoinMarketCapKeylessClient.TERMS_URL,
+                                permittedUseStatus = "PERSONAL_USE_ONLY",
+                                observedAtEpochMs = observation.observedAtEpochMs,
+                                retrievedAtEpochMs = observation.retrievedAtEpochMs,
+                                qualityStatus = "PROVIDER_SCHEMA_VALIDATED",
+                                notes = relationIssues
+                            )
+                        fun valuationEvidence(field: String, value: Double?): ResearchEvidence<Double> =
+                            ResearchEvidence(
+                                fieldKey = field, value = value,
+                                status = if (value == null) ResearchFieldStatus.UNKNOWN else ResearchFieldStatus.KNOWN,
+                                sourceId = CoinMarketCapKeylessClient.SOURCE_ID,
+                                sourceName = "CoinMarketCap", sourceUrl = "https://coinmarketcap.com/",
+                                licenseReference = CoinMarketCapKeylessClient.TERMS_URL,
+                                permittedUseStatus = "PERSONAL_USE_ONLY",
+                                observedAtEpochMs = observation.observedAtEpochMs,
+                                retrievedAtEpochMs = observation.retrievedAtEpochMs,
+                                qualityStatus = "PROVIDER_SCHEMA_VALIDATED"
+                            )
+                        val unknownNumber = ResearchEvidence<Double>(
+                            fieldKey = "annual_inflation_percent", value = null,
+                            status = ResearchFieldStatus.UNKNOWN,
+                            sourceId = null, sourceName = null, sourceUrl = null,
+                            licenseReference = null, permittedUseStatus = "UNKNOWN",
+                            observedAtEpochMs = null, retrievedAtEpochMs = null,
+                            qualityStatus = "NOT_PROVIDED_BY_QUOTE_ENDPOINT"
+                        )
+                        val unknownText = ResearchEvidence<String>(
+                            fieldKey = "emission_schedule", value = null,
+                            status = ResearchFieldStatus.UNKNOWN,
+                            sourceId = null, sourceName = null, sourceUrl = null,
+                            licenseReference = null, permittedUseStatus = "UNKNOWN",
+                            observedAtEpochMs = null, retrievedAtEpochMs = null,
+                            qualityStatus = "NOT_PROVIDED_BY_QUOTE_ENDPOINT"
+                        )
+                        TokenomicsResearchSection(
+                            circulatingSupply = supplyEvidence("circulating_supply", circulating),
+                            totalSupply = supplyEvidence("total_supply", total),
+                            maxSupply = supplyEvidence("max_supply", maximum),
+                            marketCapUsd = valuationEvidence("market_cap_usd", marketCap),
+                            fullyDilutedMarketCapUsd = valuationEvidence("fully_diluted_market_cap_usd", fullyDilutedMarketCap),
+                            annualInflationPercent = unknownNumber,
+                            emissionSchedule = unknownText,
+                            unlockEvents = emptyList()
+                        )
+                    }
+                    val history = repository.getLatestCoinPaprikaDailyHistory(assetId, limit = 365)
+                    dossierBuilder.build(
+                        asset = asset,
+                        deployments = deployments,
+                        quote = quote?.let {
+                            ResearchQuoteInput(
+                                priceUsd = it.priceUsd,
+                                provider = it.attribution,
+                                providerUpdatedAtEpochMs = it.providerUpdatedAtEpochMs,
+                                retrievedAtEpochMs = it.retrievedAtEpochMs,
+                                freshnessStatus = it.freshnessStatus
+                            )
+                        },
+                        history = history.map { ResearchMarketHistoryPoint(it.timestampEpochMs, it.priceUsd) },
+                        provenance = provenance,
+                        generatedAtEpochMs = System.currentTimeMillis(),
+                        quoteComparison = ResearchQuoteComparisonInput(
+                            primaryQuote = quote?.let { ResearchQuoteInput(it.priceUsd, it.attribution, it.providerUpdatedAtEpochMs, it.retrievedAtEpochMs, it.freshnessStatus) },
+                            secondaryQuote = cmcQuote?.let { ResearchQuoteInput(it.priceUsd, it.attribution, it.providerUpdatedAtEpochMs, it.retrievedAtEpochMs, it.freshnessStatus) },
+                            primaryObservationId = quoteRecord?.first?.observationId,
+                            secondaryObservationId = cmcQuoteRecord?.first?.observationId
+                        ),
+                        tokenomicsEvidence = tokenomicsEvidence
+                    )
+                }
+                withContext(Dispatchers.IO) {
+                    val payload = AssetResearchDossierSnapshotCodec.encode(dossier)
+                    database.researchDossierSnapshotDao().insert(
+                        AssetResearchDossierSnapshotEntity(
+                            snapshotId = "dossier-snapshot:${UUID.randomUUID()}",
+                            assetId = assetId,
+                            generatedAtEpochMs = dossier.generatedAtEpochMs,
+                            schemaVersion = AssetResearchDossierSnapshotCodec.SCHEMA_VERSION,
+                            evidenceStatus = dossier.overallEvidenceStatus,
+                            payloadJson = payload,
+                            payloadSha256 = AssetResearchDossierSnapshotCodec.sha256(payload)
+                        )
+                    )
+                }
+                _researchDossiers.value = _researchDossiers.value + (assetId to dossier)
+            } catch (error: Exception) {
+                _catalogStatus.value = "No se pudo generar el expediente: ${error.message ?: "error desconocido"}"
+            }
+        }
+    }
+
+    /** Restores the latest immutable local dossier snapshot after process recreation. */
+    fun loadLatestResearchDossier(assetId: String) {
+        viewModelScope.launch {
+            try {
+                val dossier = withContext(Dispatchers.IO) {
+                    database.researchDossierSnapshotDao().getLatestForAsset(assetId)?.let {
+                        AssetResearchDossierSnapshotCodec.decode(it)
+                    }
+                }
+                if (dossier != null && dossier.assetId == assetId) {
+                    _researchDossiers.value = _researchDossiers.value + (assetId to dossier)
+                }
+            } catch (error: Exception) {
+                _catalogStatus.value = "No se pudo recuperar el expediente guardado: ${error.message ?: "error desconocido"}"
             }
         }
     }
@@ -85,49 +249,6 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     fun observeProvenance(assetId: String): Flow<List<AssetObservationProvenance>> =
         repository.observeProvenance(assetId)
 
-    fun evaluateLatestEvidence(assetId: String) {
-        _evidenceEvaluation.value = EvidenceEvaluationUiState(assetId = assetId, isLoading = true)
-        viewModelScope.launch {
-            val state = try {
-                withContext(Dispatchers.IO) {
-                    val record = repository.getLatestObservationForEvaluation(
-                        assetId = assetId,
-                        observationType = "IDENTITY_FIXTURE"
-                    )
-                    if (record == null) {
-                        EvidenceEvaluationUiState(
-                            assetId = assetId,
-                            isLoading = false,
-                            message = "No existe una observación evaluable con fuente registrada."
-                        )
-                    } else {
-                        val (observation, permittedUseStatus) = record
-                        EvidenceEvaluationUiState(
-                            assetId = assetId,
-                            isLoading = false,
-                            evaluation = evidenceEvaluator.evaluate(
-                                observation = observation,
-                                sourcePermittedUseStatus = permittedUseStatus,
-                                intendedUse = LocalDemoEvidenceEvaluator.INTENDED_USE,
-                                evaluatedAtEpochMs = System.currentTimeMillis()
-                            )
-                        )
-                    }
-                }
-            } catch (error: Exception) {
-                EvidenceEvaluationUiState(
-                    assetId = assetId,
-                    isLoading = false,
-                    message = "No se pudo evaluar la evidencia: ${error.message ?: "error desconocido"}"
-                )
-            }
-            if (_evidenceEvaluation.value?.assetId == assetId) {
-                _evidenceEvaluation.value = state
-            }
-        }
-    }
-
-
     fun loadLatestMarketQuote(assetId: String) {
         viewModelScope.launch {
             try {
@@ -136,6 +257,12 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                 }
                 if (latest != null) {
                     _marketQuotes.value = _marketQuotes.value + (assetId to latest.toUiState())
+                }
+                val cmcLatest = withContext(Dispatchers.IO) {
+                    repository.getLatestCoinMarketCapQuote(assetId)
+                }
+                if (cmcLatest != null) {
+                    _coinMarketCapQuotes.value = _coinMarketCapQuotes.value + (assetId to cmcLatest.toUiState())
                 }
             } catch (error: Exception) {
                 _marketQuotes.value = _marketQuotes.value + (assetId to MarketQuoteUiState(
@@ -149,6 +276,8 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     fun refreshMarketQuote(assetId: String, symbol: String) {
         _marketQuotes.value = _marketQuotes.value + (assetId to
             (_marketQuotes.value[assetId] ?: MarketQuoteUiState()).copy(isLoading = true, error = null))
+        _coinMarketCapQuotes.value = _coinMarketCapQuotes.value + (assetId to
+            (_coinMarketCapQuotes.value[assetId] ?: MarketQuoteUiState()).copy(isLoading = true, error = null))
         viewModelScope.launch {
             try {
                 val observation = withContext(Dispatchers.IO) {
@@ -166,7 +295,86 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                     error = error.message ?: "No se pudo actualizar la cotización"
                 ))
             }
+
+            try {
+                val cmcObservation = withContext(Dispatchers.IO) {
+                    repository.fetchAndPersistCoinMarketCapQuote(
+                        assetId = assetId,
+                        expectedSymbol = symbol,
+                        client = coinMarketCapClient
+                    )
+                }
+                val attribution = withContext(Dispatchers.IO) {
+                    repository.getLatestCoinMarketCapQuote(assetId)?.second ?: "CoinMarketCap"
+                }
+                _coinMarketCapQuotes.value = _coinMarketCapQuotes.value +
+                    (assetId to cmcObservation.toUiState(attribution))
+            } catch (error: Exception) {
+                val previous = _coinMarketCapQuotes.value[assetId] ?: MarketQuoteUiState()
+                _coinMarketCapQuotes.value = _coinMarketCapQuotes.value + (assetId to previous.copy(
+                    isLoading = false,
+                    error = error.message ?: "No se pudo actualizar CoinMarketCap"
+                ))
+            }
         }
+    }
+
+    fun loadLatestRoutescanTokenSupply(assetId: String, deploymentId: String) {
+        viewModelScope.launch {
+            try {
+                val observation = withContext(Dispatchers.IO) {
+                    repository.getLatestRoutescanTokenSupply(assetId, deploymentId)
+                }
+                if (observation != null) {
+                    _routescanTokenSupplies.value = _routescanTokenSupplies.value +
+                        (deploymentId to observation.toRoutescanTokenSupplyUiState())
+                }
+            } catch (error: Exception) {
+                val previous = _routescanTokenSupplies.value[deploymentId] ?: RoutescanTokenSupplyUiState()
+                _routescanTokenSupplies.value = _routescanTokenSupplies.value +
+                    (deploymentId to previous.copy(error = error.message ?: "No se pudo leer el suministro on-chain"))
+            }
+        }
+    }
+
+    fun refreshRoutescanTokenSupply(assetId: String, deploymentId: String) {
+        val previous = _routescanTokenSupplies.value[deploymentId] ?: RoutescanTokenSupplyUiState()
+        _routescanTokenSupplies.value = _routescanTokenSupplies.value +
+            (deploymentId to previous.copy(isLoading = true, error = null))
+        viewModelScope.launch {
+            try {
+                val observation = withContext(Dispatchers.IO) {
+                    repository.fetchAndPersistRoutescanTokenSupply(
+                        assetId = assetId,
+                        deploymentId = deploymentId,
+                        client = routescanTokenSupplyClient
+                    )
+                }
+                _routescanTokenSupplies.value = _routescanTokenSupplies.value +
+                    (deploymentId to observation.toRoutescanTokenSupplyUiState())
+            } catch (error: Exception) {
+                val current = _routescanTokenSupplies.value[deploymentId] ?: RoutescanTokenSupplyUiState()
+                _routescanTokenSupplies.value = _routescanTokenSupplies.value +
+                    (deploymentId to current.copy(
+                        isLoading = false,
+                        error = error.message ?: "No se pudo consultar Routescan"
+                    ))
+            }
+        }
+    }
+
+    private fun com.iie.android.data.local.entity.AssetObservationEntity.toRoutescanTokenSupplyUiState(): RoutescanTokenSupplyUiState {
+        val payload = JSONObject(valueJson)
+        return RoutescanTokenSupplyUiState(
+            rawAmount = payload.getString("rawAmount"),
+            decimalAmount = payload.getString("decimalAmount"),
+            decimals = payload.getInt("decimals"),
+            chainId = payload.getString("chainId"),
+            contractAddress = payload.getString("contractAddress"),
+            blockNumber = payload.getLong("blockNumber"),
+            retrievedAtEpochMs = retrievedAtEpochMs,
+            isLoading = false
+        )
     }
 
     fun loadDailyMarketHistory(assetId: String) {
@@ -221,6 +429,13 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             }
         }
     }
+    private fun JSONObject.nullableNonNegativeDouble(key: String): Double? {
+        if (isNull(key)) return null
+        val value = getDouble(key)
+        require(value.isFinite() && value >= 0.0) { "CoinMarketCap $key is outside accepted bounds" }
+        return value
+    }
+
     private fun Pair<com.iie.android.data.local.entity.AssetObservationEntity, String>.toUiState(): MarketQuoteUiState =
         first.toUiState(second)
 
@@ -279,6 +494,18 @@ data class MarketQuoteUiState(
     val error: String? = null
 )
 
+
+data class RoutescanTokenSupplyUiState(
+    val rawAmount: String? = null,
+    val decimalAmount: String? = null,
+    val decimals: Int? = null,
+    val chainId: String? = null,
+    val contractAddress: String? = null,
+    val blockNumber: Long? = null,
+    val retrievedAtEpochMs: Long? = null,
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
 
 data class MarketHistorySyncUiState(
     val isLoading: Boolean = false,

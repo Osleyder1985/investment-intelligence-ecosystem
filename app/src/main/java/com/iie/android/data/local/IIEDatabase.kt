@@ -9,6 +9,7 @@ import com.iie.android.data.local.dao.AssetIdentifierDao
 import com.iie.android.data.local.dao.DataSourceDao
 import com.iie.android.data.local.dao.NetworkDao
 import com.iie.android.data.local.dao.WatchlistDao
+import com.iie.android.data.local.dao.AssetResearchDossierSnapshotDao
 import com.iie.android.data.local.entity.AssetDeploymentEntity
 import com.iie.android.data.local.entity.AssetEntity
 import com.iie.android.data.local.entity.AssetObservationEntity
@@ -16,6 +17,7 @@ import com.iie.android.data.local.entity.AssetIdentifierEntity
 import com.iie.android.data.local.entity.DataSourceEntity
 import com.iie.android.data.local.entity.NetworkEntity
 import com.iie.android.data.local.entity.WatchlistEntryEntity
+import com.iie.android.data.local.entity.AssetResearchDossierSnapshotEntity
 
 @Database(
     entities = [
@@ -25,9 +27,10 @@ import com.iie.android.data.local.entity.WatchlistEntryEntity
         DataSourceEntity::class,
         AssetObservationEntity::class,
         AssetIdentifierEntity::class,
-        WatchlistEntryEntity::class
+        WatchlistEntryEntity::class,
+        AssetResearchDossierSnapshotEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class IIEDatabase : RoomDatabase() {
@@ -38,4 +41,5 @@ abstract class IIEDatabase : RoomDatabase() {
     abstract fun assetObservationDao(): AssetObservationDao
     abstract fun assetIdentifierDao(): AssetIdentifierDao
     abstract fun watchlistDao(): WatchlistDao
+    abstract fun researchDossierSnapshotDao(): AssetResearchDossierSnapshotDao
 }
