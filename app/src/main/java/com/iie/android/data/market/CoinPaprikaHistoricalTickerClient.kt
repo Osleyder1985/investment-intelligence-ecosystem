@@ -16,11 +16,11 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 fun interface CoinPaprikaDailyHistoryFetcher {
-    override suspend fun fetchDaily(
+    suspend fun fetchDaily(
         providerId: String,
         start: LocalDate,
-        end: LocalDate? = null,
-        retrievedAtEpochMs: Long = System.currentTimeMillis()
+        end: LocalDate?,
+        retrievedAtEpochMs: Long
     ): List<CoinPaprikaHistoricalPoint>
 }
 
