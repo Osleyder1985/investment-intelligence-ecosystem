@@ -43,6 +43,12 @@ class GlobalMarketOverviewRepository(
             check(source.permittedUseStatus == "PERSONAL_USE_ONLY") {
                 "CoinPaprika global data is outside the configured personal-use scope"
             }
+            val now = System.currentTimeMillis()
+            val cached = database.globalMarketSnapshotDao().getLatest(COINPAPRIKA_SOURCE_ID, GLOBAL_MARKET_TYPE)
+            if (cached != null && now >= cached.retrievedAtEpochMs &&
+                now - cached.retrievedAtEpochMs < GLOBAL_CACHE_TTL_MS &&
+                isTrusted(cached, COINPAPRIKA_SOURCE_ID, GLOBAL_MARKET_TYPE)
+            ) return@runCatching
             val metrics = globalClient.fetch()
             persist(
                 sourceId = COINPAPRIKA_SOURCE_ID,
@@ -66,6 +72,12 @@ class GlobalMarketOverviewRepository(
             check(source.permittedUseStatus == "ATTRIBUTION_REQUIRED") {
                 "Alternative.me attribution policy is not registered"
             }
+            val now = System.currentTimeMillis()
+            val cached = database.globalMarketSnapshotDao().getLatest(ALTERNATIVE_ME_SOURCE_ID, FEAR_GREED_TYPE)
+            if (cached != null && now >= cached.retrievedAtEpochMs &&
+                now - cached.retrievedAtEpochMs < FEAR_GREED_CACHE_TTL_MS &&
+                isTrusted(cached, ALTERNATIVE_ME_SOURCE_ID, FEAR_GREED_TYPE)
+            ) return@runCatching
             val index = fearGreedClient.fetch()
             persist(
                 sourceId = ALTERNATIVE_ME_SOURCE_ID,
@@ -169,5 +181,7 @@ class GlobalMarketOverviewRepository(
         const val ALTERNATIVE_ME_SOURCE_ID = "source:alternative-me"
         const val GLOBAL_MARKET_TYPE = "GLOBAL_MARKET"
         const val FEAR_GREED_TYPE = "FEAR_GREED"
+        const val GLOBAL_CACHE_TTL_MS = 5 * 60 * 1000L
+        const val FEAR_GREED_CACHE_TTL_MS = 20 * 60 * 60 * 1000L
     }
 }
