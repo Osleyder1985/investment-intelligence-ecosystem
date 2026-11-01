@@ -1114,13 +1114,13 @@ class IIEDatabaseTest {
             "asset:usd-coin", "USDC", start, end, fetcher
         )
 
-        assertEquals(listOf("usdc-usd-coin", "usdc-usd-coin"), requestedProviderIds)
+        assertEquals(listOf("usdc-usd-coin"), requestedProviderIds)
         assertEquals(2, first.pointsReceived)
         assertEquals(2, first.pointsInserted)
         assertEquals(0, first.pointsAlreadyPresent)
-        assertEquals(2, repeated.pointsReceived)
+        assertEquals(0, repeated.pointsReceived)
         assertEquals(0, repeated.pointsInserted)
-        assertEquals(2, repeated.pointsAlreadyPresent)
+        assertEquals(0, repeated.pointsAlreadyPresent)
     }
 
     @Test
