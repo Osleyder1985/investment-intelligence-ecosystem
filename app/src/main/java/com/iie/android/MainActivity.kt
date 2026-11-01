@@ -1176,9 +1176,9 @@ private fun AssetHistoricalRiskDetails(
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("SERIE UTILIZADA", fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.labelSmall, color = IIEDesign.accentSecondary)
-            Text("Proveedor: \${canonical?.sourceId?.removePrefix("source:")?.uppercase() ?: "N/D"} · \${metrics.observations} observaciones · \${metrics.dailyReturns} retornos",
+            Text("Proveedor: ${canonical?.sourceId?.removePrefix("source:")?.uppercase() ?: "N/D"} · ${metrics.observations} observaciones · ${metrics.dailyReturns} retornos",
                 style = MaterialTheme.typography.bodySmall)
-            Text("Ventana: \${DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(firstDate))} – \${DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(lastDate))}",
+            Text("Ventana: ${DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(firstDate))} – ${DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(lastDate))}",
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MetricCard("Volatilidad anualizada", metrics.annualizedVolatilityPercent?.let {
@@ -1317,7 +1317,7 @@ private fun ResearchDossierDetails(dossier: AssetResearchDossier?) {
                         when {
                             circulating == null || total == null -> "Cobertura incompleta: proporción no calculable."
                             circulating > total -> "Inconsistencia: el circulante supera el suministro total."
-                            else -> "El \${String.format(java.util.Locale.US, "%.2f", circulatingRatio)}% del suministro total figura como circulante; no equivale a liquidez disponible."
+                            else -> "El ${String.format(java.util.Locale.US, "%.2f", circulatingRatio)}% del suministro total figura como circulante; no equivale a liquidez disponible."
                         },
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1328,7 +1328,7 @@ private fun ResearchDossierDetails(dossier: AssetResearchDossier?) {
                         MetricCard("FDV", fdv?.let { formatCompactUsd(it) } ?: "N/D", Modifier.weight(1f))
                     }
                     Text(fdvMultiple?.takeIf { it.isFinite() }?.let {
-                        "FDV / capitalización: \${String.format(java.util.Locale.US, "%.2fx", it)}"
+                        "FDV / capitalización: ${String.format(java.util.Locale.US, "%.2fx", it)}"
                     } ?: "Relación FDV / capitalización no calculable.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("Una relación FDV/capitalización elevada puede indicar exposición a suministro no circulante; no informa calendario de emisiones ni presión vendedora.",
