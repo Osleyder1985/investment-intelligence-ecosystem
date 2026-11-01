@@ -15,6 +15,9 @@ interface DataSourceDao {
     @Query("SELECT * FROM data_sources WHERE sourceId = :sourceId LIMIT 1")
     suspend fun getSource(sourceId: String): DataSourceEntity?
 
+    @Query("DELETE FROM data_sources WHERE sourceId = :sourceId")
+    suspend fun deleteSource(sourceId: String)
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertSource(source: DataSourceEntity)
 
