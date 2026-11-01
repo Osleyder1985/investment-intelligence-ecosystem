@@ -10,6 +10,8 @@ import com.iie.android.data.local.InitialAssetCatalog
 import com.iie.android.data.local.AssetResearchDossierSnapshotCodec
 import com.iie.android.data.local.entity.AssetResearchDossierSnapshotEntity
 import com.iie.android.data.market.CoinPaprikaTickerClient
+import com.iie.android.data.market.CoinMarketCapAuthenticatedClient
+import com.iie.android.data.security.CoinMarketCapApiKeyStore
 import com.iie.android.data.market.CoinPaprikaHistoricalTickerClient
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.QuoteFreshnessEvaluator
@@ -44,6 +46,8 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     private val database = IIEDatabaseProvider.get(application)
     private val repository = RoomAssetRepository(database)
     private val coinPaprikaClient = CoinPaprikaTickerClient()
+    private val coinMarketCapClient = CoinMarketCapAuthenticatedClient()
+    private val coinMarketCapKeyStore = CoinMarketCapApiKeyStore(application)
     private val coinPaprikaHistoryClient = CoinPaprikaHistoricalTickerClient()
     private val quoteFreshnessEvaluator = QuoteFreshnessEvaluator()
     private val dossierBuilder = AssetResearchDossierBuilder()
@@ -52,6 +56,9 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
 
     private val _marketQuotes = MutableStateFlow<Map<String, MarketQuoteUiState>>(emptyMap())
     val marketQuotes: StateFlow<Map<String, MarketQuoteUiState>> = _marketQuotes.asStateFlow()
+
+    private val _coinMarketCapQuotes = MutableStateFlow<Map<String, MarketQuoteUiState>>(emptyMap())
+    val coinMarketCapQuotes: StateFlow<Map<String, MarketQuoteUiState>> = _coinMarketCapQuotes.asStateFlow()
 
     private val _marketHistorySync = MutableStateFlow<Map<String, MarketHistorySyncUiState>>(emptyMap())
     val marketHistorySync: StateFlow<Map<String, MarketHistorySyncUiState>> = _marketHistorySync.asStateFlow()
@@ -168,6 +175,12 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                 if (latest != null) {
                     _marketQuotes.value = _marketQuotes.value + (assetId to latest.toUiState())
                 }
+                val cmcLatest = withContext(Dispatchers.IO) {
+                    repository.getLatestCoinMarketCapQuote(assetId)
+                }
+                if (cmcLatest != null) {
+                    _coinMarketCapQuotes.value = _coinMarketCapQuotes.value + (assetId to cmcLatest.toUiState())
+                }
             } catch (error: Exception) {
                 _marketQuotes.value = _marketQuotes.value + (assetId to MarketQuoteUiState(
                     isLoading = false,
@@ -195,6 +208,30 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
                 _marketQuotes.value = _marketQuotes.value + (assetId to previous.copy(
                     isLoading = false,
                     error = error.message ?: "No se pudo actualizar la cotización"
+                ))
+            }
+
+            try {
+                val cmcObservation = withContext(Dispatchers.IO) {
+                    val apiKey = coinMarketCapKeyStore.read()
+                        ?: error("Configura tu API key de CoinMarketCap en Ajustes")
+                    repository.fetchAndPersistCoinMarketCapQuote(
+                        assetId = assetId,
+                        expectedSymbol = symbol,
+                        apiKey = apiKey,
+                        client = coinMarketCapClient
+                    )
+                }
+                val attribution = withContext(Dispatchers.IO) {
+                    repository.getLatestCoinMarketCapQuote(assetId)?.second ?: "CoinMarketCap"
+                }
+                _coinMarketCapQuotes.value = _coinMarketCapQuotes.value +
+                    (assetId to cmcObservation.toUiState(attribution))
+            } catch (error: Exception) {
+                val previous = _coinMarketCapQuotes.value[assetId] ?: MarketQuoteUiState()
+                _coinMarketCapQuotes.value = _coinMarketCapQuotes.value + (assetId to previous.copy(
+                    isLoading = false,
+                    error = error.message ?: "No se pudo actualizar CoinMarketCap"
                 ))
             }
         }
