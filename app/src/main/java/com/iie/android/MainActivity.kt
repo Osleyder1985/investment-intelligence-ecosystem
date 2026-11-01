@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetObservationProvenance
+import com.iie.android.domain.model.AssetResearchDossier
 import com.iie.android.domain.model.FreshnessEvaluation
 import com.iie.android.domain.model.ObservationPayloadValidation
 import com.iie.android.domain.model.ObservationQualityEvaluation
@@ -510,6 +511,7 @@ private fun AssetDetailDialog(
     val historySync = historySyncStates[asset.assetId]
     val dailyHistoryByAsset by viewModel.dailyMarketHistory.collectAsState()
     val dailyHistory = dailyHistoryByAsset[asset.assetId].orEmpty()
+    val researchDossiers by viewModel.researchDossiers.collectAsState()
 
     LaunchedEffect(asset.assetId) {
         viewModel.evaluateLatestEvidence(asset.assetId)
@@ -544,6 +546,17 @@ private fun AssetDetailDialog(
                         )
                     }
                 }
+
+                Spacer(Modifier.height(12.dp))
+                Text("Expediente de investigación", fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Genera un resumen con las observaciones guardadas en este dispositivo. No descarga datos ni emite recomendaciones.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                TextButton(onClick = { viewModel.generateResearchDossier(asset.assetId) }) {
+                    Text("Generar expediente con datos guardados")
+                }
+                ResearchDossierDetails(researchDossiers[asset.assetId])
 
                 Spacer(Modifier.height(12.dp))
                 Text("Cotización de mercado · USD", fontWeight = FontWeight.SemiBold)
@@ -604,6 +617,48 @@ private fun AssetDetailDialog(
             TextButton(onClick = onDismiss) { Text("Cerrar") }
         }
     )
+}
+
+
+@Composable
+private fun ResearchDossierDetails(dossier: AssetResearchDossier?) {
+    if (dossier == null) {
+        Text("Todavía no se ha generado un expediente.", style = MaterialTheme.typography.bodySmall)
+        return
+    }
+    val market = dossier.market
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Text("Estado: ${dossier.overallEvidenceStatus}", fontWeight = FontWeight.SemiBold)
+        Text("Identidad: ${dossier.identityStatus} · evaluación: ${dossier.identityAssessment}")
+        Text("Evidencias registradas: ${dossier.evidenceCount}")
+        Text("Cotización: " + (market.priceUsd?.let {
+            "$" + String.format(java.util.Locale.US, "%.8f", it) + " USD"
+        } ?: "UNKNOWN"))
+        Text("Fuente: ${market.provider ?: "UNKNOWN"} · frescura: ${market.freshnessStatus}")
+        Text("Puntos históricos: ${market.historyPointCount}")
+        Text("Retorno del periodo disponible: " + (market.periodReturnPercent?.let {
+            String.format(java.util.Locale.US, "%+.2f%%", it)
+        } ?: "UNKNOWN"))
+        Text("Máximo / mínimo del histórico: " + (market.periodHighUsd?.let {
+            "$" + String.format(java.util.Locale.US, "%.6f", it)
+        } ?: "UNKNOWN") + " / " + (market.periodLowUsd?.let {
+            "$" + String.format(java.util.Locale.US, "%.6f", it)
+        } ?: "UNKNOWN"))
+        Text("Fundamentos: ${dossier.fundamentals} · Tokenomics: ${dossier.tokenomics}")
+        Text("Seguridad: ${dossier.security} · Gobernanza: ${dossier.governance}")
+        Text("Redes/representaciones: ${dossier.deployments.size}")
+        Text(
+            "Generado: " + DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                .format(Date(dossier.generatedAtEpochMs)),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            "Cobertura parcial: UNKNOWN/NOT_ASSESSED no se infieren ni se convierten en cero. Esto no es una valoración ni una recomendación.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
 
 
