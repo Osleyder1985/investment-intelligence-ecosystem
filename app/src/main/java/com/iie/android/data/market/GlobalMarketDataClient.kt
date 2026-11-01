@@ -110,6 +110,9 @@ class CoinPaprikaGlobalMarketClient(
         if (count <= 0) throw IOException("Invalid active cryptocurrency count")
         val updatedSeconds = root["last_updated"]?.jsonPrimitive?.longOrNull
             ?: throw IOException("CoinPaprika global response is missing last_updated")
+        if (updatedSeconds <= 0L || updatedSeconds > (retrievedAtEpochMs + 60_000L) / 1000L) {
+            throw IOException("CoinPaprika global timestamp is outside accepted bounds")
+        }
         val updatedAt = updatedSeconds * 1000L
         if (updatedAt <= 0L || updatedAt > retrievedAtEpochMs + 60_000L) {
             throw IOException("CoinPaprika global timestamp is outside accepted bounds")
@@ -146,6 +149,9 @@ class AlternativeMeFearGreedClient(
             ?.takeIf { it.isNotBlank() } ?: throw IOException("Alternative.me response is missing classification")
         val timestampSeconds = item["timestamp"]?.jsonPrimitive?.longOrNull
             ?: throw IOException("Alternative.me response is missing timestamp")
+        if (timestampSeconds <= 0L || timestampSeconds > (retrievedAtEpochMs + 60_000L) / 1000L) {
+            throw IOException("Alternative.me sentiment timestamp is outside accepted bounds")
+        }
         val updatedAt = timestampSeconds * 1000L
         if (value !in 0..100 || updatedAt <= 0L || updatedAt > retrievedAtEpochMs + 60_000L) {
             throw IOException("Alternative.me sentiment is outside accepted bounds")
