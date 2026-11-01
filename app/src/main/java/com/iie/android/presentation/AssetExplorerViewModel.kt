@@ -307,6 +307,10 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             assets.forEachIndexed { index, asset ->
                 markQuoteLoading(asset.assetId)
                 refreshMarketQuoteNow(asset.assetId, asset.symbol)
+                if (_dailyMarketHistory.value[asset.assetId].isNullOrEmpty()) {
+                    _dashboardRefreshStatus.value = "Descargando histórico · ${asset.symbol.uppercase()}"
+                    downloadDailyMarketHistoryNow(asset.assetId, asset.symbol)
+                }
                 _dashboardRefreshStatus.value = "Actualizando ${index + 1}/${assets.size} · ${asset.symbol.uppercase()}"
             }
             _dashboardRefreshStatus.value = "Actualización finalizada · ${assets.size} activos revisados. · $globalStatus"
@@ -434,72 +438,42 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
         if (current.isLoading) return
         _marketHistorySync.value = _marketHistorySync.value +
             (assetId to current.copy(isLoading = true, error = null, message = "Preparando descarga…"))
-        viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    val end = LocalDate.now(ZoneOffset.UTC)
-                    val start = end.minusYears(1)
-                    repository.downloadAndPersistCoinPaprikaDailyHistory(
-                        assetId = assetId,
-                        expectedSymbol = symbol,
-                        start = start,
-                        end = end,
-                        fetcher = coinPaprikaHistoryClient
-                    )
-                }
-                loadDailyMarketHistory(assetId)
-                _marketHistorySync.value = _marketHistorySync.value + (assetId to MarketHistorySyncUiState(
-                    isLoading = false,
-                    pointsReceived = result.pointsReceived,
-                    pointsInserted = result.pointsInserted,
-                    pointsAlreadyPresent = result.pointsAlreadyPresent,
-                    message = "Histórico diario importado: ${result.pointsInserted} nuevos; ${result.pointsAlreadyPresent} ya existían."
-                ))
-            } catch (error: Exception) {
-                val previous = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
-                _marketHistorySync.value = _marketHistorySync.value + (assetId to previous.copy(
-                    isLoading = false,
-                    error = error.message ?: "No se pudo descargar el histórico",
-                    message = "La importación no se completó."
-                ))
+        viewModelScope.launch { downloadDailyMarketHistoryNow(assetId, symbol) }
+    }
+
+    private suspend fun downloadDailyMarketHistoryNow(assetId: String, symbol: String) {
+        val current = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
+        if (current.isLoading && current.message != "Preparando descarga…" && current.message != "Descargando desde el dashboard…") return
+        _marketHistorySync.value = _marketHistorySync.value +
+            (assetId to current.copy(isLoading = true, error = null, message = "Descargando desde el dashboard…"))
+        try {
+            val result = withContext(Dispatchers.IO) {
+                val end = LocalDate.now(ZoneOffset.UTC)
+                val start = end.minusYears(1)
+                repository.downloadAndPersistCoinPaprikaDailyHistory(
+                    assetId = assetId,
+                    expectedSymbol = symbol,
+                    start = start,
+                    end = end,
+                    fetcher = coinPaprikaHistoryClient
+                )
             }
+            loadDailyMarketHistory(assetId)
+            _marketHistorySync.value = _marketHistorySync.value + (assetId to MarketHistorySyncUiState(
+                isLoading = false,
+                pointsReceived = result.pointsReceived,
+                pointsInserted = result.pointsInserted,
+                pointsAlreadyPresent = result.pointsAlreadyPresent,
+                message = "Histórico diario importado: ${result.pointsInserted} nuevos; ${result.pointsAlreadyPresent} ya existían."
+            ))
+        } catch (error: Exception) {
+            val previous = _marketHistorySync.value[assetId] ?: MarketHistorySyncUiState()
+            _marketHistorySync.value = _marketHistorySync.value + (assetId to previous.copy(
+                isLoading = false,
+                error = error.message ?: "No se pudo descargar el histórico",
+                message = "La importación no se completó."
+            ))
         }
-    }
-    private fun JSONObject.nullableNonNegativeDouble(key: String): Double? {
-        if (isNull(key)) return null
-        val value = getDouble(key)
-        require(value.isFinite() && value >= 0.0) { "CoinMarketCap $key is outside accepted bounds" }
-        return value
-    }
-
-    private fun Pair<com.iie.android.data.local.entity.AssetObservationEntity, String>.toUiState(): MarketQuoteUiState =
-        first.toUiState(second)
-
-    private fun com.iie.android.data.local.entity.AssetObservationEntity.toUiState(
-        attribution: String
-    ): MarketQuoteUiState {
-        val json = JSONObject(valueJson)
-        return MarketQuoteUiState(
-            priceUsd = json.getDouble("price"),
-            providerUpdatedAtEpochMs = json.getLong("providerUpdatedAtEpochMs"),
-            retrievedAtEpochMs = retrievedAtEpochMs,
-            attribution = attribution,
-            providerId = json.getString("providerId"),
-            marketCapUsd = json.nullableNonNegativeFiniteDouble("marketCapUsd"),
-            fullyDilutedMarketCapUsd = json.nullableNonNegativeFiniteDouble("fullyDilutedMarketCapUsd"),
-            circulatingSupply = json.nullableNonNegativeFiniteDouble("circulatingSupply"),
-            totalSupply = json.nullableNonNegativeFiniteDouble("totalSupply"),
-            maxSupply = json.nullableNonNegativeFiniteDouble("maxSupply"),
-            freshnessStatus = quoteFreshnessEvaluator.evaluate(
-                json.optLong("providerUpdatedAtEpochMs").takeIf { it > 0L },
-                System.currentTimeMillis()
-            ).status.name,
-            freshnessReason = quoteFreshnessEvaluator.evaluate(
-                json.optLong("providerUpdatedAtEpochMs").takeIf { it > 0L },
-                System.currentTimeMillis()
-            ).reason,
-            isLoading = false
-        )
     }
 
     private fun JSONObject.nullableNonNegativeFiniteDouble(key: String): Double? {
