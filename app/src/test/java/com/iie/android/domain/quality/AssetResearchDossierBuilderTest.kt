@@ -3,7 +3,7 @@ package com.iie.android.domain.quality
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.ResearchFieldStatus
-import com.iie.android.presentation.MarketQuoteUiState
+import com.iie.android.domain.model.ResearchQuoteInput
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -24,7 +24,7 @@ class AssetResearchDossierBuilderTest {
 
     @Test fun marketReturnsUseChronologicalPoints() {
         val points = listOf(point(3L, 120.0), point(1L, 100.0), point(2L, 110.0))
-        val quote = MarketQuoteUiState(
+        val quote = ResearchQuoteInput(
             priceUsd = 121.0, attribution = "CoinPaprika",
             providerUpdatedAtEpochMs = 3L, retrievedAtEpochMs = 4L, freshnessStatus = "FRESH"
         )
