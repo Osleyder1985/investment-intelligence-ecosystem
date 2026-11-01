@@ -16,6 +16,10 @@ import com.iie.android.data.repository.RoomAssetRepository
 import com.iie.android.domain.model.Asset
 import com.iie.android.domain.model.AssetDeploymentSummary
 import com.iie.android.domain.model.AssetObservationProvenance
+import com.iie.android.domain.model.AssetResearchDossier
+import com.iie.android.domain.model.ResearchQuoteInput
+import com.iie.android.domain.quality.AssetResearchDossierBuilder
+import kotlinx.coroutines.flow.first
 import com.iie.android.domain.quality.LocalDemoEvidenceEvaluator
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +44,9 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     private val coinPaprikaClient = CoinPaprikaTickerClient()
     private val coinPaprikaHistoryClient = CoinPaprikaHistoricalTickerClient()
     private val quoteFreshnessEvaluator = QuoteFreshnessEvaluator()
+    private val dossierBuilder = AssetResearchDossierBuilder()
+    private val _researchDossiers = MutableStateFlow<Map<String, AssetResearchDossier>>(emptyMap())
+    val researchDossiers: StateFlow<Map<String, AssetResearchDossier>> = _researchDossiers.asStateFlow()
 
     private val _marketQuotes = MutableStateFlow<Map<String, MarketQuoteUiState>>(emptyMap())
     val marketQuotes: StateFlow<Map<String, MarketQuoteUiState>> = _marketQuotes.asStateFlow()
@@ -75,6 +82,42 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
             } catch (error: Exception) {
                 _catalogStatus.value =
                     "No se pudo inicializar el catálogo local: ${error.message ?: "error desconocido"}"
+            }
+        }
+    }
+
+    /** Builds a dossier only from observations already persisted on this device. */
+    fun generateResearchDossier(assetId: String) {
+        viewModelScope.launch {
+            try {
+                val dossier = withContext(Dispatchers.IO) {
+                    val asset = repository.observeAsset(assetId).first()
+                        ?: error("El activo ya no existe en el catálogo local")
+                    val deployments = repository.observeDeployments(assetId).first()
+                    val provenance = repository.observeProvenance(assetId).first()
+                    val quoteRecord = repository.getLatestCoinPaprikaQuote(assetId)
+                    val quote = quoteRecord?.first?.toUiState(quoteRecord.second)
+                    val history = repository.getLatestCoinPaprikaDailyHistory(assetId, limit = 365)
+                    dossierBuilder.build(
+                        asset = asset,
+                        deployments = deployments,
+                        quote = quote?.let {
+                            ResearchQuoteInput(
+                                priceUsd = it.priceUsd,
+                                provider = it.attribution,
+                                providerUpdatedAtEpochMs = it.providerUpdatedAtEpochMs,
+                                retrievedAtEpochMs = it.retrievedAtEpochMs,
+                                freshnessStatus = it.freshnessStatus
+                            )
+                        },
+                        history = history,
+                        provenance = provenance,
+                        generatedAtEpochMs = System.currentTimeMillis()
+                    )
+                }
+                _researchDossiers.value = _researchDossiers.value + (assetId to dossier)
+            } catch (error: Exception) {
+                _catalogStatus.value = "No se pudo generar el expediente: ${error.message ?: "error desconocido"}"
             }
         }
     }
