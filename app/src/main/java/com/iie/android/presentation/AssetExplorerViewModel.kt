@@ -5,8 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.iie.android.data.local.DemoAssetSeeder
 import com.iie.android.data.local.IIEDatabaseProvider
+import com.iie.android.data.local.InitialAssetCatalog
 import com.iie.android.data.local.AssetResearchDossierSnapshotCodec
 import com.iie.android.data.local.entity.AssetResearchDossierSnapshotEntity
 import com.iie.android.data.market.CoinPaprikaTickerClient
@@ -23,7 +23,6 @@ import com.iie.android.domain.model.ResearchQuoteInput
 import com.iie.android.domain.model.ResearchMarketHistoryPoint
 import com.iie.android.domain.quality.AssetResearchDossierBuilder
 import kotlinx.coroutines.flow.first
-import com.iie.android.domain.quality.LocalDemoEvidenceEvaluator
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -44,7 +43,6 @@ import java.util.UUID
 class AssetExplorerViewModel(application: Application) : AndroidViewModel(application) {
     private val database = IIEDatabaseProvider.get(application)
     private val repository = RoomAssetRepository(database)
-    private val evidenceEvaluator = LocalDemoEvidenceEvaluator.create()
     private val coinPaprikaClient = CoinPaprikaTickerClient()
     private val coinPaprikaHistoryClient = CoinPaprikaHistoricalTickerClient()
     private val quoteFreshnessEvaluator = QuoteFreshnessEvaluator()
@@ -75,14 +73,11 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
     private val _catalogStatus = MutableStateFlow("Preparando catálogo local…")
     val catalogStatus: StateFlow<String> = _catalogStatus.asStateFlow()
 
-    private val _evidenceEvaluation = MutableStateFlow<EvidenceEvaluationUiState?>(null)
-    val evidenceEvaluation: StateFlow<EvidenceEvaluationUiState?> = _evidenceEvaluation.asStateFlow()
-
     init {
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { DemoAssetSeeder(database).seed() }
-                _catalogStatus.value = "Catálogo local de demostración cargado"
+                withContext(Dispatchers.IO) { InitialAssetCatalog(database).synchronize() }
+                _catalogStatus.value = "Catálogo inicial sincronizado · identidades y proveedores separados"
             } catch (error: Exception) {
                 _catalogStatus.value =
                     "No se pudo inicializar el catálogo local: ${error.message ?: "error desconocido"}"
@@ -163,49 +158,6 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
 
     fun observeProvenance(assetId: String): Flow<List<AssetObservationProvenance>> =
         repository.observeProvenance(assetId)
-
-    fun evaluateLatestEvidence(assetId: String) {
-        _evidenceEvaluation.value = EvidenceEvaluationUiState(assetId = assetId, isLoading = true)
-        viewModelScope.launch {
-            val state = try {
-                withContext(Dispatchers.IO) {
-                    val record = repository.getLatestObservationForEvaluation(
-                        assetId = assetId,
-                        observationType = "IDENTITY_FIXTURE"
-                    )
-                    if (record == null) {
-                        EvidenceEvaluationUiState(
-                            assetId = assetId,
-                            isLoading = false,
-                            message = "No existe una observación evaluable con fuente registrada."
-                        )
-                    } else {
-                        val (observation, permittedUseStatus) = record
-                        EvidenceEvaluationUiState(
-                            assetId = assetId,
-                            isLoading = false,
-                            evaluation = evidenceEvaluator.evaluate(
-                                observation = observation,
-                                sourcePermittedUseStatus = permittedUseStatus,
-                                intendedUse = LocalDemoEvidenceEvaluator.INTENDED_USE,
-                                evaluatedAtEpochMs = System.currentTimeMillis()
-                            )
-                        )
-                    }
-                }
-            } catch (error: Exception) {
-                EvidenceEvaluationUiState(
-                    assetId = assetId,
-                    isLoading = false,
-                    message = "No se pudo evaluar la evidencia: ${error.message ?: "error desconocido"}"
-                )
-            }
-            if (_evidenceEvaluation.value?.assetId == assetId) {
-                _evidenceEvaluation.value = state
-            }
-        }
-    }
-
 
     fun loadLatestMarketQuote(assetId: String) {
         viewModelScope.launch {
