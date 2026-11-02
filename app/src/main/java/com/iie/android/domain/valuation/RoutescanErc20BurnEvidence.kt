@@ -62,7 +62,10 @@ data class VerifiedErc20BurnEvent(
     val tokenAmount: BigDecimal,
     val tokenDecimals: Int,
     val sourceUrl: String,
-    val evidenceStatus: String = "EXPLORER_INDEXED_EVENT_PENDING_RPC_CROSSCHECK"
+    val evidenceStatus: String = "EXPLORER_INDEXED_EVENT_PENDING_RPC_CROSSCHECK",
+    val rpcBlockHash: String? = null,
+    val rpcEndpoint: String? = null,
+    val rpcCheckedAtEpochMs: Long? = null
 )
 
 sealed class RoutescanBurnFetchResult {
