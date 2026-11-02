@@ -183,3 +183,10 @@ El perfil no inventa la fecha de inicio del mapping: la integración exige que s
 ### Cobertura de pruebas
 
 Se agregan fixtures para el layout real no indexado, beneficiario malformado y número de palabras incorrecto. Las pruebas son sintéticas para el decodificador; no se presentan como observaciones de transacciones mainnet reales. La ejecución de Android CI e IIE CI sobre el head final sigue siendo requisito previo a fusionar.
+
+
+### Ingesta RPC ejecutable
+
+El adaptador `UniswapUniMerkleDistributionAdapter` cierra el flujo de extremo a extremo: recibe un transaction hash, consulta `eth_chainId`, `eth_getTransactionByHash`, `eth_getTransactionReceipt` y `eth_getBlockByNumber` mediante el endpoint público Ethereum RPC configurado, valida que transacción, recibo, logs y bloque canónico coincidan, decodifica el perfil MerkleDistributor y persiste la observación. No requiere API key de explorador.
+
+El inicio de vigencia del mapping se exige como parámetro y debe proceder de la transacción de creación del contrato; la fuente de recibos no sustituye esa evidencia de despliegue. Se conserva el gate de finality: el cross-check del bloque actual no elimina riesgo de reorganización posterior.
