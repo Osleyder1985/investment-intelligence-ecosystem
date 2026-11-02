@@ -144,6 +144,17 @@ object UniswapV2BuybackReceiptDecoder {
         }.distinct()
         if (outputRecipient.size != 1 || transferLogs.size != 1) errors += "OUTPUT_TRANSFER_MUST_MATCH_EXACTLY_ONE_PAIR_PAYMENT"
 
+        val inputTransfers = legs?.let { swapLegs ->
+            relevant.filter { log ->
+                log.address.equals(swapLegs.first, true) &&
+                    log.topics.size == 3 &&
+                    log.topics[0].equals(TRANSFER_TOPIC, true) &&
+                    topicAddress(log.topics[2])?.equals(pair.pairAddress, true) == true &&
+                    decodeUint256(log.data)?.toString() == swapLegs.second
+            }
+        }.orEmpty()
+        if (inputTransfers.size != 1) errors += "INPUT_TRANSFER_MUST_MATCH_EXACTLY_ONE_PAIR_FUNDING"
+
         if (errors.isNotEmpty()) return UniswapV2BuybackDecodeResult.Abstained(errors.distinct())
 
         return UniswapV2BuybackDecodeResult.Decoded(
