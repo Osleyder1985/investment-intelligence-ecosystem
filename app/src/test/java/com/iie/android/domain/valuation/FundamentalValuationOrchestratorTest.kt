@@ -107,7 +107,7 @@ class FundamentalValuationOrchestratorTest {
         assertEquals(FairValueRangeKind.MODEL_CONSENSUS, result.consolidated.rangeKind)
         assertEquals(100.0 / 1.2 / 10.0, result.consolidated.lowerPerUnit, 0.000001)
         assertEquals(12.0, result.consolidated.upperPerUnit, 0.0)
-        assertFalse(result.consolidated.assumptions.any { it.contains("average", ignoreCase = true) })
+        assertTrue(result.consolidated.assumptions.any { it.contains("not an average", ignoreCase = true) })
     }
 
 
