@@ -10,6 +10,7 @@
 - `AssetValuationMethodSelector`: explicit rights-based method eligibility; no rights are inferred from ticker, price or market capitalization.
 - `AssetValuationResearchAdapter`: joins the research dossier to reviewed rights evidence and validates identity and fresh market quote gates.
 - `FundamentalValuationOrchestrator`: executes only eligible model requests, checks asset/scope/currency/timestamp comparability, consolidates independent ranges conservatively, and passes the result to the classification engine.
+- `TokenomicsSupplyEvidenceAdapter`: validates circulating/total/max supply field provenance, intended-use licence status, observation/retrieval timestamps, supply relations and cross-field timestamp comparability. It emits verified supply facts and source references only; it does not infer demand or fair value.
 - `FairValueEstimate`: typed output preserving method, range kind, timestamp, evidence references and assumptions.
 
 ## Non-negotiable controls
@@ -27,6 +28,13 @@
 
 The asset detail view now exposes a dedicated **Valoración fundamental** section. It displays available market-cap and supply facts and explicitly reports that fair value is not estimable while typology-specific rights, value capture, emissions/unlocks, execution liquidity and risk evidence are missing. It does not fabricate a target price.
 
+## Tokenomics evidence bridge
+
+- Circulating supply and total supply are mandatory, separately evidenced facts for a verified supply envelope; maximum supply is included only when its evidence is explicitly known and accepted.
+- Missing/unknown optional maximum supply does not block the two mandatory facts, but conflicted maximum-supply evidence is never silently discarded.
+- Every accepted field must pass source, URL, licence, permitted-use and timestamp quality gates. Cross-field observations must fit the configured skew window.
+- The adapter deliberately does not turn market cap/FDV into monetary demand, or label circulating-to-total supply as effective/free-float supply.
+
 ## Orchestration and consensus policy
 
 - A single valid model estimate can be evaluated on its own, retaining its original range kind (including an explicitly uncalibrated scenario envelope).
@@ -43,7 +51,8 @@ The asset detail view now exposes a dedicated **Valoración fundamental** sectio
 
 ## Remaining work before production use
 
-- Connect the selector/orchestrator to provider-backed, permitted and attributable fundamental/on-chain model inputs.
+- Connect provider-backed, permitted and attributable fundamental/on-chain data sources to typed NAV, holder-attributable DCF, token-capture and redemption inputs.
+- Supply scenario demand assumptions from separately sourced evidence; do not derive them from market capitalization or the current token price.
 - Connect permitted, attributable fundamental/on-chain data sources and dated unlock/emission schedules.
 - Persist model inputs, parameters, outputs and immutable versioned valuation snapshots.
 - Integrate the independent risk-veto engine and executable market-depth data.
