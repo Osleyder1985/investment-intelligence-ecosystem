@@ -106,9 +106,11 @@ object UniswapV2BuybackReceiptDecoder {
             val output0 = values[2]
             val output1 = values[3]
             when {
-                token0IsAcquired && output0 > 0 && input1 > 0 && input0 == 0L && output1 == 0L ->
+                token0IsAcquired && output0.signum() > 0 && input1.signum() > 0 &&
+                    input0 == java.math.BigInteger.ZERO && output1 == java.math.BigInteger.ZERO ->
                     Triple(pair.token1, input1.toString(), output0.toString())
-                token1IsAcquired && output1 > 0 && input0 > 0 && input1 == 0L && output0 == 0L ->
+                token1IsAcquired && output1.signum() > 0 && input0.signum() > 0 &&
+                    input1 == java.math.BigInteger.ZERO && output0 == java.math.BigInteger.ZERO ->
                     Triple(pair.token0, input0.toString(), output1.toString())
                 else -> null
             }
@@ -150,15 +152,12 @@ object UniswapV2BuybackReceiptDecoder {
         )
     }
 
-    private fun decodeSwapData(log: EvmReceiptLog): List<Long>? {
+    private fun decodeSwapData(log: EvmReceiptLog): List<java.math.BigInteger>? {
         if (log.topics.size != 3 || !log.topics[1].isHexWord() || !log.topics[2].isHexWord()) return null
         val data = log.data.removePrefix("0x")
         if (data.length != 256 || !data.matches(Regex("[a-fA-F0-9]{256}"))) return null
-        // Amounts are uint256. This decoder intentionally rejects values outside signed Long
-        // rather than truncating them; a BigInteger-based downstream representation is required.
         return (0 until 4).map { index ->
             data.substring(index * 64, (index + 1) * 64).toBigInteger(16)
-                .takeIf { it.bitLength() <= 63 }?.toLong() ?: return null
         }
     }
 
