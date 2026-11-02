@@ -29,7 +29,7 @@ class EthereumRpcTransactionReceiptSource(
     fun fetch(transactionHash: String): RpcTransactionReceiptResult {
         if (!transactionHash.matches(HASH)) return RpcTransactionReceiptResult.Abstained("TRANSACTION_HASH_INVALID")
         return try {
-            val chainId = rpc("eth_chainId", buildJsonArray()).resultHexLong()
+            val chainId = rpc("eth_chainId", buildJsonArray { }).resultHexLong()
                 ?: return RpcTransactionReceiptResult.Abstained("RPC_CHAIN_ID_MISSING")
             if (chainId != EthereumRpcBurnCrossChecker.ETHEREUM_MAINNET_CHAIN_ID) {
                 return RpcTransactionReceiptResult.Abstained("RPC_CHAIN_NOT_ETHEREUM_MAINNET")
@@ -151,7 +151,7 @@ class EthereumRpcTransactionReceiptSource(
             put("params", params)
         }.toString()
         val response = Json.parseToJsonElement(transport.post(endpoint, request)).jsonObject
-        if (response["error"] != null) throw IllegalStateException("RPC_$method_ERROR")
+        if (response["error"] != null) throw IllegalStateException("RPC_${method}_ERROR")
         return response
     }
 
