@@ -61,6 +61,9 @@ data class VerifiedDistributionClaimPaymentCandidate(
     val claimEventLogIndex: Long,
     val paymentTransferLogIndex: Long,
     val blockTimestampEpochMs: Long,
+    val finalityStatus: String = "OBSERVED",
+    val safeBlockNumber: Long? = null,
+    val finalizedBlockNumber: Long? = null,
     val evidenceStatus: String = "RPC_CROSSCHECKED_CLAIM_PAYMENT_PENDING_FINALITY_AND_HOLDER_REVIEW"
 )
 
@@ -201,7 +204,10 @@ object ReviewedDistributionClaimReceiptDecoder {
                 rawAmount = claimAmount!!.toString(),
                 claimEventLogIndex = claim!!.logIndex,
                 paymentTransferLogIndex = payment!!.logIndex,
-                blockTimestampEpochMs = blockTime
+                blockTimestampEpochMs = blockTime,
+                finalityStatus = receipt.finalityStatus,
+                safeBlockNumber = receipt.safeBlockNumber,
+                finalizedBlockNumber = receipt.finalizedBlockNumber
             )
         )
     }
