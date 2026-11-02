@@ -36,7 +36,7 @@ class UniswapV2BuybackReceiptDecoderTest {
         crosschecked: Boolean = true
     ) = EvmTransactionReceiptEvidence(
         chainId = 1, transactionHash = tx, transactionTo = executor,
-        blockNumber = 100, blockHash = blockHash, succeeded = succeeded,
+        blockNumber = 100, blockHash = blockHash, blockTimestampEpochMs = 1_500, succeeded = succeeded,
         rpcCrosschecked = crosschecked, logs = logs, observedAtEpochMs = 2_000
     )
 
@@ -98,6 +98,13 @@ class UniswapV2BuybackReceiptDecoderTest {
             receipt(multiple), executorMapping, reviewedPair
         ) as UniswapV2BuybackDecodeResult.Abstained
         assertTrue(ambiguous.reasonCodes.contains("UNISWAP_V2_EXPECTED_EXACTLY_ONE_PAIR_SWAP"))
+    }
+
+    @Test fun rejectsExecutorMappingThatWasNotActiveAtBlockTime() {
+        val expired = executorMapping.copy(validUntilEpochMs = 1_400)
+        val result = UniswapV2BuybackReceiptDecoder.decode(receipt(), expired, reviewedPair)
+            as UniswapV2BuybackDecodeResult.Abstained
+        assertTrue(result.reasonCodes.contains("EXECUTOR_MAPPING_NOT_ACTIVE_AT_BLOCK_TIME"))
     }
 
     @Test fun rejectsWrongExecutorAndReceiptLogFromDifferentBlock() {
