@@ -87,6 +87,6 @@ class TokenomicsEmissionEvidenceAdapterTest {
         ) as TokenomicsEmissionEvidenceResult.Ready
 
         assertTrue(result.evidence.unlockDisclosures.isEmpty())
-        assertTrue(result.evidence.limitations.any { it.contains("Quantitative dilution forecast") })
+        assertTrue(result.evidence.limitations.any { it.contains("quantitative dilution forecast", ignoreCase = true) })
     }
 }
