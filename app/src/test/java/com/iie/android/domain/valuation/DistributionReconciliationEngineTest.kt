@@ -41,7 +41,7 @@ class DistributionReconciliationEngineTest {
 
         assertEquals("1000", report.scheduledUnlockRaw)
         assertEquals("0", report.observedUnlockedRaw)
-        assertEquals("0", report.claimedRaw)
+        assertEquals("1000", report.claimedRaw)
         assertEquals("1000", report.transferredToBeneficiariesRaw)
         assertEquals("0", report.scheduleVsObservedClaimDeltaRaw)
         assertEquals("10", report.transferredAsCirculatingSupplyPercent.toPlainString())
