@@ -39,6 +39,9 @@ interface AssetObservationDao {
     )
     fun observeProvenanceForAsset(assetId: String): Flow<List<AssetObservationProvenanceRow>>
 
+    @Query("SELECT * FROM asset_observations WHERE observationId = :observationId LIMIT 1")
+    suspend fun getObservationById(observationId: String): AssetObservationEntity?
+
     @Query(
         """
         SELECT * FROM asset_observations
