@@ -98,6 +98,9 @@ class DistributionClaimObservationStore(
             put("blockNumber", blockNumber)
             put("blockHash", blockHash)
             put("blockTimestampEpochMs", blockTimestampEpochMs)
+            put("finalityStatus", finalityStatus)
+            safeBlockNumber?.let { put("safeBlockNumber", it) }
+            finalizedBlockNumber?.let { put("finalizedBlockNumber", it) }
             put("distributorAddress", distributorAddress)
             put("beneficiaryAddress", beneficiaryAddress)
             put("tokenContract", tokenContract)
