@@ -59,6 +59,9 @@ class EthereumRpcBurnCrossCheckerTest {
         val confirmed = result as RpcBurnCrosscheckResult.Confirmed
         assertEquals("RPC_CROSSCHECKED_ETHEREUM_MAINNET_PENDING_FINALITY", confirmed.event.evidenceStatus)
         assertEquals(blockHash, confirmed.canonicalBlockHash)
+        assertEquals(blockHash, confirmed.event.rpcBlockHash)
+        assertEquals(EthereumRpcBurnCrossChecker.ETHEREUM_MAINNET_RPC, confirmed.event.rpcEndpoint)
+        assertEquals(1_700_000_100_000L, confirmed.event.rpcCheckedAtEpochMs)
         assertEquals(2, calls)
     }
 
