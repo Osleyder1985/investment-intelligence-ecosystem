@@ -36,7 +36,7 @@ class ProtocolDistributionObservationStore(
             put("evidenceStatus", evidence.evidenceStatus)
             put("abiEvidenceUrl", "https://etherscan.io/address/0xca046a83edb78f74ae338bb5a291bf6fdac9e1d2#code")
         }.toString()
-        val identity = "$assetId|$SOURCE_ID|VESTING|\${evidence.transactionHash}|\${evidence.withdrawalLogIndex}|\${evidence.transferLogIndex}"
+        val identity = assetId + "|" + SOURCE_ID + "|VESTING|" + evidence.transactionHash + "|" + evidence.withdrawalLogIndex + "|" + evidence.transferLogIndex
         return persist(assetId, evidence.chainId, evidence.tokenContract, VESTING_OBSERVATION_TYPE,
             evidence.blockTimestampEpochMs, identity, payload)
     }
@@ -65,7 +65,7 @@ class ProtocolDistributionObservationStore(
             put("evidenceStatus", evidence.evidenceStatus)
         }.toString()
         val logIndexes = evidence.payments.joinToString(",") { it.transferLogIndex.toString() }
-        val identity = "$SOURCE_ID|BATCH|\${evidence.chainId}|\${evidence.transactionHash}|$logIndexes"
+        val identity = SOURCE_ID + "|BATCH|" + evidence.chainId + "|" + evidence.transactionHash + "|" + logIndexes
         return persist(evidence.assetId, evidence.chainId, evidence.tokenContract, BATCH_OBSERVATION_TYPE,
             evidence.blockTimestampEpochMs, identity, payload)
     }
@@ -125,7 +125,7 @@ class ProtocolDistributionObservationStore(
             }
         } catch (error: Exception) {
             ProtocolDistributionStoreResult.Abstained(
-                listOf("PERSISTENCE_FAILED:\${error.javaClass.simpleName}")
+                listOf("PERSISTENCE_FAILED:" + error.javaClass.simpleName)
             )
         }
     }
