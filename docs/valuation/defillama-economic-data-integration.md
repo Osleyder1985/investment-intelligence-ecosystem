@@ -111,3 +111,23 @@ Los importes se decodifican como uint256 con precisión completa y se conservan 
 **Abstenciones deliberadas:** swaps multihop, agregadores, múltiples pares Swap en el mismo recibo, split outputs, tokens fee-on-transfer/rebasing cuando el importe transferido no coincide con el evento, pares no revisados, cadenas sin cross-check RPC y logs con bloque/hash inconsistentes. Este primer adaptador no descubre factories ni valida por sí solo que el par pertenezca a un factory oficial; el mapping del par debe proceder de una fuente revisada. Tampoco acredita que el protocolo haya autorizado económicamente la operación: solo aporta evidencia de ejecución compatible con el mapping.
 
 Tests añadidos para swap single-hop válido, mapping pendiente, recibo fallido, falta de cross-check, transferencias de entrada/salida discordantes, eventos Swap ambiguos, executor incorrecto y logs de bloque inconsistente.
+
+
+## Decodificador concreto: swaps single-hop Uniswap V3
+
+Se añade un decodificador de recibos para el evento estándar `Swap(address,address,int256,int256,uint160,uint128,int24)` de pools Uniswap V3. Este adaptador es deliberadamente estricto y no representa soporte genérico para routers, agregadores ni rutas multihop.
+
+Condiciones de aceptación:
+- mapping de pool revisado con chainId, dirección, `token0/token1`, evidencia HTTPS y ventana temporal;
+- mapping del ejecutor `BUYBACK_EXECUTOR` revisado, vigente en el timestamp del bloque y ligado al contrato adquirido;
+- recibo exitoso, cross-check RPC obligatorio y coherencia de hash, bloque y timestamp en todos los logs;
+- exactamente un evento Swap del pool revisado;
+- `sender` del evento Swap coincidente con el ejecutor revisado;
+- interpretación de `amount0/amount1` como `int256` ABI con complemento a dos y precisión BigInteger, sin truncar a Long;
+- una cantidad positiva de entrada y una negativa de salida, con el token adquirido en la pata negativa;
+- Transfer ERC-20 de entrada hacia el pool y Transfer de salida desde el pool, ambos con cantidades raw exactas;
+- destinatario indexado del evento Swap coincidente con el destinatario del Transfer final.
+
+**Abstenciones deliberadas:** router que reenvía la salida desde su propia dirección, recipient intermedio, multihop, split swaps, múltiples eventos Swap, transferencias discordantes, tokens fee-on-transfer/rebasing, mapping no revisado, chain no configurada y evidencia RPC incompleta. En particular, el evento V3 identifica un recipient de pool, pero no demuestra por sí solo que ese recipient sea el holder final; por eso esta primera versión exige que el recipient del evento y el beneficiario del Transfer de salida coincidan exactamente. No se intenta decodificar calldata de routers ni inferir rutas.
+
+El resultado pasa por `ProtocolBuybackEvidenceEvaluator` y permanece `RPC_CROSSCHECKED_SWAP_PENDING_FINALITY_AND_PROTOCOL_REVIEW`. No se convierte automáticamente en recompra aprobada para valoración. Los tests cubren cantidades signed, pago exacto, pool no revisado, receipt fallido, ausencia de cross-check, sender incorrecto, recipient discordante, transferencias discordantes, swaps ambiguos, chain incorrecta y mapping expirado.
