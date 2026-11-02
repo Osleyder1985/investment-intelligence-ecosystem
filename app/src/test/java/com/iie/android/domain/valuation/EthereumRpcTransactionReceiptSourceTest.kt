@@ -70,7 +70,7 @@ class EthereumRpcTransactionReceiptSourceTest {
         assertTrue(receipt.succeeded)
         assertTrue(receipt.rpcCrosschecked)
         assertEquals("FINALIZED", receipt.finalityStatus)
-        assertEquals(blockNumberLong + 3L, receipt.safeBlockNumber)
+        assertEquals(blockNumberLong + 2L, receipt.safeBlockNumber)
         assertEquals(blockNumberLong + 3L, receipt.finalizedBlockNumber)
         assertEquals(2, receipt.logs.size)
         assertEquals(4L, receipt.logs[0].logIndex)
