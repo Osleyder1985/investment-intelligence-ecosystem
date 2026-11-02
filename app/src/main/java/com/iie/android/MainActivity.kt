@@ -58,6 +58,7 @@ import com.iie.android.presentation.CoinMarketCapSettingsScreen
 import com.iie.android.presentation.MarketQuoteUiState
 import com.iie.android.presentation.MarketHistorySyncUiState
 import com.iie.android.presentation.RoutescanTokenSupplyUiState
+import com.iie.android.presentation.DistributionReconciliationUiState
 import com.iie.android.data.market.CoinPaprikaHistoricalPoint
 import com.iie.android.data.market.GlobalMarketMetrics
 import com.iie.android.data.market.FearGreedIndex
@@ -903,9 +904,11 @@ private fun AssetDetailDialog(
     val coinMarketCapDailyHistory = coinMarketCapDailyHistoryByAsset[asset.assetId].orEmpty()
     val researchDossiers by viewModel.researchDossiers.collectAsState()
     val routescanTokenSupplies by viewModel.routescanTokenSupplies.collectAsState()
+    val distributionReconciliations by viewModel.distributionReconciliations.collectAsState()
 
     LaunchedEffect(asset.assetId) {
         viewModel.loadLatestResearchDossier(asset.assetId)
+        viewModel.loadLatestDistributionReconciliation(asset.assetId)
         viewModel.loadLatestMarketQuote(asset.assetId)
         viewModel.loadDailyMarketHistory(asset.assetId)
         viewModel.loadCoinMarketCapDailyHistory(asset.assetId)
@@ -1014,6 +1017,27 @@ private fun AssetDetailDialog(
                     }
                 }
 
+                DetailSection(
+                    "Distribuciones y presión potencial",
+                    "Conciliación de evidencia on-chain revisada. La presión estimada es un escenario, no ventas observadas."
+                ) {
+                    val reconciliation = distributionReconciliations[asset.assetId]
+                    val reportDeployment = deployments.firstOrNull {
+                        it.deploymentId == reconciliation?.deploymentId
+                    }
+                    DistributionReconciliationDetails(
+                        state = reconciliation,
+                        symbol = asset.symbol,
+                        decimals = reportDeployment?.decimals
+                    )
+                    TextButton(
+                        onClick = { viewModel.loadLatestDistributionReconciliation(asset.assetId) },
+                        enabled = reconciliation?.isLoading != true
+                    ) {
+                        Text(if (reconciliation?.isLoading == true) "Actualizando informe…" else "Actualizar informe")
+                    }
+                }
+
                 DetailSection("Redes y representaciones", "Identidad y contratos asociados al activo.") {
                     if (deployments.isEmpty()) {
                         Text(if (asset.symbol == "USDC" || asset.symbol == "USDT")
@@ -1058,6 +1082,132 @@ private fun AssetDetailDialog(
     )
 }
 
+
+@Composable
+private fun DistributionReconciliationDetails(
+    state: DistributionReconciliationUiState?,
+    symbol: String,
+    decimals: Int?
+) {
+    if (state == null || state.isLoading) {
+        Text(
+            if (state?.isLoading == true) "Consultando informe persistido…"
+            else "Todavía no se ha consultado el informe de reconciliación.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+    if (state.error != null) {
+        Text(state.error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        return
+    }
+    if (!state.reportAvailable) {
+        Text(
+            "Sin informe validado para este activo. Las observaciones candidatas en cuarentena no se usan para calcular presión de venta.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+
+    val amount: (String) -> String = { raw ->
+        val value = raw.toBigDecimalOrNull()
+        if (value == null) "N/D"
+        else if (decimals == null) "$raw unidades mínimas"
+        else value.movePointLeft(decimals).stripTrailingZeros().toPlainString() + " $symbol"
+    }
+    val dateFormat = remember { DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT) }
+    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Surface(
+            color = Color(0xFF18352E),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("INFORME DERIVADO · INTEGRIDAD VERIFICADA", style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF8DDFB8), fontWeight = FontWeight.Bold)
+                Text(
+                    "Ventana: ${dateFormat.format(Date(state.windowStartEpochMs))} – ${dateFormat.format(Date(state.windowEndEpochMs))}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text("Evidencias revisadas: ${state.evidenceCount}", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        Text("MOVIMIENTOS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold)
+        ReconciliationMetricLine("Desbloqueado observado", amount(state.observedUnlockedRaw))
+        ReconciliationMetricLine("Reclamado", amount(state.claimedRaw))
+        ReconciliationMetricLine("Transferido a beneficiarios", amount(state.transferredRaw))
+        ReconciliationMetricLine("Transferido / suministro circulante", "${state.transferredSupplyPercent}%")
+        ReconciliationMetricLine("Diferencia reclamado – calendario", amount(state.scheduleVsClaimDeltaRaw))
+        Text(
+            "Calendario programado: ${amount(state.scheduledUnlockRaw)}. Solo se incorpora cuando existe evidencia de calendario revisada.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Text("CONCENTRACIÓN DE BENEFICIARIOS", style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        if (state.beneficiaries.isEmpty()) {
+            Text("No hay beneficiarios destacados en el informe.", style = MaterialTheme.typography.bodySmall)
+        } else {
+            state.beneficiaries.forEachIndexed { index, beneficiary ->
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    ReconciliationMetricLine(
+                        "#${index + 1} ${beneficiary.address.take(8)}…${beneficiary.address.takeLast(6)}",
+                        "${beneficiary.sharePercent}%"
+                    )
+                    Text(
+                        "${amount(beneficiary.rawAmount)} del total transferido",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            ReconciliationMetricLine("Participación acumulada del top", "${state.topBeneficiariesSharePercent}%")
+        }
+
+        Text("ESCENARIOS DE PRESIÓN POTENCIAL", style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        ReconciliationMetricLine("Escenario bajo", "${amount(state.sellPressureLowRaw)} · ${state.sellPressureLowPercent}%")
+        ReconciliationMetricLine("Escenario alto", "${amount(state.sellPressureHighRaw)} · ${state.sellPressureHighPercent}%")
+        Text(
+            "Supuesto de venta: ${state.sellThroughLowBps / 100.0}%–${state.sellThroughHighBps / 100.0}%. ${state.sellThroughRationale}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            "ESTIMACIÓN DE ESCENARIO; NO REPRESENTA VENTAS OBSERVADAS NI UNA PREDICCIÓN.",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color(0xFFFFC46B),
+            fontWeight = FontWeight.Bold
+        )
+        if (state.caveats.isNotEmpty()) {
+            Text("LIMITACIONES", style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+            state.caveats.forEach { caveat ->
+                Text("• $caveat", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Text("ID de informe: ${state.observationId}", style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun ReconciliationMetricLine(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+    }
+}
 
 @Composable
 private fun RoutescanTokenSupplyDetails(
