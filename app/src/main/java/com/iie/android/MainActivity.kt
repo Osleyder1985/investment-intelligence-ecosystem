@@ -992,6 +992,14 @@ private fun AssetDetailDialog(
                     }
                 }
 
+                DetailSection("Valoración fundamental", "Compara precio y valor económico estimado; no confunde caídas de mercado con infravaloración.") {
+                    FundamentalValuationPanel(
+                        asset = asset,
+                        marketQuote = marketQuote,
+                        tokenomicsQuote = coinMarketCapQuote
+                    )
+                }
+
                 DetailSection("Tokenómica y suministro on-chain", "Los valores se muestran solo cuando existe evidencia de proveedor o de red.") {
                     val erc20Deployments = deployments.filter { it.representationKind == "ERC20" }
                     if (erc20Deployments.isEmpty()) {
@@ -1437,4 +1445,94 @@ private fun ProvenanceObservation(observation: AssetObservationProvenance) {
     )
     Text("Estado: ${observation.status} · Calidad: ${observation.quality}",
         style = MaterialTheme.typography.bodySmall)
+}
+
+
+@Composable
+private fun FundamentalValuationPanel(
+    asset: Asset,
+    marketQuote: MarketQuoteUiState?,
+    tokenomicsQuote: MarketQuoteUiState?
+) {
+    val price = marketQuote?.priceUsd
+    val marketCap = tokenomicsQuote?.marketCapUsd ?: marketQuote?.marketCapUsd
+    val circulating = tokenomicsQuote?.circulatingSupply ?: marketQuote?.circulatingSupply
+    val total = tokenomicsQuote?.totalSupply ?: marketQuote?.totalSupply
+    val maximum = tokenomicsQuote?.maxSupply ?: marketQuote?.maxSupply
+    val identityVerified = asset.identityStatus == "RESOLVED"
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF17232E))
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("ESTADO DE VALORACIÓN", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                Text(
+                    if (identityVerified && price != null && marketCap != null && circulating != null)
+                        "DATOS PARCIALES" else "EVIDENCIA INSUFICIENTE",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFFFFC46B), fontWeight = FontWeight.Bold
+                )
+            }
+            Text(
+                "Valor razonable no estimable todavía",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "No asignamos «barato», «muy barato» ni «extremadamente barato» sin un modelo aplicable, " +
+                    "un rango de valor defendible y evidencia suficiente de cómo el token captura valor.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text("DATOS DISPONIBLES", style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            ValuationMetricLine("Precio de mercado", price?.let { "$" + String.format(java.util.Locale.US, "%,.6f", it) } ?: "No disponible")
+            ValuationMetricLine("Capitalización", marketCap?.let { "$" + String.format(java.util.Locale.US, "%,.0f", it) } ?: "No disponible")
+            ValuationMetricLine("Suministro circulante", circulating?.let { String.format(java.util.Locale.US, "%,.4f", it) } ?: "No disponible")
+            ValuationMetricLine("Suministro total / máximo",
+                listOfNotNull(total, maximum).takeIf { it.isNotEmpty() }
+                    ?.joinToString(" / ") { String.format(java.util.Locale.US, "%,.4f", it) } ?: "No disponible")
+            Text("QUÉ BLOQUEA UNA CONCLUSIÓN", style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text("• Tipología económica y derechos efectivos del titular del token.", style = MaterialTheme.typography.bodySmall)
+            Text("• Captura verificable de comisiones/ingresos o demanda económica atribuible.", style = MaterialTheme.typography.bodySmall)
+            Text("• Emisiones, inflación y desbloqueos futuros con fechas y cantidades.", style = MaterialTheme.typography.bodySmall)
+            Text("• Liquidez ejecutable, profundidad y evaluación independiente de riesgos.", style = MaterialTheme.typography.bodySmall)
+            Text(
+                "Modelos implementados en el motor: NAV, flujos atribuibles (DCF), comparables con captura de valor, " +
+                    "escenarios monetarios y redención. Cada uno se abstiene si no se verifican sus condiciones.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "La categoría «infravaloración extrema» permanece deshabilitada hasta contar con calibración histórica " +
+                    "y validación independiente fuera de muestra.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFFFFC46B)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ValuationMetricLine(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+    }
 }
