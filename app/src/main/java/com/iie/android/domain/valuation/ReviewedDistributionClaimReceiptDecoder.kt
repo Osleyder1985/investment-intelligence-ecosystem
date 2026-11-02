@@ -16,7 +16,8 @@ data class ReviewedDistributionClaimEvent(
     val validFromEpochMs: Long = 1L,
     val validUntilEpochMs: Long? = null,
     val beneficiaryDataWordIndex: Int? = null,
-    val expectedDataWordCount: Int? = null
+    val expectedDataWordCount: Int? = null,
+    val expectedTopicCount: Int? = null
 ) {
     fun validationErrors(): List<String> = buildList {
         if (chainId <= 0L) add("CLAIM_SCHEMA_CHAIN_ID_INVALID")
@@ -31,6 +32,7 @@ data class ReviewedDistributionClaimEvent(
         }
         if (amountDataWordIndex < 0) add("CLAIM_SCHEMA_AMOUNT_WORD_INDEX_INVALID")
         if (expectedDataWordCount != null && expectedDataWordCount <= 0) add("CLAIM_SCHEMA_DATA_WORD_COUNT_INVALID")
+        if (expectedTopicCount != null && expectedTopicCount <= 0) add("CLAIM_SCHEMA_TOPIC_COUNT_INVALID")
         if (!evidenceUrl.startsWith("https://")) add("CLAIM_SCHEMA_EVIDENCE_URL_MUST_BE_HTTPS")
         if (reviewStatus != REVIEWED) add("CLAIM_SCHEMA_NOT_REVIEWED")
         if (validFromEpochMs <= 0L || (validUntilEpochMs != null && validUntilEpochMs < validFromEpochMs)) {
@@ -142,6 +144,9 @@ object ReviewedDistributionClaimReceiptDecoder {
         if (claim != null && schema.expectedDataWordCount != null &&
             dataWordCount(claim.data) != schema.expectedDataWordCount
         ) errors += "CLAIM_EVENT_DATA_WORD_COUNT_MISMATCH"
+        if (claim != null && schema.expectedTopicCount != null &&
+            claim.topics.size != schema.expectedTopicCount
+        ) errors += "CLAIM_EVENT_TOPIC_COUNT_MISMATCH"
 
         val claimAmount = claim?.let { decodeDataWord(it.data, schema.amountDataWordIndex) }
         if (claimAmount == null || claimAmount.signum() <= 0) errors += "CLAIM_AMOUNT_INVALID"
