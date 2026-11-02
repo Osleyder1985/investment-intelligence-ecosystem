@@ -11,6 +11,7 @@
 - `AssetValuationResearchAdapter`: joins the research dossier to reviewed rights evidence and validates identity and fresh market quote gates.
 - `FundamentalValuationOrchestrator`: executes only eligible model requests, checks asset/scope/currency/timestamp comparability, consolidates independent ranges conservatively, and passes the result to the classification engine.
 - `TokenomicsSupplyEvidenceAdapter`: validates circulating/total/max supply field provenance, intended-use licence status, observation/retrieval timestamps, supply relations and cross-field timestamp comparability. It emits verified supply facts and source references only; it does not infer demand or fair value.
+- `TokenomicsEmissionEvidenceAdapter`: validates reported annual inflation, emission-schedule disclosures and unlock-event provenance. It preserves unlocks as qualitative disclosures and refuses to synthesize numeric unlock curves from unstructured text.
 - `FairValueEstimate`: typed output preserving method, range kind, timestamp, evidence references and assumptions.
 
 ## Non-negotiable controls
@@ -29,6 +30,9 @@
 The asset detail view now exposes a dedicated **Valoración fundamental** section. It displays available market-cap and supply facts and explicitly reports that fair value is not estimable while typology-specific rights, value capture, emissions/unlocks, execution liquidity and risk evidence are missing. It does not fabricate a target price.
 
 ## Tokenomics evidence bridge
+
+- Issuance evidence is a separate evidence channel from supply snapshots. Annual inflation and the emission schedule are required for this adapter; unlock disclosures are optional and remain qualitative.
+- A quantitative dilution forecast is intentionally unavailable until dated unlock/issuance events have structured amounts, beneficiary classes, and a documented treatment in circulating supply.
 
 - Circulating supply and total supply are mandatory, separately evidenced facts for a verified supply envelope; maximum supply is included only when its evidence is explicitly known and accepted.
 - Missing/unknown optional maximum supply does not block the two mandatory facts, but conflicted maximum-supply evidence is never silently discarded.
