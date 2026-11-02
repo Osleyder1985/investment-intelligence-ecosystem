@@ -74,6 +74,8 @@ object FundamentalValuationOrchestrator {
             context.marketObservedAtEpochMs == null
         ) blockers += "FRESH_COMPARABLE_MARKET_PRICE_NOT_AVAILABLE"
         if (blockers.isNotEmpty()) return ValuationOrchestratorResult.Abstained(emptyList(), blockers.distinct())
+        val marketObservedAtEpochMs = context.marketObservedAtEpochMs
+            ?: return ValuationOrchestratorResult.Abstained(emptyList(), listOf("MARKET_TIMESTAMP_INVALID"))
 
         val eligible = context.methodPlan.applicableMethods
         val runs = eligible.mapNotNull { method ->
@@ -110,7 +112,7 @@ object FundamentalValuationOrchestrator {
         ) {
             return ValuationOrchestratorResult.Abstained(runs, listOf("VALUATION_TIMESTAMP_NOT_ALIGNED_WITH_EVIDENCE"))
         }
-        if (context.marketObservedAtEpochMs <= 0L) {
+        if (marketObservedAtEpochMs <= 0L) {
             return ValuationOrchestratorResult.Abstained(runs, listOf("MARKET_TIMESTAMP_INVALID"))
         }
         val decisionMetadata = riskMetadata ?: metadata
@@ -134,7 +136,7 @@ object FundamentalValuationOrchestrator {
                 marketPrice = context.marketPriceUsd,
                 priceReference = decisionMetadata.priceReference,
                 valuationTimestampEpochMs = consolidated.asOfEpochMs,
-                marketTimestampEpochMs = context.marketObservedAtEpochMs,
+                marketTimestampEpochMs = marketObservedAtEpochMs,
                 maximumTimestampSkewMs = decisionMetadata.maximumTimestampSkewMs,
                 sameEconomicObjectAndUnit = true,
                 liquidityAndDepthReviewed = decisionMetadata.liquidityAndDepthReviewed,
