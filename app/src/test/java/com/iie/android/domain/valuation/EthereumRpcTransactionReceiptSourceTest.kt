@@ -20,11 +20,27 @@ class EthereumRpcTransactionReceiptSourceTest {
             method.contains("eth_chainId") ->
                 """{"jsonrpc":"2.0","id":1,"result":"0x1"}"""
             method.contains("eth_getTransactionByHash") ->
-                """{"jsonrpc":"2.0","id":1,"result":{"hash":"\${tx}","to":"\${target}","blockNumber":"\${blockNumber}","blockHash":"\${blockHash}"}}"""
-            method.contains("eth_getTransactionReceipt") ->
-                """{"jsonrpc":"2.0","id":1,"result":{"transactionHash":"\${tx}","to":"\${target}","blockNumber":"\${blockNumber}","blockHash":"\${blockHash}","status":"\${status}","logs":[{"address":"\${target}","topics":["0x4ec90e965519d92681267467f775ada5bd214aa92c0dc93d90a5e880ce9ed026"],"data":"0x\${"0".repeat(64)}","transactionHash":"\${tx}","blockNumber":"\${blockNumber}","blockHash":"\${blockHash}","logIndex":"0x4"},{"address":"\${token}","topics":["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef","0x\${target.removePrefix("0x").padStart(64, '0')}","0x\${beneficiary.removePrefix("0x").padStart(64, '0')}"],"data":"0x\${"0".repeat(63)}1","transactionHash":"\${tx}","blockNumber":"\${blockNumber}","blockHash":"\${blockHash}","logIndex":"0x5"}]}}"""
+                """{"jsonrpc":"2.0","id":1,"result":{"hash":"__TX__","to":"__TARGET__","blockNumber":"__BLOCK__","blockHash":"__HASH__"}}"""
+                    .replace("__TX__", tx).replace("__TARGET__", target)
+                    .replace("__BLOCK__", blockNumber).replace("__HASH__", blockHash)
+            method.contains("eth_getTransactionReceipt") -> {
+                val claimLog = """{"address":"__TARGET__","topics":["0x4ec90e965519d92681267467f775ada5bd214aa92c0dc93d90a5e880ce9ed026"],"data":"0x__ZERO64__","transactionHash":"__TX__","blockNumber":"__BLOCK__","blockHash":"__HASH__","logIndex":"0x4"}"""
+                    .replace("__TARGET__", target).replace("__ZERO64__", "0".repeat(64))
+                    .replace("__TX__", tx).replace("__BLOCK__", blockNumber).replace("__HASH__", blockHash)
+                val transferLog = """{"address":"__TOKEN__","topics":["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef","__FROM__","__TO__"],"data":"0x__AMOUNT__","transactionHash":"__TX__","blockNumber":"__BLOCK__","blockHash":"__HASH__","logIndex":"0x5"}"""
+                    .replace("__TOKEN__", token)
+                    .replace("__FROM__", "0x" + target.removePrefix("0x").padStart(64, '0'))
+                    .replace("__TO__", "0x" + beneficiary.removePrefix("0x").padStart(64, '0'))
+                    .replace("__AMOUNT__", "0".repeat(63) + "1")
+                    .replace("__TX__", tx).replace("__BLOCK__", blockNumber).replace("__HASH__", blockHash)
+                """{"jsonrpc":"2.0","id":1,"result":{"transactionHash":"__TX__","to":"__TARGET__","blockNumber":"__BLOCK__","blockHash":"__HASH__","status":"__STATUS__","logs":[__CLAIM__,__TRANSFER__]}}"""
+                    .replace("__TX__", tx).replace("__TARGET__", target).replace("__BLOCK__", blockNumber)
+                    .replace("__HASH__", blockHash).replace("__STATUS__", status)
+                    .replace("__CLAIM__", claimLog).replace("__TRANSFER__", transferLog)
+            }
             method.contains("eth_getBlockByNumber") ->
-                """{"jsonrpc":"2.0","id":1,"result":{"hash":"\${canonicalHash}","timestamp":"\${timestamp}"}}"""
+                """{"jsonrpc":"2.0","id":1,"result":{"hash":"__HASH__","timestamp":"__TIME__"}}"""
+                    .replace("__HASH__", canonicalHash).replace("__TIME__", timestamp)
             else -> """{"jsonrpc":"2.0","id":1,"error":{"code":-1,"message":"unexpected"}}"""
         }
 
