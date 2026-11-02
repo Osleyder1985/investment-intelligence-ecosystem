@@ -62,3 +62,12 @@ The asset detail view now exposes a dedicated **Valoración fundamental** sectio
 - Integrate the independent risk-veto engine and executable market-depth data.
 - Validate model outputs by typology and regime, including survivorship bias, costs and false-discovery controls.
 - Complete Android build, unit tests and UI review before merging.
+
+
+## Protocol economic evidence bridge
+
+- `ProtocolEconomicEvidenceAdapter` normalizes field-level evidence for protocol revenue, protocol fees, holder distributions, buyback expenditure and burned-token quantities.
+- These metrics remain separate. Protocol revenue/fees are not treated as token-holder cash flows; buyback expenditure is not treated as a holder claim; burned token counts are not USD flows.
+- Optional qualitative disclosures (`holder_cashflow_right`, `token_value_capture_mechanism`, `distribution_policy`, `buyback_policy`, `burn_policy`) are retained as disclosures only. They do not automatically set economic-rights facts to VERIFIED or enable DCF/NAV.
+- The adapter rejects missing provenance, unknown/restricted licences, invalid values and observations outside the configured time-comparability window.
+- No live provider is claimed to populate these fields yet. A provider integration must map its source data into the field-level evidence envelope and pass licence, timestamp, identity and quality validation before the valuation workflow can consume it.
