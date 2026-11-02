@@ -104,10 +104,10 @@ Requisitos antes de aceptar el resultado:
 - recibo exitoso, contraste RPC obligatorio y coincidencia de hash/bloque en todos los logs;
 - exactamente un evento Swap del par revisado;
 - una sola pata de entrada y una sola pata de salida, con el token adquirido coincidente con el activo canónico;
-- un único evento ERC-20 Transfer desde el par hacia el destinatario, cuyo importe raw coincida exactamente con la salida del evento Swap.
+- un único evento ERC-20 Transfer hacia el par, cuyo importe raw coincida exactamente con la entrada del evento Swap, y un único Transfer desde el par hacia el destinatario, cuyo importe coincida exactamente con la salida.
 
 Los importes se decodifican como uint256 con precisión completa y se conservan como cadenas decimales raw. El resultado normalizado pasa después por `ProtocolBuybackEvidenceEvaluator`; por tanto, continúa pendiente de finality y revisión del protocolo.
 
 **Abstenciones deliberadas:** swaps multihop, agregadores, múltiples pares Swap en el mismo recibo, split outputs, tokens fee-on-transfer/rebasing cuando el importe transferido no coincide con el evento, pares no revisados, cadenas sin cross-check RPC y logs con bloque/hash inconsistentes. Este primer adaptador no descubre factories ni valida por sí solo que el par pertenezca a un factory oficial; el mapping del par debe proceder de una fuente revisada. Tampoco acredita que el protocolo haya autorizado económicamente la operación: solo aporta evidencia de ejecución compatible con el mapping.
 
-Tests añadidos para swap single-hop válido, mapping pendiente, recibo fallido, falta de cross-check, transferencia de salida discordante, eventos Swap ambiguos, executor incorrecto y logs de bloque inconsistente.
+Tests añadidos para swap single-hop válido, mapping pendiente, recibo fallido, falta de cross-check, transferencias de entrada/salida discordantes, eventos Swap ambiguos, executor incorrecto y logs de bloque inconsistente.
