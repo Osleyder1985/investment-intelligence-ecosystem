@@ -24,23 +24,37 @@ sealed class RpcTransactionReceiptResult {
 class EthereumRpcTransactionReceiptSource(
     private val transport: EthereumRpcTransport,
     private val clock: () -> Long = System::currentTimeMillis,
-    private val endpoint: String = EthereumRpcBurnCrossChecker.ETHEREUM_MAINNET_RPC
+    private val endpoint: String = EthereumRpcBurnCrossChecker.ETHEREUM_MAINNET_RPC,
+    private val secondaryEndpoint: String = "https://ethereum-rpc.publicnode.com"
 ) {
+    /** Two independently configured RPC operators must agree before evidence is crosschecked. */
     fun fetch(transactionHash: String): RpcTransactionReceiptResult {
+        if (endpoint.isBlank() || secondaryEndpoint.isBlank() || endpoint == secondaryEndpoint) return RpcTransactionReceiptResult.Abstained("RPC_INDEPENDENT_ENDPOINTS_REQUIRED")
+        val primary = fetchFrom(transactionHash, endpoint)
+        val secondary = fetchFrom(transactionHash, secondaryEndpoint)
+        if (primary is RpcTransactionReceiptResult.Abstained && secondary is RpcTransactionReceiptResult.Abstained && primary.reasonCode == secondary.reasonCode) return primary
+        if (primary !is RpcTransactionReceiptResult.Confirmed || secondary !is RpcTransactionReceiptResult.Confirmed) return RpcTransactionReceiptResult.Abstained("RPC_PROVIDER_DISAGREEMENT_OR_UNAVAILABLE")
+        val first = primary.receipt.copy(observedAtEpochMs = 0L, rpcCrosschecked = false)
+        val second = secondary.receipt.copy(observedAtEpochMs = 0L, rpcCrosschecked = false)
+        if (first != second) return RpcTransactionReceiptResult.Abstained("RPC_PROVIDER_EVIDENCE_MISMATCH")
+        return RpcTransactionReceiptResult.Confirmed(primary.receipt.copy(rpcCrosschecked = true))
+    }
+
+    private fun fetchFrom(transactionHash: String, endpointUrl: String): RpcTransactionReceiptResult {
         if (!transactionHash.matches(HASH)) return RpcTransactionReceiptResult.Abstained("TRANSACTION_HASH_INVALID")
         return try {
-            val chainId = rpc("eth_chainId", buildJsonArray { }).resultHexLong()
+            val chainId = rpc(endpointUrl, "eth_chainId", buildJsonArray { }).resultHexLong()
                 ?: return RpcTransactionReceiptResult.Abstained("RPC_CHAIN_ID_MISSING")
             if (chainId != EthereumRpcBurnCrossChecker.ETHEREUM_MAINNET_CHAIN_ID) {
                 return RpcTransactionReceiptResult.Abstained("RPC_CHAIN_NOT_ETHEREUM_MAINNET")
             }
 
             val transaction = rpc(
-                "eth_getTransactionByHash",
+                endpointUrl, "eth_getTransactionByHash",
                 buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive(transactionHash)) }
             ).resultObjectOrNull() ?: return RpcTransactionReceiptResult.Abstained("RPC_TRANSACTION_NOT_FOUND")
             val receipt = rpc(
-                "eth_getTransactionReceipt",
+                endpointUrl, "eth_getTransactionReceipt",
                 buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive(transactionHash)) }
             ).resultObjectOrNull() ?: return RpcTransactionReceiptResult.Abstained("RPC_RECEIPT_NOT_FOUND")
 
@@ -69,7 +83,7 @@ class EthereumRpcTransactionReceiptSource(
             }
 
             val block = rpc(
-                "eth_getBlockByNumber",
+                endpointUrl, "eth_getBlockByNumber",
                 buildJsonArray {
                     add(kotlinx.serialization.json.JsonPrimitive("0x" + blockNumber.toString(16)))
                     add(kotlinx.serialization.json.JsonPrimitive(false))
@@ -143,14 +157,14 @@ class EthereumRpcTransactionReceiptSource(
         }
     }
 
-    private fun rpc(method: String, params: JsonArray): JsonObject {
+    private fun rpc(endpointUrl: String, method: String, params: JsonArray): JsonObject {
         val request = buildJsonObject {
             put("jsonrpc", "2.0")
             put("id", 1)
             put("method", method)
             put("params", params)
         }.toString()
-        val response = Json.parseToJsonElement(transport.post(endpoint, request)).jsonObject
+        val response = Json.parseToJsonElement(transport.post(endpointUrl, request)).jsonObject
         if (response["error"] != null) throw IllegalStateException("RPC_${method}_ERROR")
         return response
     }
