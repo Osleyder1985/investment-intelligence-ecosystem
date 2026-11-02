@@ -155,4 +155,80 @@ class ReviewedDistributionClaimReceiptDecoderTest {
         assertTrue(inconsistent.reasonCodes.contains("RECEIPT_LOG_BLOCK_OR_TRANSACTION_MISMATCH"))
     }
 
+
+    @Test fun decodesUniswapMerkleDistributorNonIndexedAbiLayout() {
+        val uniswapSchema = UniswapUniMerkleDistribution.claimEventSchema()
+        val uniswapMapping = mapping.copy(
+            protocolId = UniswapUniMerkleDistribution.PROTOCOL_ID,
+            address = UniswapUniMerkleDistribution.DISTRIBUTOR_ADDRESS,
+            tokenContract = UniswapUniMerkleDistribution.UNI_TOKEN_ADDRESS,
+            evidenceUrl = UniswapUniMerkleDistribution.DISTRIBUTOR_ABI_EVIDENCE_URL
+        )
+        val uniswapReceipt = receipt(
+            logs = listOf(
+                EvmReceiptLog(
+                    address = UniswapUniMerkleDistribution.DISTRIBUTOR_ADDRESS,
+                    topics = listOf(UniswapUniMerkleDistribution.CLAIMED_EVENT_TOPIC),
+                    data = "0x" + word(7) +
+                        beneficiary.removePrefix("0x").padStart(64, '0') +
+                        word(500),
+                    transactionHash = tx, blockNumber = 100, blockHash = blockHash, logIndex = 4
+                ),
+                EvmReceiptLog(
+                    address = UniswapUniMerkleDistribution.UNI_TOKEN_ADDRESS,
+                    topics = listOf(
+                        transferTopic,
+                        addressTopic(UniswapUniMerkleDistribution.DISTRIBUTOR_ADDRESS),
+                        addressTopic(beneficiary)
+                    ),
+                    data = "0x" + word(500),
+                    transactionHash = tx, blockNumber = 100, blockHash = blockHash, logIndex = 5
+                )
+            )
+        ).copy(
+            transactionTo = UniswapUniMerkleDistribution.DISTRIBUTOR_ADDRESS
+        )
+
+        val result = ReviewedDistributionClaimReceiptDecoder.decode(
+            uniswapReceipt, uniswapMapping, uniswapSchema
+        )
+        assertTrue(result is DistributionClaimDecodeResult.Candidate)
+        val evidence = (result as DistributionClaimDecodeResult.Candidate).evidence
+        assertEquals(beneficiary, evidence.beneficiaryAddress)
+        assertEquals("500", evidence.rawAmount)
+        assertEquals(UniswapUniMerkleDistribution.DISTRIBUTOR_ADDRESS, evidence.distributorAddress)
+        assertEquals(UniswapUniMerkleDistribution.UNI_TOKEN_ADDRESS, evidence.tokenContract)
+    }
+
+    @Test fun rejectsUniswapClaimWithMalformedNonIndexedAddressOrWrongDataLength() {
+        val schema = UniswapUniMerkleDistribution.claimEventSchema()
+        val uniswapMapping = mapping.copy(
+            protocolId = UniswapUniMerkleDistribution.PROTOCOL_ID,
+            address = UniswapUniMerkleDistribution.DISTRIBUTOR_ADDRESS,
+            tokenContract = UniswapUniMerkleDistribution.UNI_TOKEN_ADDRESS,
+            evidenceUrl = UniswapUniMerkleDistribution.DISTRIBUTOR_ABI_EVIDENCE_URL
+        )
+        val malformedAddress = "f".repeat(24) + beneficiary.removePrefix("0x")
+        val malformedLogs = listOf(
+            EvmReceiptLog(
+                address = UniswapUniMerkleDistribution.DISTRIBUTOR_ADDRESS,
+                topics = listOf(UniswapUniMerkleDistribution.CLAIMED_EVENT_TOPIC),
+                data = "0x" + word(7) + malformedAddress + word(500),
+                transactionHash = tx, blockNumber = 100, blockHash = blockHash, logIndex = 4
+            )
+        )
+        val result = ReviewedDistributionClaimReceiptDecoder.decode(
+            receipt(logs = malformedLogs).copy(transactionTo = UniswapUniMerkleDistribution.DISTRIBUTOR_ADDRESS),
+            uniswapMapping, schema
+        ) as DistributionClaimDecodeResult.Abstained
+        assertTrue(result.reasonCodes.contains("CLAIM_BENEFICIARY_INVALID"))
+
+        val shortLogs = malformedLogs.map { it.copy(data = "0x" + word(7) + word(500)) }
+        val shortResult = ReviewedDistributionClaimReceiptDecoder.decode(
+            receipt(logs = shortLogs).copy(transactionTo = UniswapUniMerkleDistribution.DISTRIBUTOR_ADDRESS),
+            uniswapMapping, schema
+        ) as DistributionClaimDecodeResult.Abstained
+        assertTrue(shortResult.reasonCodes.contains("CLAIM_EVENT_DATA_WORD_COUNT_MISMATCH"))
+    }
+
 }
