@@ -71,7 +71,7 @@ class DistributionReconciliationRepository(
                     val payloadAssetId = payload["assetId"]?.jsonPrimitive?.content
                     val transactionHash = payload["transactionHash"]?.jsonPrimitive?.content
                     val timestamp = payload["blockTimestampEpochMs"]?.jsonPrimitive?.content?.toLongOrNull()
-                    if (payloadAssetId != assetId || transactionHash.isNullOrBlank() || timestamp != row.observedAtEpochMs) {
+                    if (payloadAssetId != assetId || transactionHash.isNullOrBlank() || timestamp == null || timestamp != row.observedAtEpochMs) {
                         blockers += "DISTRIBUTION_OBSERVATION_PAYLOAD_IDENTITY_MISMATCH:" + row.observationId
                         return@forEach
                     }
