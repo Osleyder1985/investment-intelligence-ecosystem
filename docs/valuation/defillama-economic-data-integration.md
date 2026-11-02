@@ -140,3 +140,46 @@ Se añade `ReviewedDistributionClaimReceiptDecoder` como adaptador de layout ABI
 El decodificador exige en un mismo recibo: transacción exitosa, cross-check RPC previo, bloque y logs coherentes, mappings vigentes, exactamente un evento de claim del distribuidor y exactamente un `Transfer` del token desde ese distribuidor. Beneficiario e importe raw deben coincidir exactamente entre claim y pago. Rechaza destinatario cero, pagos múltiples/ambiguos, cantidades discordantes, chain incorrecta y mappings no revisados o expirados.
 
 **Límite de interpretación:** el resultado es `RPC_CROSSCHECKED_CLAIM_PAYMENT_PENDING_FINALITY_AND_HOLDER_REVIEW`. Verifica un pago directo asociado a un evento de claim cuyo layout fue revisado; no prueba finality, que el beneficiario sea una persona/holder final (podría ser un contrato o intermediario), elegibilidad jurídica, ni acumulación de valor para todos los holders. No se incorpora aún a métricas de holder distributions ni a valoración. No hay direcciones, firmas de evento ni ABIs de protocolos concretos hardcodeados; se requieren mappings y esquemas respaldados por evidencia de cada despliegue.
+
+
+## Primer adaptador de distribución real: Uniswap UNI Merkle Distributor
+
+Se registra un perfil de protocolo específico para Ethereum mainnet, separado del decodificador genérico:
+
+- Protocolo: Uniswap.
+- Chain ID: 1.
+- Distribuidor: `0x090D4613473dEE047c3f2706764f49E0821D256e`.
+- Token: UNI, `0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984`.
+- Contrato verificado: `MerkleDistributor`.
+- Función ABI: `claim(uint256 index,address account,uint256 amount,bytes32[] merkleProof)`, selector `0x2e7ba6ef`.
+- Evento ABI: `Claimed(uint256 index,address account,uint256 amount)`.
+- Topic0: `0x4ec90e965519d92681267467f775ada5bd214aa92c0dc93d90a5e880ce9ed026`.
+
+### Layout ABI exacto
+
+La ABI verificada declara **los tres argumentos del evento como no indexados**. Por tanto:
+- `topics`: exactamente un elemento, el topic0.
+- `data[0]`: índice del claim (`uint256`).
+- `data[1]`: beneficiario (`address`, 12 bytes superiores a cero).
+- `data[2]`: cantidad (`uint256`).
+
+El perfil específico fija 3 palabras ABI y 1 topic. El decodificador genérico ahora admite beneficiario en un topic o en una palabra de datos, valida el padding ABI de la dirección y rechaza layouts con longitud o número de topics incorrectos.
+
+### Condiciones para aceptar un pago candidato
+
+- Mapping revisado de la dirección distribuidora y del activo UNI en Ethereum.
+- Recibo exitoso y marcado como contrastado por RPC.
+- Transacción dirigida al contrato distribuidor.
+- Exactamente un evento `Claimed` del distribuidor en el recibo.
+- Exactamente un `Transfer` del contrato UNI desde el distribuidor.
+- Beneficiario y cantidad raw coincidentes exactamente entre evento y transferencia.
+- Bloque, hash de bloque, hash de transacción y log indexes coherentes.
+- Vigencia temporal del mapping evaluada en el timestamp del bloque.
+
+El perfil no inventa la fecha de inicio del mapping: la integración exige que se proporcione el timestamp de la transacción de creación del contrato obtenida de la fuente canónica. La ABI y dirección se respaldan con el [registro técnico oficial de Uniswap](https://developers.uniswap.org/docs/ecosystem/governance/technical-reference), el [contrato verificado en Etherscan](https://etherscan.io/address/0x090d4613473dee047c3f2706764f49e0821d256e#code) y la [interfaz oficial del repositorio Uniswap](https://github.com/Uniswap/merkle-distributor/blob/master/contracts/interfaces/IMerkleDistributor.sol).
+
+**Interpretación:** el resultado prueba una relación técnica entre un evento claim y un pago directo en el mismo recibo, sujeto a cross-check RPC. No prueba finality, que el beneficiario sea un holder final, ni que exista una distribución recurrente vigente. El airdrop de UNI fue una asignación histórica; no debe presentarse como flujo actual de ingresos o recompensas.
+
+### Cobertura de pruebas
+
+Se agregan fixtures para el layout real no indexado, beneficiario malformado y número de palabras incorrecto. Las pruebas son sintéticas para el decodificador; no se presentan como observaciones de transacciones mainnet reales. La ejecución de Android CI e IIE CI sobre el head final sigue siendo requisito previo a fusionar.
