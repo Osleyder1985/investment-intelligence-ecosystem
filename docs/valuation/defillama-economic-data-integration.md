@@ -100,7 +100,7 @@ Se incorpora un primer decodificador real de recibos EVM para el formato de even
 
 Requisitos antes de aceptar el resultado:
 - mapping del ejecutor de recompra revisado y vigente para el activo y contrato adquirido;
-- mapping revisado del par, chainId, dirección del par y orden `token0/token1`, con evidencia HTTPS;
+- mapping revisado del par, chainId, dirección del par y orden `token0/token1`, con evidencia HTTPS y ventana temporal; el mapping del ejecutor y del par debe estar vigente en el timestamp del bloque, no solo al momento de consultar;
 - recibo exitoso, contraste RPC obligatorio y coincidencia de hash/bloque en todos los logs;
 - exactamente un evento Swap del par revisado;
 - una sola pata de entrada y una sola pata de salida, con el token adquirido coincidente con el activo canónico;
