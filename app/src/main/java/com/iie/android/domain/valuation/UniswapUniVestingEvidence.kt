@@ -233,6 +233,9 @@ object UniswapUniVestingProfile {
     const val CHAIN_ID = 1L
     const val VESTING_CONTRACT = "0xCa046A83EDB78F74aE338bb5A291bF6FdAc9e1D2"
     const val UNI_TOKEN = "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984"
+    // keccak256("Withdrawn(address,uint256,uint48)") from the verified ABI.
+    const val WITHDRAWN_EVENT_TOPIC =
+        "0xe3a7b52bde0e5e2ab4cd91182c9b2a0c7e49183cc039f6d5c3ba738c84e0427b"
     const val ABI_EVIDENCE_URL =
         "https://etherscan.io/address/0xca046a83edb78f74ae338bb5a291bf6fdac9e1d2#code"
     const val SOURCE_EVIDENCE_URL =
@@ -242,7 +245,7 @@ object UniswapUniVestingProfile {
      * The event topic is supplied from the fetched verified ABI; this profile
      * pins the indexed/non-indexed argument layout and never guesses topic0.
      */
-    fun withdrawalEventSchema(verifiedTopic0: String) = ReviewedVestingWithdrawalEvent(
+    fun withdrawalEventSchema(verifiedTopic0: String = WITHDRAWN_EVENT_TOPIC) = ReviewedVestingWithdrawalEvent(
         chainId = CHAIN_ID,
         vestingContractAddress = VESTING_CONTRACT,
         tokenContract = UNI_TOKEN,
