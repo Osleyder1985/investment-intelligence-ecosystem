@@ -237,4 +237,22 @@ object UniswapUniVestingProfile {
         "https://etherscan.io/address/0xca046a83edb78f74ae338bb5a291bf6fdac9e1d2#code"
     const val SOURCE_EVIDENCE_URL =
         "https://github.com/Uniswap/protocol-fees/blob/main/src/UNIVesting.sol"
+
+    /**
+     * The event topic is supplied from the fetched verified ABI; this profile
+     * pins the indexed/non-indexed argument layout and never guesses topic0.
+     */
+    fun withdrawalEventSchema(verifiedTopic0: String) = ReviewedVestingWithdrawalEvent(
+        chainId = CHAIN_ID,
+        vestingContractAddress = VESTING_CONTRACT,
+        tokenContract = UNI_TOKEN,
+        withdrawnEventTopic = verifiedTopic0,
+        recipientTopicIndex = 1,
+        amountDataWordIndex = 0,
+        quartersPaidDataWordIndex = 1,
+        expectedTopicCount = 2,
+        expectedDataWordCount = 2,
+        evidenceUrl = ABI_EVIDENCE_URL,
+        reviewStatus = ReviewedVestingWithdrawalEvent.REVIEWED
+    )
 }
