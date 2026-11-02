@@ -19,8 +19,8 @@ data class UniswapV2ReviewedPair(
 ) {
     fun validationErrors(): List<String> = buildList {
         if (chainId <= 0L) add("PAIR_CHAIN_ID_INVALID")
-        if (!pairAddress.isEvmAddress()) add("PAIR_ADDRESS_INVALID")
-        if (!token0.isEvmAddress() || !token1.isEvmAddress()) add("PAIR_TOKEN_ADDRESS_INVALID")
+        if (!pairAddress.matches(Regex("0x[a-fA-F0-9]{40}"))) add("PAIR_ADDRESS_INVALID")
+        if (!token0.matches(Regex("0x[a-fA-F0-9]{40}")) || !token1.matches(Regex("0x[a-fA-F0-9]{40}"))) add("PAIR_TOKEN_ADDRESS_INVALID")
         if (token0.equals(token1, true)) add("PAIR_TOKENS_MUST_DIFFER")
         if (!evidenceUrl.startsWith("https://")) add("PAIR_EVIDENCE_URL_MUST_BE_HTTPS")
         if (reviewStatus != REVIEWED) add("PAIR_MAPPING_NOT_REVIEWED")
@@ -203,5 +203,4 @@ object UniswapV2BuybackReceiptDecoder {
         it.length == 64 && it.matches(Regex("[a-fA-F0-9]{64}"))
     }
 
-    private fun String.isEvmAddress() = matches(Regex("0x[a-fA-F0-9]{40}"))
 }
