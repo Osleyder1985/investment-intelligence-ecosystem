@@ -17,7 +17,8 @@ data class DecodedSwapExecutionEvidence(
     val outputTokenContract: String,
     val outputRawAmount: String,
     val outputRecipient: String,
-    val decodedAtEpochMs: Long
+    val decodedAtEpochMs: Long,
+    val blockTimestampEpochMs: Long = decodedAtEpochMs
 )
 
 data class ConfirmedBuybackExecutionCandidate(
@@ -31,6 +32,7 @@ data class ConfirmedBuybackExecutionCandidate(
     val acquiredTokenContract: String,
     val acquiredRawAmount: String,
     val tokenRecipient: String,
+    val blockTimestampEpochMs: Long,
     val evidenceStatus: String = "RPC_CROSSCHECKED_SWAP_PENDING_FINALITY_AND_PROTOCOL_REVIEW"
 )
 
@@ -56,6 +58,10 @@ object ProtocolBuybackEvidenceEvaluator {
             if (evidence.outputRawAmount.toBigIntegerOrNull()?.signum() != 1) add("SWAP_OUTPUT_AMOUNT_INVALID")
             if (!evidence.outputRecipient.matches(Regex("0x[a-fA-F0-9]{40}"))) add("SWAP_OUTPUT_RECIPIENT_INVALID")
             if (evidence.decodedAtEpochMs <= 0L) add("DECODE_TIMESTAMP_INVALID")
+            if (evidence.blockTimestampEpochMs <= 0L ||
+                evidence.blockTimestampEpochMs < mapping.validFromEpochMs ||
+                (mapping.validUntilEpochMs != null && evidence.blockTimestampEpochMs > mapping.validUntilEpochMs)
+            ) add("BUYBACK_EXECUTOR_MAPPING_NOT_ACTIVE_AT_BLOCK_TIME")
         }
         if (errors.isNotEmpty()) return Result.Abstained(errors.distinct())
         return Result.Candidate(
@@ -69,7 +75,8 @@ object ProtocolBuybackEvidenceEvaluator {
                 inputRawAmount = evidence.inputRawAmount,
                 acquiredTokenContract = evidence.outputTokenContract,
                 acquiredRawAmount = evidence.outputRawAmount,
-                tokenRecipient = evidence.outputRecipient
+                tokenRecipient = evidence.outputRecipient,
+                blockTimestampEpochMs = evidence.blockTimestampEpochMs
             )
         )
     }
