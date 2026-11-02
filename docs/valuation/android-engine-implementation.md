@@ -7,6 +7,9 @@
 
 - `FundamentalValuationModels`: deterministic calculation of NAV, holder-attributable DCF, token-capture comparables, monetary-demand scenarios and net redemption.
 - `FundamentalValuationEngine`: comparison of a fair-value range with a comparable market reference.
+- `AssetValuationMethodSelector`: explicit rights-based method eligibility; no rights are inferred from ticker, price or market capitalization.
+- `AssetValuationResearchAdapter`: joins the research dossier to reviewed rights evidence and validates identity and fresh market quote gates.
+- `FundamentalValuationOrchestrator`: executes only eligible model requests, checks asset/scope/currency/timestamp comparability, consolidates independent ranges conservatively, and passes the result to the classification engine.
 - `FairValueEstimate`: typed output preserving method, range kind, timestamp, evidence references and assumptions.
 
 ## Non-negotiable controls
@@ -24,6 +27,14 @@
 
 The asset detail view now exposes a dedicated **Valoración fundamental** section. It displays available market-cap and supply facts and explicitly reports that fair value is not estimable while typology-specific rights, value capture, emissions/unlocks, execution liquidity and risk evidence are missing. It does not fabricate a target price.
 
+## Orchestration and consensus policy
+
+- A single valid model estimate can be evaluated on its own, retaining its original range kind (including an explicitly uncalibrated scenario envelope).
+- Multi-model consensus requires at least two model-uncertainty ranges for the same asset, valuation object, unit, currency and exact valuation timestamp, with sufficient evidence and pairwise-disjoint evidence-reference sets.
+- Multi-model output is the conservative envelope (minimum lower bound / maximum upper bound), not a mean, weighted average, probability or confidence interval.
+- Incompatible or dependent estimates abstain. Missing model requests do not trigger implicit model execution.
+- The orchestrator does not emit an extreme-cheapness label or calibrated margin of safety.
+
 ## Deliberately not enabled
 
 - No universal percentage thresholds for cheap / very cheap.
@@ -32,7 +43,7 @@ The asset detail view now exposes a dedicated **Valoración fundamental** sectio
 
 ## Remaining work before production use
 
-- Implement evidence-backed typology assignment and method selection per asset.
+- Connect the selector/orchestrator to provider-backed, permitted and attributable fundamental/on-chain model inputs.
 - Connect permitted, attributable fundamental/on-chain data sources and dated unlock/emission schedules.
 - Persist model inputs, parameters, outputs and immutable versioned valuation snapshots.
 - Integrate the independent risk-veto engine and executable market-depth data.
