@@ -1,9 +1,8 @@
 package com.iie.android.domain.valuation
 
 /**
- * Explicit ABI layout for a reviewed claim event. This is configuration, not
- * an ABI guess: the topic and field positions must come from reviewed protocol
- * documentation/verified contract source.
+ * Explicit ABI layout for a reviewed claim event. A beneficiary may be indexed
+ * in topics or encoded in a non-indexed data word, as required by the verified ABI.
  */
 data class ReviewedDistributionClaimEvent(
     val chainId: Long,
@@ -15,15 +14,25 @@ data class ReviewedDistributionClaimEvent(
     val evidenceUrl: String,
     val reviewStatus: String,
     val validFromEpochMs: Long = 1L,
-    val validUntilEpochMs: Long? = null
+    val validUntilEpochMs: Long? = null,
+    val beneficiaryDataWordIndex: Int? = null,
+    val expectedDataWordCount: Int? = null,
+    val expectedTopicCount: Int? = null
 ) {
     fun validationErrors(): List<String> = buildList {
         if (chainId <= 0L) add("CLAIM_SCHEMA_CHAIN_ID_INVALID")
         if (!distributorAddress.matches(ADDRESS)) add("CLAIM_SCHEMA_DISTRIBUTOR_INVALID")
         if (!tokenContract.matches(ADDRESS)) add("CLAIM_SCHEMA_TOKEN_INVALID")
         if (!claimEventTopic.matches(HASH)) add("CLAIM_SCHEMA_TOPIC_INVALID")
-        if (beneficiaryTopicIndex !in 1..3) add("CLAIM_SCHEMA_BENEFICIARY_TOPIC_INDEX_INVALID")
+        if (beneficiaryDataWordIndex == null) {
+            if (beneficiaryTopicIndex !in 1..3) add("CLAIM_SCHEMA_BENEFICIARY_TOPIC_INDEX_INVALID")
+        } else {
+            if (beneficiaryTopicIndex != 0) add("CLAIM_SCHEMA_BENEFICIARY_LOCATION_AMBIGUOUS")
+            if (beneficiaryDataWordIndex < 0) add("CLAIM_SCHEMA_BENEFICIARY_DATA_WORD_INDEX_INVALID")
+        }
         if (amountDataWordIndex < 0) add("CLAIM_SCHEMA_AMOUNT_WORD_INDEX_INVALID")
+        if (expectedDataWordCount != null && expectedDataWordCount <= 0) add("CLAIM_SCHEMA_DATA_WORD_COUNT_INVALID")
+        if (expectedTopicCount != null && expectedTopicCount <= 0) add("CLAIM_SCHEMA_TOPIC_COUNT_INVALID")
         if (!evidenceUrl.startsWith("https://")) add("CLAIM_SCHEMA_EVIDENCE_URL_MUST_BE_HTTPS")
         if (reviewStatus != REVIEWED) add("CLAIM_SCHEMA_NOT_REVIEWED")
         if (validFromEpochMs <= 0L || (validUntilEpochMs != null && validUntilEpochMs < validFromEpochMs)) {
@@ -52,6 +61,9 @@ data class VerifiedDistributionClaimPaymentCandidate(
     val claimEventLogIndex: Long,
     val paymentTransferLogIndex: Long,
     val blockTimestampEpochMs: Long,
+    val finalityStatus: String = "OBSERVED",
+    val safeBlockNumber: Long? = null,
+    val finalizedBlockNumber: Long? = null,
     val evidenceStatus: String = "RPC_CROSSCHECKED_CLAIM_PAYMENT_PENDING_FINALITY_AND_HOLDER_REVIEW"
 )
 
@@ -113,6 +125,9 @@ object ReviewedDistributionClaimReceiptDecoder {
                 log.logIndex >= 0L
         }
         if (logs.size != receipt.logs.size) errors += "RECEIPT_LOG_BLOCK_OR_TRANSACTION_MISMATCH"
+        if (logs.map { it.logIndex }.distinct().size != logs.size) {
+            errors += "RECEIPT_LOG_INDEX_DUPLICATE"
+        }
 
         val claimLogs = logs.filter { log ->
             log.address.equals(schema.distributorAddress, true) &&
@@ -121,10 +136,23 @@ object ReviewedDistributionClaimReceiptDecoder {
         if (claimLogs.size != 1) errors += "EXPECTED_EXACTLY_ONE_REVIEWED_CLAIM_EVENT"
         val claim = claimLogs.singleOrNull()
 
-        val beneficiary = claim?.topics?.getOrNull(schema.beneficiaryTopicIndex)?.let(::decodeTopicAddress)
+        val beneficiary = claim?.let { event ->
+            if (schema.beneficiaryDataWordIndex == null) {
+                event.topics.getOrNull(schema.beneficiaryTopicIndex)?.let(::decodeTopicAddress)
+            } else {
+                decodeAddressDataWord(event.data, schema.beneficiaryDataWordIndex)
+            }
+        }
         if (beneficiary == null || beneficiary.equals(ZERO_ADDRESS, true) ||
             beneficiary.equals(schema.distributorAddress, true)
         ) errors += "CLAIM_BENEFICIARY_INVALID"
+
+        if (claim != null && schema.expectedDataWordCount != null &&
+            dataWordCount(claim.data) != schema.expectedDataWordCount
+        ) errors += "CLAIM_EVENT_DATA_WORD_COUNT_MISMATCH"
+        if (claim != null && schema.expectedTopicCount != null &&
+            claim.topics.size != schema.expectedTopicCount
+        ) errors += "CLAIM_EVENT_TOPIC_COUNT_MISMATCH"
 
         val claimAmount = claim?.let { decodeDataWord(it.data, schema.amountDataWordIndex) }
         if (claimAmount == null || claimAmount.signum() <= 0) errors += "CLAIM_AMOUNT_INVALID"
@@ -141,8 +169,16 @@ object ReviewedDistributionClaimReceiptDecoder {
         }
 
         val payment = distributorPayments.singleOrNull()
-        val paymentRecipient = payment?.topics?.getOrNull(2)?.let(::decodeTopicAddress)
-        val paymentAmount = payment?.let { decodeDataWord(it.data, 0) }
+        if (payment != null && payment.topics.size != 3) {
+            errors += "ERC20_TRANSFER_TOPIC_COUNT_MISMATCH"
+        }
+        if (payment != null && !isSingleDataWord(payment.data)) {
+            errors += "ERC20_TRANSFER_DATA_WORD_COUNT_MISMATCH"
+        }
+        val paymentRecipient = payment?.takeIf { it.topics.size == 3 }
+            ?.topics?.getOrNull(2)?.let(::decodeTopicAddress)
+        val paymentAmount = payment?.takeIf { isSingleDataWord(it.data) }
+            ?.let { decodeDataWord(it.data, 0) }
         if (paymentRecipient == null || paymentRecipient.equals(ZERO_ADDRESS, true)) {
             errors += "PAYMENT_RECIPIENT_INVALID"
         }
@@ -168,7 +204,17 @@ object ReviewedDistributionClaimReceiptDecoder {
                 rawAmount = claimAmount!!.toString(),
                 claimEventLogIndex = claim!!.logIndex,
                 paymentTransferLogIndex = payment!!.logIndex,
-                blockTimestampEpochMs = blockTime
+                blockTimestampEpochMs = blockTime,
+                finalityStatus = receipt.finalityStatus,
+                safeBlockNumber = receipt.safeBlockNumber,
+                finalizedBlockNumber = receipt.finalizedBlockNumber,
+                evidenceStatus = when (receipt.finalityStatus) {
+                    "FINALIZED" -> "RPC_CROSSCHECKED_FINALIZED_CLAIM_PAYMENT_PENDING_HOLDER_REVIEW"
+                    "SAFE" -> "RPC_CROSSCHECKED_SAFE_CLAIM_PAYMENT_PENDING_FINALITY_AND_HOLDER_REVIEW"
+                    "CONFIRMED" -> "RPC_CROSSCHECKED_CLAIM_PAYMENT_PENDING_SAFE_FINALITY_AND_HOLDER_REVIEW"
+                    "FINALITY_UNSUPPORTED" -> "RPC_CROSSCHECKED_CLAIM_PAYMENT_FINALITY_UNSUPPORTED_HOLDER_REVIEW_REQUIRED"
+                    else -> "RPC_CROSSCHECKED_CLAIM_PAYMENT_FINALITY_UNVERIFIED_HOLDER_REVIEW_REQUIRED"
+                }
             )
         )
     }
@@ -180,13 +226,34 @@ object ReviewedDistributionClaimReceiptDecoder {
         return "0x" + value.takeLast(40)
     }
 
-    private fun decodeDataWord(data: String, wordIndex: Int): java.math.BigInteger? {
+    private fun decodeAddressDataWord(data: String, wordIndex: Int): String? {
+        val word = dataWord(data, wordIndex) ?: return null
+        if (!word.substring(0, 24).all { it == '0' }) return null
+        return "0x" + word.takeLast(40)
+    }
+
+    private fun decodeDataWord(data: String, wordIndex: Int): java.math.BigInteger? =
+        dataWord(data, wordIndex)?.toBigInteger(16)
+
+    private fun dataWord(data: String, wordIndex: Int): String? {
         val value = data.removePrefix("0x")
         if (value.isEmpty() || value.length % 64 != 0 ||
             !value.matches(Regex("[a-fA-F0-9]+"))
         ) return null
         val start = wordIndex * 64
         if (start < 0 || start + 64 > value.length) return null
-        return value.substring(start, start + 64).toBigInteger(16)
+        return value.substring(start, start + 64)
+    }
+
+    private fun isSingleDataWord(data: String): Boolean =
+        data.startsWith("0x") && data.length == 66 &&
+            data.drop(2).matches(Regex("[a-fA-F0-9]{64}"))
+
+    private fun dataWordCount(data: String): Int? {
+        val value = data.removePrefix("0x")
+        if (value.isEmpty() || value.length % 64 != 0 ||
+            !value.matches(Regex("[a-fA-F0-9]+"))
+        ) return null
+        return value.length / 64
     }
 }
