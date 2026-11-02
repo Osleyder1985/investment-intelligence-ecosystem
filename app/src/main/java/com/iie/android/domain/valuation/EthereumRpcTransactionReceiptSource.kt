@@ -133,7 +133,7 @@ class EthereumRpcTransactionReceiptSource(
                     blockHash = canonicalHash,
                     blockTimestampEpochMs = blockTimestampMs,
                     succeeded = status.equals("0x1", true),
-                    rpcCrosschecked = true,
+                    rpcCrosschecked = false,
                     logs = logs,
                     observedAtEpochMs = observedAt
                 )
