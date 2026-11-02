@@ -51,7 +51,7 @@ class UniswapV3BuybackReceiptDecoderTest {
         EvmReceiptLog(
             address = poolAddress,
             topics = listOf(swapTopic, addressTopic(executor), addressTopic(recipientAddress)),
-            data = "0x" + signedWord(-250) + signedWord(100) + word(1) + word(2),
+            data = "0x" + signedWord(-250) + signedWord(100) + word(1) + word(2) + word(3),
             transactionHash = tx, blockNumber = 100, blockHash = blockHash, logIndex = 1
         ),
         EvmReceiptLog(
