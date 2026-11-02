@@ -108,8 +108,12 @@ class UniswapV3BuybackReceiptDecoderTest {
         ) as UniswapV3BuybackDecodeResult.Abstained
         assertTrue(senderResult.reasonCodes.contains("SWAP_SENDER_MUST_MATCH_REVIEWED_EXECUTOR"))
 
+        val mismatchedPayment = validLogs().toMutableList()
+        mismatchedPayment[0] = mismatchedPayment[0].copy(
+            topics = listOf(swapTopic, addressTopic(executor), addressTopic(otherRecipient))
+        )
         val recipientMismatch = UniswapV3BuybackReceiptDecoder.decode(
-            receipt(validLogs(otherRecipient)), executorMapping, reviewedPool
+            receipt(mismatchedPayment), executorMapping, reviewedPool
         ) as UniswapV3BuybackDecodeResult.Abstained
         assertTrue(recipientMismatch.reasonCodes.contains("POOL_EVENT_RECIPIENT_MUST_MATCH_FINAL_OUTPUT_RECIPIENT"))
     }
