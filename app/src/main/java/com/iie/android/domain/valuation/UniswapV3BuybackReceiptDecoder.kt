@@ -167,7 +167,7 @@ object UniswapV3BuybackReceiptDecoder {
     private fun decodeSwapAmounts(log: EvmReceiptLog): Pair<BigInteger, BigInteger>? {
         if (log.topics.size != 3 || !log.topics[1].isHexWord() || !log.topics[2].isHexWord()) return null
         val data = log.data.removePrefix("0x")
-        if (data.length != 256 || !data.matches(Regex("[a-fA-F0-9]{256}"))) return null
+        if (data.length != 320 || !data.matches(Regex("[a-fA-F0-9]{320}"))) return null
         return decodeInt256(data.substring(0, 64)) to decodeInt256(data.substring(64, 128))
     }
 
