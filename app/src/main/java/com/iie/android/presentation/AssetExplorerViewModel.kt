@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.security.MessageDigest
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
@@ -87,6 +88,9 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
 
     private val _routescanTokenSupplies = MutableStateFlow<Map<String, RoutescanTokenSupplyUiState>>(emptyMap())
     val routescanTokenSupplies: StateFlow<Map<String, RoutescanTokenSupplyUiState>> = _routescanTokenSupplies.asStateFlow()
+
+    private val _distributionReconciliations = MutableStateFlow<Map<String, DistributionReconciliationUiState>>(emptyMap())
+    val distributionReconciliations: StateFlow<Map<String, DistributionReconciliationUiState>> = _distributionReconciliations.asStateFlow()
 
     private val query = MutableStateFlow("")
     val searchQuery: StateFlow<String> = query.asStateFlow()
@@ -266,6 +270,98 @@ class AssetExplorerViewModel(application: Application) : AndroidViewModel(applic
 
     fun observeProvenance(assetId: String): Flow<List<AssetObservationProvenance>> =
         repository.observeProvenance(assetId)
+
+    /** Loads only a persisted, schema-valid and hash-verified reconciliation report. */
+    fun loadLatestDistributionReconciliation(assetId: String) {
+        _distributionReconciliations.value = _distributionReconciliations.value +
+            (assetId to DistributionReconciliationUiState(isLoading = true))
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                try {
+                    val row = database.assetObservationDao().getLatest(
+                        assetId,
+                        "DISTRIBUTION_RECONCILIATION_REPORT"
+                    ) ?: return@withContext DistributionReconciliationUiState()
+                    if (row.status != "ACCEPTED" || row.quality != "DERIVED") {
+                        return@withContext DistributionReconciliationUiState(
+                            error = "El informe guardado no tiene estado ACCEPTED/DERIVED."
+                        )
+                    }
+                    val expectedHash = MessageDigest.getInstance("SHA-256")
+                        .digest(row.valueJson.toByteArray(Charsets.UTF_8))
+                        .joinToString("") { "%02x".format(it) }
+                    if (row.payloadSha256.isNullOrBlank() ||
+                        !row.payloadSha256.equals(expectedHash, ignoreCase = true)
+                    ) {
+                        return@withContext DistributionReconciliationUiState(
+                            error = "La integridad del informe no pudo verificarse."
+                        )
+                    }
+                    val json = JSONObject(row.valueJson)
+                    if (json.optString("schema") != "iie.distribution-reconciliation-report.v1" ||
+                        json.optString("assetId") != assetId
+                    ) {
+                        return@withContext DistributionReconciliationUiState(
+                            error = "El esquema o el activo del informe no coincide."
+                        )
+                    }
+                    val beneficiaries = buildList {
+                        val array = json.optJSONArray("topBeneficiaries")
+                        if (array != null) {
+                            for (index in 0 until array.length()) {
+                                val item = array.optJSONObject(index) ?: continue
+                                add(
+                                    DistributionBeneficiaryUiState(
+                                        address = item.optString("beneficiary"),
+                                        rawAmount = item.optString("rawTransferredAmount"),
+                                        sharePercent = item.optString("shareOfObservedTransfersPercent")
+                                    )
+                                )
+                            }
+                        }
+                    }
+                    val evidenceIds = json.optJSONArray("reviewedEvidenceIds")
+                    val caveatsArray = json.optJSONArray("caveats")
+                    DistributionReconciliationUiState(
+                        reportAvailable = true,
+                        observationId = row.observationId,
+                        deploymentId = json.optString("deploymentId"),
+                        windowStartEpochMs = json.optLong("windowStartEpochMs"),
+                        windowEndEpochMs = json.optLong("windowEndEpochMs"),
+                        scheduledUnlockRaw = json.optString("scheduledUnlockRaw"),
+                        observedUnlockedRaw = json.optString("observedUnlockedRaw"),
+                        claimedRaw = json.optString("claimedRaw"),
+                        transferredRaw = json.optString("transferredToBeneficiariesRaw"),
+                        scheduleVsClaimDeltaRaw = json.optString("scheduleVsObservedClaimDeltaRaw"),
+                        transferredSupplyPercent = json.optString("transferredAsCirculatingSupplyPercent"),
+                        beneficiaries = beneficiaries,
+                        topBeneficiariesSharePercent = json.optString("topBeneficiariesSharePercent"),
+                        sellPressureLowRaw = json.optString("estimatedSellPressureLowRaw"),
+                        sellPressureHighRaw = json.optString("estimatedSellPressureHighRaw"),
+                        sellPressureLowPercent = json.optString("estimatedSellPressureLowOfCirculatingPercent"),
+                        sellPressureHighPercent = json.optString("estimatedSellPressureHighOfCirculatingPercent"),
+                        sellThroughLowBps = json.optInt("sellThroughLowBasisPoints"),
+                        sellThroughHighBps = json.optInt("sellThroughHighBasisPoints"),
+                        sellThroughRationale = json.optString("sellThroughRationale"),
+                        evidenceCount = evidenceIds?.length() ?: 0,
+                        caveats = buildList {
+                            if (caveatsArray != null) {
+                                for (index in 0 until caveatsArray.length()) {
+                                    add(caveatsArray.optString(index))
+                                }
+                            }
+                        }
+                    )
+                } catch (error: Exception) {
+                    DistributionReconciliationUiState(
+                        error = "No se pudo leer el informe: ${error.javaClass.simpleName}"
+                    )
+                }
+            }
+            _distributionReconciliations.value =
+                _distributionReconciliations.value + (assetId to result)
+        }
+    }
 
     fun loadLatestMarketQuote(assetId: String) {
         viewModelScope.launch {
@@ -651,4 +747,37 @@ data class MarketHistorySyncUiState(
     val coinMarketCapPointsInserted: Int = 0,
     val coinMarketCapPointsAlreadyPresent: Int = 0,
     val coinMarketCapError: String? = null
+)
+
+data class DistributionBeneficiaryUiState(
+    val address: String,
+    val rawAmount: String,
+    val sharePercent: String
+)
+
+data class DistributionReconciliationUiState(
+    val isLoading: Boolean = false,
+    val reportAvailable: Boolean = false,
+    val error: String? = null,
+    val observationId: String? = null,
+    val deploymentId: String? = null,
+    val windowStartEpochMs: Long = 0L,
+    val windowEndEpochMs: Long = 0L,
+    val scheduledUnlockRaw: String = "0",
+    val observedUnlockedRaw: String = "0",
+    val claimedRaw: String = "0",
+    val transferredRaw: String = "0",
+    val scheduleVsClaimDeltaRaw: String = "0",
+    val transferredSupplyPercent: String = "0",
+    val beneficiaries: List<DistributionBeneficiaryUiState> = emptyList(),
+    val topBeneficiariesSharePercent: String = "0",
+    val sellPressureLowRaw: String = "0",
+    val sellPressureHighRaw: String = "0",
+    val sellPressureLowPercent: String = "0",
+    val sellPressureHighPercent: String = "0",
+    val sellThroughLowBps: Int = 0,
+    val sellThroughHighBps: Int = 0,
+    val sellThroughRationale: String = "",
+    val evidenceCount: Int = 0,
+    val caveats: List<String> = emptyList()
 )
