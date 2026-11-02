@@ -1,9 +1,8 @@
 package com.iie.android.domain.valuation
 
 /**
- * Explicit ABI layout for a reviewed claim event. This is configuration, not
- * an ABI guess: the topic and field positions must come from reviewed protocol
- * documentation/verified contract source.
+ * Explicit ABI layout for a reviewed claim event. A beneficiary may be indexed
+ * in topics or encoded in a non-indexed data word, as required by the verified ABI.
  */
 data class ReviewedDistributionClaimEvent(
     val chainId: Long,
@@ -15,15 +14,23 @@ data class ReviewedDistributionClaimEvent(
     val evidenceUrl: String,
     val reviewStatus: String,
     val validFromEpochMs: Long = 1L,
-    val validUntilEpochMs: Long? = null
+    val validUntilEpochMs: Long? = null,
+    val beneficiaryDataWordIndex: Int? = null,
+    val expectedDataWordCount: Int? = null
 ) {
     fun validationErrors(): List<String> = buildList {
         if (chainId <= 0L) add("CLAIM_SCHEMA_CHAIN_ID_INVALID")
         if (!distributorAddress.matches(ADDRESS)) add("CLAIM_SCHEMA_DISTRIBUTOR_INVALID")
         if (!tokenContract.matches(ADDRESS)) add("CLAIM_SCHEMA_TOKEN_INVALID")
         if (!claimEventTopic.matches(HASH)) add("CLAIM_SCHEMA_TOPIC_INVALID")
-        if (beneficiaryTopicIndex !in 1..3) add("CLAIM_SCHEMA_BENEFICIARY_TOPIC_INDEX_INVALID")
+        if (beneficiaryDataWordIndex == null) {
+            if (beneficiaryTopicIndex !in 1..3) add("CLAIM_SCHEMA_BENEFICIARY_TOPIC_INDEX_INVALID")
+        } else {
+            if (beneficiaryTopicIndex != 0) add("CLAIM_SCHEMA_BENEFICIARY_LOCATION_AMBIGUOUS")
+            if (beneficiaryDataWordIndex < 0) add("CLAIM_SCHEMA_BENEFICIARY_DATA_WORD_INDEX_INVALID")
+        }
         if (amountDataWordIndex < 0) add("CLAIM_SCHEMA_AMOUNT_WORD_INDEX_INVALID")
+        if (expectedDataWordCount != null && expectedDataWordCount <= 0) add("CLAIM_SCHEMA_DATA_WORD_COUNT_INVALID")
         if (!evidenceUrl.startsWith("https://")) add("CLAIM_SCHEMA_EVIDENCE_URL_MUST_BE_HTTPS")
         if (reviewStatus != REVIEWED) add("CLAIM_SCHEMA_NOT_REVIEWED")
         if (validFromEpochMs <= 0L || (validUntilEpochMs != null && validUntilEpochMs < validFromEpochMs)) {
@@ -121,10 +128,20 @@ object ReviewedDistributionClaimReceiptDecoder {
         if (claimLogs.size != 1) errors += "EXPECTED_EXACTLY_ONE_REVIEWED_CLAIM_EVENT"
         val claim = claimLogs.singleOrNull()
 
-        val beneficiary = claim?.topics?.getOrNull(schema.beneficiaryTopicIndex)?.let(::decodeTopicAddress)
+        val beneficiary = claim?.let { event ->
+            if (schema.beneficiaryDataWordIndex == null) {
+                event.topics.getOrNull(schema.beneficiaryTopicIndex)?.let(::decodeTopicAddress)
+            } else {
+                decodeAddressDataWord(event.data, schema.beneficiaryDataWordIndex)
+            }
+        }
         if (beneficiary == null || beneficiary.equals(ZERO_ADDRESS, true) ||
             beneficiary.equals(schema.distributorAddress, true)
         ) errors += "CLAIM_BENEFICIARY_INVALID"
+
+        if (claim != null && schema.expectedDataWordCount != null &&
+            dataWordCount(claim.data) != schema.expectedDataWordCount
+        ) errors += "CLAIM_EVENT_DATA_WORD_COUNT_MISMATCH"
 
         val claimAmount = claim?.let { decodeDataWord(it.data, schema.amountDataWordIndex) }
         if (claimAmount == null || claimAmount.signum() <= 0) errors += "CLAIM_AMOUNT_INVALID"
@@ -180,13 +197,30 @@ object ReviewedDistributionClaimReceiptDecoder {
         return "0x" + value.takeLast(40)
     }
 
-    private fun decodeDataWord(data: String, wordIndex: Int): java.math.BigInteger? {
+    private fun decodeAddressDataWord(data: String, wordIndex: Int): String? {
+        val word = dataWord(data, wordIndex) ?: return null
+        if (!word.substring(0, 24).all { it == '0' }) return null
+        return "0x" + word.takeLast(40)
+    }
+
+    private fun decodeDataWord(data: String, wordIndex: Int): java.math.BigInteger? =
+        dataWord(data, wordIndex)?.toBigInteger(16)
+
+    private fun dataWord(data: String, wordIndex: Int): String? {
         val value = data.removePrefix("0x")
         if (value.isEmpty() || value.length % 64 != 0 ||
             !value.matches(Regex("[a-fA-F0-9]+"))
         ) return null
         val start = wordIndex * 64
         if (start < 0 || start + 64 > value.length) return null
-        return value.substring(start, start + 64).toBigInteger(16)
+        return value.substring(start, start + 64)
+    }
+
+    private fun dataWordCount(data: String): Int? {
+        val value = data.removePrefix("0x")
+        if (value.isEmpty() || value.length % 64 != 0 ||
+            !value.matches(Regex("[a-fA-F0-9]+"))
+        ) return null
+        return value.length / 64
     }
 }
