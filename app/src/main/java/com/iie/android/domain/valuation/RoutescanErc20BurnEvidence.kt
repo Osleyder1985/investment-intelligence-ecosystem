@@ -44,6 +44,7 @@ data class RoutescanTransferLog(
     val contractAddress: String,
     val transactionHash: String,
     val blockNumber: Long,
+    val logIndex: Long,
     val timestampEpochMs: Long,
     val topics: List<String>,
     val data: String
@@ -55,6 +56,7 @@ data class VerifiedErc20BurnEvent(
     val tokenContract: String,
     val transactionHash: String,
     val blockNumber: Long,
+    val logIndex: Long,
     val observedAtEpochMs: Long,
     val rawAmount: BigInteger,
     val tokenAmount: BigDecimal,
@@ -119,13 +121,14 @@ class RoutescanErc20BurnEvidenceSource(
                 tokenContract = tokenContract.lowercase(),
                 transactionHash = log.transactionHash,
                 blockNumber = log.blockNumber,
+                logIndex = log.logIndex,
                 observedAtEpochMs = log.timestampEpochMs,
                 rawAmount = raw,
                 tokenAmount = BigDecimal(raw).movePointLeft(decimals),
                 tokenDecimals = decimals,
                 sourceUrl = url
             )
-        }.distinctBy { "${it.transactionHash}:${it.blockNumber}:${it.rawAmount}" }
+        }.distinctBy { "${it.transactionHash}:${it.logIndex}" }
         return RoutescanBurnFetchResult.Ready(events)
     }
 
@@ -161,11 +164,14 @@ class RoutescanErc20BurnEvidenceSource(
                     ?: return@mapNotNull null
                 val timestamp = parseHexOrDecimal(row["timeStamp"]?.jsonPrimitive?.contentOrNull)
                     ?: return@mapNotNull null
+                val logIndex = parseHexOrDecimal(row["logIndex"]?.jsonPrimitive?.contentOrNull)
+                    ?: return@mapNotNull null
                 RoutescanTransferLog(
                     contractAddress = row["address"]?.jsonPrimitive?.content ?: return@mapNotNull null,
                     transactionHash = row["transactionHash"]?.jsonPrimitive?.content
                         ?.takeIf { it.matches(Regex("0x[a-fA-F0-9]{64}")) } ?: return@mapNotNull null,
                     blockNumber = block,
+                    logIndex = logIndex,
                     timestampEpochMs = timestamp * 1000L,
                     topics = topics,
                     data = row["data"]?.jsonPrimitive?.content ?: return@mapNotNull null
