@@ -32,6 +32,16 @@ interface AssetDeploymentDao {
     @Query("SELECT * FROM asset_deployments WHERE deploymentId = :deploymentId LIMIT 1")
     suspend fun getDeployment(deploymentId: String): AssetDeploymentEntity?
 
+    @Query("""
+        SELECT * FROM asset_deployments
+        WHERE assetId = :assetId AND lower(reference) = lower(:contractAddress)
+        LIMIT 1
+    """)
+    suspend fun getDeploymentForAssetAndContract(
+        assetId: String,
+        contractAddress: String
+    ): AssetDeploymentEntity?
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertDeployment(deployment: AssetDeploymentEntity)
 
