@@ -69,7 +69,7 @@ data class DistributionReconciliationReport(
     val observedUnlockedRaw: String,
     val claimedRaw: String,
     val transferredToBeneficiariesRaw: String,
-    /** observed claimed + transferred minus scheduled unlocks in the same window */
+    /** observed claims (including claim-and-transfer events) minus scheduled unlocks in the same window */
     val scheduleVsObservedClaimDeltaRaw: String,
     val transferredAsCirculatingSupplyPercent: BigDecimal,
     val topBeneficiaries: List<BeneficiaryDistributionExposure>,
@@ -107,14 +107,16 @@ object DistributionReconciliationEngine {
 
         val scheduled = schedules.fold(ZERO) { total, item -> total + item.rawAmount.toBigInteger() }
         val unlocked = sum(movements, DistributionMovementKind.UNLOCK_CONFIRMED)
-        val claimed = sum(movements, DistributionMovementKind.CLAIMED)
+        val claimed = movements.filter {
+            it.kind == DistributionMovementKind.CLAIMED ||
+                it.kind == DistributionMovementKind.CLAIMED_AND_TRANSFERRED
+        }.fold(ZERO) { total, item -> total + item.rawAmount.toBigInteger() }
         val transferred = movements.filter {
             it.kind == DistributionMovementKind.TRANSFERRED ||
                 it.kind == DistributionMovementKind.CLAIMED_AND_TRANSFERRED
         }
         val transferredTotal = transferred.fold(ZERO) { total, item -> total + item.rawAmount.toBigInteger() }
-        val observedClaimedAndTransferred = claimed + transferredTotal
-        val delta = observedClaimedAndTransferred - scheduled
+        val delta = claimed - scheduled
         val supply = input.circulatingSupplyRaw.toBigInteger()
 
         val byBeneficiary = transferred.groupBy { it.beneficiary.lowercase() }
