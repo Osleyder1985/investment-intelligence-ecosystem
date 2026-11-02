@@ -42,7 +42,9 @@ object TokenomicsSupplyEvidenceAdapter {
             "circulatingSupply" to section.circulatingSupply,
             "totalSupply" to section.totalSupply
         )
-        val optionalMax = section.maxSupply.takeIf { it.status == ResearchFieldStatus.KNOWN && it.value != null }
+        val optionalMax = section.maxSupply.takeIf {
+            it.status == ResearchFieldStatus.KNOWN || it.status == ResearchFieldStatus.CONFLICTED
+        }
         val evidence = required + listOfNotNull(optionalMax?.let { "maxSupply" to it })
         val blockers = mutableListOf<String>()
         val accepted = mutableListOf<Pair<String, ResearchEvidence<Double>>>()
