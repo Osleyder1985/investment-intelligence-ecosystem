@@ -45,7 +45,26 @@ class RoutescanBurnObservationStore(
                         )
                     )
                 }
-                val rows = events.map { it.toEntity() }
+                val rows = events.map { event ->
+                    val deployment = database.assetDeploymentDao()
+                        .getDeploymentForAssetAndContract(assetId, event.tokenContract)
+                        ?: return@withTransaction RoutescanBurnStoreResult.Abstained(
+                            listOf("TOKEN_CONTRACT_NOT_REGISTERED_FOR_CANONICAL_ASSET")
+                        )
+                    val network = database.networkDao().getNetwork(deployment.networkId)
+                        ?: return@withTransaction RoutescanBurnStoreResult.Abstained(
+                            listOf("DEPLOYMENT_NETWORK_NOT_REGISTERED")
+                        )
+                    if (network.chainId != event.chainId.toString() ||
+                        deployment.decimals != event.tokenDecimals ||
+                        !deployment.reference.equals(event.tokenContract, ignoreCase = true)
+                    ) {
+                        return@withTransaction RoutescanBurnStoreResult.Abstained(
+                            listOf("ONCHAIN_EVENT_DEPLOYMENT_MISMATCH")
+                        )
+                    }
+                    event.toEntity(deployment.deploymentId)
+                }
                 val results = database.assetObservationDao().insertHistoricalObservationsIfAbsent(rows)
                 RoutescanBurnStoreResult.Persisted(
                     attempted = rows.size,
@@ -58,7 +77,7 @@ class RoutescanBurnObservationStore(
         }
     }
 
-    private fun VerifiedErc20BurnEvent.toEntity(): AssetObservationEntity {
+    private fun VerifiedErc20BurnEvent.toEntity(deploymentId: String): AssetObservationEntity {
         val payload = buildJsonObject {
             put("schema", "iie.erc20-burn-event.v1")
             put("assetId", assetId)
@@ -77,7 +96,7 @@ class RoutescanBurnObservationStore(
         return AssetObservationEntity(
             observationId = sha256("$assetId|$SOURCE_ID|$chainId|$tokenContract|$transactionHash|$logIndex"),
             assetId = assetId,
-            deploymentId = null,
+            deploymentId = deploymentId,
             sourceId = SOURCE_ID,
             observationType = "ONCHAIN_ERC20_BURN_EVENT",
             observedAtEpochMs = observedAtEpochMs,
