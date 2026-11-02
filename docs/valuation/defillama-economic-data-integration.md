@@ -183,3 +183,47 @@ El perfil no inventa la fecha de inicio del mapping: la integración exige que s
 ### Cobertura de pruebas
 
 Se agregan fixtures para el layout real no indexado, beneficiario malformado y número de palabras incorrecto. Las pruebas son sintéticas para el decodificador; no se presentan como observaciones de transacciones mainnet reales. La ejecución de Android CI e IIE CI sobre el head final sigue siendo requisito previo a fusionar.
+
+
+## Segunda ampliación: vesting trimestral verificado y pagos por lotes
+
+### Uniswap UNIVesting (Ethereum mainnet)
+
+Se añade un perfil de detección para el contrato actual de vesting UNI:
+
+- Contrato: `0xCa046A83EDB78F74aE338bb5A291bF6FdAc9e1D2`.
+- Token: UNI, `0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984`.
+- ABI: contrato `UNIVesting` verificado en Etherscan.
+- Funciones de lectura ABI: `UNI()`, `recipient()`, `quarterlyVestingAmount()`, `lastUnlockTimestamp()`, `quartersPassed()`, `owner()`.
+- Función de retirada: `withdraw()`.
+- Evento: `Withdrawn(address indexed recipient,uint256 amount,uint48 quartersPaid)`.
+
+El perfil requiere el topic0 extraído del ABI verificado; no codifica un hash no confirmado. Fija el layout del evento: dos topics (topic0 + recipient) y dos palabras de datos (amount + quartersPaid).
+
+La lectura de calendario se acepta solo si `UNI`, contrato, recipient, importe trimestral, último timestamp de desbloqueo y quarters passed están asociados al mismo bloque canónico y cross-check RPC. Una retirada se reconoce solo cuando el evento `Withdrawn` y un `Transfer` del token UNI desde el vesting contract coinciden exactamente en recipient e importe. El número de trimestres se conserva; no se presupone que el importe sea siempre igual al número de trimestres multiplicado por la cuota, porque el contrato admite retiradas parciales cuando la allowance es insuficiente.
+
+Fuentes: [ABI verificada en Etherscan](https://etherscan.io/address/0xca046a83edb78f74ae338bb5a291bf6fdac9e1d2#code), [despliegues oficiales Uniswap](https://github.com/Uniswap/protocol-fees) y [código fuente UNIVesting](https://github.com/Uniswap/protocol-fees/blob/main/src/UNIVesting.sol). El contrato se describe como un vesting trimestral cuyo primer desbloqueo fue el 1 de enero de 2026; el propietario debe aprobar UNI al contrato para permitir la transferencia.
+
+El contrato histórico `TreasuryVester` `0x4750c43867ef5f89869132eccf19b9b6c4286e1a` es una integración separada: su ABI está verificada, pero el calendario de cuatro años terminó en septiembre de 2025. No se mezcla con el vesting trimestral nuevo.
+
+### Pagos por lotes
+
+Se añade un detector de múltiples pagos ERC-20 en un mismo recibo. Requiere:
+- mapping `DISTRIBUTION_SOURCE` revisado y vigente para protocolo, activo, chainId y token;
+- recibo exitoso y cross-check RPC;
+- logs de bloque/hash/transacción coherentes;
+- al menos dos transferencias del mismo token desde la fuente revisada;
+- beneficiarios únicos, direcciones ABI válidas e importes raw positivos;
+- índices de log únicos.
+
+El resultado es `BATCH_TRANSFER_CANDIDATE_UNVERIFIED` (pendiente de finality y revisión del protocolo). Agrupar transferencias no demuestra por sí solo que se haya invocado una función batch, que cada pago sea una distribución económica o que los receptores sean holders finales. Para elevar el nivel de evidencia se necesita además el ABI específico de la función batch o evento de distribución del contrato y su decodificación de calldata/recibo.
+
+### Límites y pruebas
+
+Los nuevos tests usan fixtures sintéticos para:
+- retirada trimestral con evento `Withdrawn` y transferencia UNI exacta;
+- mismatch de beneficiario, cantidad y bloque;
+- dos o más pagos en una transacción;
+- rechazo de pagos únicos, beneficiarios repetidos y falta de cross-check RPC.
+
+No se declaran retiros o pagos por lotes reales observados en mainnet ni se habilita automáticamente valoración. Las observaciones siguen sujetas a finality, reorg, elegibilidad del beneficiario y revisión de derechos económicos.
