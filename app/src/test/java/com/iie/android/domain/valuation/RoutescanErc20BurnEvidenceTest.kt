@@ -20,7 +20,8 @@ class RoutescanErc20BurnEvidenceTest {
             "data":"0x64",
             "blockNumber":"0x10",
             "timeStamp":"0x6553f100",
-            "transactionHash":"$tx"
+            "transactionHash":"$tx",
+            "logIndex":"0x2"
           }]
         }
     """.trimIndent()
@@ -32,6 +33,7 @@ class RoutescanErc20BurnEvidenceTest {
         assertEquals(1, events.size)
         assertEquals("1.00", events.single().tokenAmount.toPlainString())
         assertEquals(16L, events.single().blockNumber)
+        assertEquals(2L, events.single().logIndex)
         assertEquals(1_700_000_000_000L, events.single().observedAtEpochMs)
         assertEquals("EXPLORER_INDEXED_EVENT_PENDING_RPC_CROSSCHECK", events.single().evidenceStatus)
     }
