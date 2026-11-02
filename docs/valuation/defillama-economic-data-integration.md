@@ -92,3 +92,22 @@ Se añade un evaluador de evidencia normalizada de swap. Para emitir un candidat
 El resultado conserva token y cantidad de entrada, token y cantidad adquiridos, destinatario, hash de transacción y bloque. Se etiqueta `RPC_CROSSCHECKED_SWAP_PENDING_FINALITY_AND_PROTOCOL_REVIEW`; no es todavía una recompra aprobada para valoración.
 
 **Límite de implementación:** este evaluador consume una estructura normalizada que debe producir un decodificador específico de protocolo/DEX a partir del recibo y sus logs. No se declara que exista un decodificador universal ni se interpreta una transferencia aislada como swap. Antes de usarlo en producción se debe implementar y probar el decodificador concreto (router/ABI, eventos, rutas multihop, agregadores, fees, tokens intermedios, proxy y destinatario), volver a consultar el recibo mediante RPC y aplicar política de finality/reorg y, cuando sea posible, un segundo nodo independiente.
+
+
+## Decodificador concreto: swaps single-hop tipo Uniswap V2
+
+Se incorpora un primer decodificador real de recibos EVM para el formato de evento `Swap(address,uint256,uint256,uint256,uint256,address)` de pares compatibles con Uniswap V2. No se presenta como decodificador universal de DEX.
+
+Requisitos antes de aceptar el resultado:
+- mapping del ejecutor de recompra revisado y vigente para el activo y contrato adquirido;
+- mapping revisado del par, chainId, dirección del par y orden `token0/token1`, con evidencia HTTPS;
+- recibo exitoso, contraste RPC obligatorio y coincidencia de hash/bloque en todos los logs;
+- exactamente un evento Swap del par revisado;
+- una sola pata de entrada y una sola pata de salida, con el token adquirido coincidente con el activo canónico;
+- un único evento ERC-20 Transfer desde el par hacia el destinatario, cuyo importe raw coincida exactamente con la salida del evento Swap.
+
+Los importes se decodifican como uint256 con precisión completa y se conservan como cadenas decimales raw. El resultado normalizado pasa después por `ProtocolBuybackEvidenceEvaluator`; por tanto, continúa pendiente de finality y revisión del protocolo.
+
+**Abstenciones deliberadas:** swaps multihop, agregadores, múltiples pares Swap en el mismo recibo, split outputs, tokens fee-on-transfer/rebasing cuando el importe transferido no coincide con el evento, pares no revisados, cadenas sin cross-check RPC y logs con bloque/hash inconsistentes. Este primer adaptador no descubre factories ni valida por sí solo que el par pertenezca a un factory oficial; el mapping del par debe proceder de una fuente revisada. Tampoco acredita que el protocolo haya autorizado económicamente la operación: solo aporta evidencia de ejecución compatible con el mapping.
+
+Tests añadidos para swap single-hop válido, mapping pendiente, recibo fallido, falta de cross-check, transferencia de salida discordante, eventos Swap ambiguos, executor incorrecto y logs de bloque inconsistente.
