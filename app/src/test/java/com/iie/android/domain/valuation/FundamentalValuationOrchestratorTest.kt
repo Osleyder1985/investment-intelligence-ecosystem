@@ -110,6 +110,27 @@ class FundamentalValuationOrchestratorTest {
         assertFalse(result.consolidated.assumptions.any { it.contains("average", ignoreCase = true) })
     }
 
+
+    @Test fun unexecutedEligibleMethodPreventsDecisionEligibleUndervaluation() {
+        val threeMethods = context(AssetEconomicRightsEvidence(
+            assetId = "asset-1",
+            holderClaimOnNetAssets = ValuationEvidenceFact.VERIFIED,
+            holderAttributableCashFlows = ValuationEvidenceFact.VERIFIED,
+            tokenValueCaptureMechanism = ValuationEvidenceFact.VERIFIED
+        ))
+        val result = FundamentalValuationOrchestrator.evaluate(
+            threeMethods,
+            mapOf(
+                ValuationMethod.NAV to navRequest(),
+                ValuationMethod.HOLDER_ATTRIBUTABLE_DCF to dcfRequest()
+            )
+        ) as ValuationOrchestratorResult.Classified
+
+        assertEquals(ValuationClassification.POTENTIAL_UNDERVALUATION, result.valuation.classification)
+        assertFalse(result.valuation.isDecisionEligible)
+        assertTrue(result.valuation.reasons.contains("ALTERNATIVE_METHODS_NOT_REVIEWED"))
+    }
+
     @Test fun overlappingEvidenceCannotBeMisrepresentedAsIndependentConsensus() {
         val result = FundamentalValuationOrchestrator.evaluate(
             context(),
