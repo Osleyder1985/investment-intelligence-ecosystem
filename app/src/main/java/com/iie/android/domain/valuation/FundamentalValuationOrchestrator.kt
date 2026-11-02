@@ -114,6 +114,9 @@ object FundamentalValuationOrchestrator {
             return ValuationOrchestratorResult.Abstained(runs, listOf("MARKET_TIMESTAMP_INVALID"))
         }
         val decisionMetadata = riskMetadata ?: metadata
+        val allEligibleMethodsProducedEstimates = eligible.isNotEmpty() && eligible.all { method ->
+            runs.any { it.method == method && it.result is ValuationModelResult.Estimated }
+        }
         val valuation = FundamentalValuationEngine.evaluate(
             FundamentalValuationInput(
                 assetId = context.assetId,
@@ -137,7 +140,8 @@ object FundamentalValuationOrchestrator {
                 liquidityAndDepthReviewed = decisionMetadata.liquidityAndDepthReviewed,
                 executionCostsIncluded = decisionMetadata.executionCostsIncluded,
                 sensitivityRobust = decisionMetadata.sensitivityRobust,
-                alternativeMethodsReviewed = decisionMetadata.alternativeMethodsReviewed && estimates.size > 1,
+                alternativeMethodsReviewed = decisionMetadata.alternativeMethodsReviewed &&
+                    estimates.size > 1 && allEligibleMethodsProducedEstimates,
                 riskGate = decisionMetadata.riskGate
             )
         )
