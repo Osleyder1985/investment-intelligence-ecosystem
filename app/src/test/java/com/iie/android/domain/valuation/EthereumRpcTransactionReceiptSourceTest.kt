@@ -79,7 +79,7 @@ class EthereumRpcTransactionReceiptSourceTest {
 
     @Test fun refusesCanonicalBlockHashMismatch() {
         val result = source(canonicalHash = "0x" + "c".repeat(64)).fetch(tx)
-        assertEquals("RPC_CANONICAL_BLOCK_HASH_MISMATCH",
+        assertEquals("RPC_BLOCK_REORGED_OR_PROVIDER_INCONSISTENT",
             (result as RpcTransactionReceiptResult.Abstained).reasonCode)
     }
 
@@ -110,6 +110,41 @@ class EthereumRpcTransactionReceiptSourceTest {
         val result = source(finalizedBlock = "0xa5a5a3", safeBlock = "0xa5a5a4").fetch(tx)
         val receipt = (result as RpcTransactionReceiptResult.Confirmed).receipt
         assertEquals("CONFIRMED", receipt.finalityStatus)
+    }
+
+
+    @Test fun usesLowerOfTwoProviderFinalizedHeights() {
+        val result = EthereumRpcTransactionReceiptSource(
+            transport = EthereumRpcTransport { endpoint, body ->
+                if (endpoint == EthereumRpcBurnCrossChecker.ETHEREUM_MAINNET_RPC) {
+                    response(body, finalizedBlock = "0xa5a5a9", safeBlock = "0xa5a5a8")
+                } else {
+                    response(body, finalizedBlock = "0xa5a5a8", safeBlock = "0xa5a5a7")
+                }
+            },
+            clock = { 1_790_000_000_000L }
+        ).fetch(tx)
+        val receipt = (result as RpcTransactionReceiptResult.Confirmed).receipt
+        assertEquals("FINALIZED", receipt.finalityStatus)
+        assertEquals(blockNumberLong + 3L, receipt.finalizedBlockNumber)
+        assertEquals(blockNumberLong + 2L, receipt.safeBlockNumber)
+    }
+
+    @Test fun doesNotClaimFinalityIfOnlyOneProviderSupportsTags() {
+        val result = EthereumRpcTransactionReceiptSource(
+            transport = EthereumRpcTransport { endpoint, body ->
+                if (endpoint == EthereumRpcBurnCrossChecker.ETHEREUM_MAINNET_RPC) {
+                    response(body, finalizedBlock = "0xa5a5a8", safeBlock = "0xa5a5a7")
+                } else {
+                    response(body, finalizedBlock = null, safeBlock = null)
+                }
+            },
+            clock = { 1_790_000_000_000L }
+        ).fetch(tx)
+        val receipt = (result as RpcTransactionReceiptResult.Confirmed).receipt
+        assertEquals("FINALITY_UNSUPPORTED", receipt.finalityStatus)
+        assertEquals(null, receipt.finalizedBlockNumber)
+        assertEquals(null, receipt.safeBlockNumber)
     }
 
     @Test fun rejectsMalformedTransactionHashBeforeRpc() {
