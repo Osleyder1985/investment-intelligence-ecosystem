@@ -37,6 +37,20 @@ Se añade un lector de logs EVM mediante la API Etherscan-compatible de Routesca
 
 Routescan documenta acceso keyless gratuito, endpoint de logs Etherscan-compatible, filtros por dirección/rango de bloques y el requisito de atribución para usos fuera de privado. La integración registra `ATTRIBUTION_REQUIRED` y conserva el texto de atribución. Fuente: https://docs.routescan.io/ y https://docs.routescan.io/api/etherscan/logs.
 
+## Contraste independiente por RPC: Ethereum mainnet
+
+Se incorpora una segunda lectura independiente para eventos de quema indexados por Routescan:
+
+- Para chainId 1, consulta `eth_getLogs` en el endpoint público Cloudflare Ethereum RPC, filtrando contrato, bloque, evento Transfer y destinatario cero.
+- Exige coincidencia única por transaction hash + log index + contrato.
+- Compara topics, cantidad raw y bloque.
+- Consulta `eth_getBlockByNumber` y compara el hash canónico del bloque y su timestamp con el log de Routescan.
+- Conserva endpoint RPC, hash canónico y hora de comprobación en el objeto de evidencia y en el payload persistido.
+
+El resultado se etiqueta `RPC_CROSSCHECKED_ETHEREUM_MAINNET_PENDING_FINALITY`; la observación continúa `QUARANTINED` / `UNVERIFIED` hasta establecer finality y una política de confirmaciones/reorg. No se extiende silenciosamente el endpoint Ethereum a otras redes: cualquier chainId no configurado produce abstención.
+
+Endpoint: https://cloudflare-eth.com. Referencia JSON-RPC: https://ethereum.org/en/developers/docs/apis/json-rpc/.
+
 ## Contrato de observación
 
 Cada observación mantiene: activo canónico, slug del protocolo, métrica del proveedor, período, valor USD, timestamp observado cuando existe, timestamp de recuperación, URL de origen, estado de evidencia y limitaciones.
