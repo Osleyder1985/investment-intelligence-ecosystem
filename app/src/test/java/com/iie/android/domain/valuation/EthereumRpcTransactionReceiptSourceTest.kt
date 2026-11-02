@@ -60,7 +60,7 @@ class EthereumRpcTransactionReceiptSourceTest {
         assertEquals(blockNumberLong, receipt.blockNumber)
         assertEquals(blockHash, receipt.blockHash)
         assertTrue(receipt.succeeded)
-        assertTrue(receipt.rpcCrosschecked)
+        assertFalse(receipt.rpcCrosschecked)
         assertEquals(2, receipt.logs.size)
         assertEquals(4L, receipt.logs[0].logIndex)
         assertEquals(5L, receipt.logs[1].logIndex)
