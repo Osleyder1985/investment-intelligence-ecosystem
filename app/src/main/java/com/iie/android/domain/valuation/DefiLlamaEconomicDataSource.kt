@@ -1,7 +1,13 @@
 package com.iie.android.domain.valuation
 
-import org.json.JSONArray
-import org.json.JSONObject
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -17,10 +23,7 @@ enum class DefiLlamaMetric(val dataType: String) {
     HOLDER_REVENUE("dailyHoldersRevenue")
 }
 
-data class DefiLlamaDailyPoint(
-    val timestampEpochMs: Long,
-    val valueUsd: Double
-)
+data class DefiLlamaDailyPoint(val timestampEpochMs: Long, val valueUsd: Double)
 
 data class DefiLlamaMetricSeries(
     val metric: DefiLlamaMetric,
@@ -106,25 +109,23 @@ class DefiLlamaEconomicDataSource(
         ): DefiLlamaMetricSeries {
             require(protocolSlug.matches(Regex("[a-z0-9][a-z0-9-]{0,79}")))
             require(retrievedAtEpochMs > 0L)
-            val root = JSONObject(payload)
-            val name = root.optString("name").takeIf { it.isNotBlank() && it != "null" }
+            val root = Json.parseToJsonElement(payload).jsonObject
             fun optionalNumber(key: String): Double? {
-                if (!root.has(key) || root.isNull(key)) return null
-                val value = root.optDouble(key, Double.NaN)
-                return value.takeIf { it.isFinite() && it >= 0.0 }
+                val value = root[key]?.jsonPrimitive?.doubleOrNull
+                return value?.takeIf { it.isFinite() && it >= 0.0 }
             }
+            val name = root["name"]?.jsonPrimitive?.content
+                ?.takeIf { it.isNotBlank() && it != "null" }
+            val chart = root["totalDataChart"] as? JsonArray ?: JsonArray(emptyList())
+            val points = chart.mapNotNull { item ->
+                val pair = item as? JsonArray ?: return@mapNotNull null
+                if (pair.size < 2) return@mapNotNull null
+                val timestampSeconds = pair[0].jsonPrimitive.longOrNull ?: return@mapNotNull null
+                val value = pair[1].jsonPrimitive.doubleOrNull ?: return@mapNotNull null
+                if (timestampSeconds <= 0L || !value.isFinite() || value < 0.0) return@mapNotNull null
+                DefiLlamaDailyPoint(timestampSeconds * 1000L, value)
+            }.distinctBy { it.timestampEpochMs }.sortedBy { it.timestampEpochMs }
 
-            val chart = root.optJSONArray("totalDataChart") ?: JSONArray()
-            val points = mutableListOf<DefiLlamaDailyPoint>()
-            for (index in 0 until chart.length()) {
-                val pair = chart.optJSONArray(index) ?: continue
-                if (pair.length() < 2) continue
-                val timestampSeconds = pair.optLong(0, -1L)
-                val value = pair.optDouble(1, Double.NaN)
-                if (timestampSeconds <= 0L || !value.isFinite() || value < 0.0) continue
-                points += DefiLlamaDailyPoint(timestampSeconds * 1000L, value)
-            }
-            val ordered = points.distinctBy { it.timestampEpochMs }.sortedBy { it.timestampEpochMs }
             return DefiLlamaMetricSeries(
                 metric = metric,
                 protocolSlug = protocolSlug,
@@ -133,7 +134,7 @@ class DefiLlamaEconomicDataSource(
                 total48hTo24hUsd = optionalNumber("total48hto24h"),
                 total7dUsd = optionalNumber("total7d"),
                 totalAllTimeUsd = optionalNumber("totalAllTime"),
-                dailyPoints = ordered,
+                dailyPoints = points,
                 sourceUrl = sourceUrl,
                 retrievedAtEpochMs = retrievedAtEpochMs
             )
