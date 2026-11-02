@@ -170,16 +170,13 @@ object FundamentalValuationOrchestrator {
                     it.valuationObject != first.valuationObject ||
                     it.valuationUnit != first.valuationUnit ||
                     it.currency != first.currency ||
-                    it.valuationTimestampEpochMs != first.valuationTimestampEpochMs ||
-                    it.evidenceStatus != ValuationEvidenceStatus.SUFFICIENT
+                    it.valuationTimestampEpochMs != first.valuationTimestampEpochMs
             }
         ) return null
-        if (estimates.any {
-                it.rangeKind != FairValueRangeKind.MODEL_UNCERTAINTY ||
-                    it.asOfEpochMs != first.valuationTimestampEpochMs
-            }
-        ) return null
+        if (estimates.any { it.asOfEpochMs != first.valuationTimestampEpochMs }) return null
         if (estimates.size > 1) {
+            if (metadata.any { it.evidenceStatus != ValuationEvidenceStatus.SUFFICIENT }) return null
+            if (estimates.any { it.rangeKind != FairValueRangeKind.MODEL_UNCERTAINTY }) return null
             val evidenceSets = estimates.map { it.evidenceReferences.toSet() }
             for (i in evidenceSets.indices) for (j in i + 1 until evidenceSets.size) {
                 if (evidenceSets[i].intersect(evidenceSets[j]).isNotEmpty()) return null
