@@ -122,6 +122,9 @@ object ReviewedDistributionClaimReceiptDecoder {
                 log.logIndex >= 0L
         }
         if (logs.size != receipt.logs.size) errors += "RECEIPT_LOG_BLOCK_OR_TRANSACTION_MISMATCH"
+        if (logs.map { it.logIndex }.distinct().size != logs.size) {
+            errors += "RECEIPT_LOG_INDEX_DUPLICATE"
+        }
 
         val claimLogs = logs.filter { log ->
             log.address.equals(schema.distributorAddress, true) &&
@@ -163,8 +166,16 @@ object ReviewedDistributionClaimReceiptDecoder {
         }
 
         val payment = distributorPayments.singleOrNull()
-        val paymentRecipient = payment?.topics?.getOrNull(2)?.let(::decodeTopicAddress)
-        val paymentAmount = payment?.let { decodeDataWord(it.data, 0) }
+        if (payment != null && payment.topics.size != 3) {
+            errors += "ERC20_TRANSFER_TOPIC_COUNT_MISMATCH"
+        }
+        if (payment != null && !isSingleDataWord(payment.data)) {
+            errors += "ERC20_TRANSFER_DATA_WORD_COUNT_MISMATCH"
+        }
+        val paymentRecipient = payment?.takeIf { it.topics.size == 3 }
+            ?.topics?.getOrNull(2)?.let(::decodeTopicAddress)
+        val paymentAmount = payment?.takeIf { isSingleDataWord(it.data) }
+            ?.let { decodeDataWord(it.data, 0) }
         if (paymentRecipient == null || paymentRecipient.equals(ZERO_ADDRESS, true)) {
             errors += "PAYMENT_RECIPIENT_INVALID"
         }
@@ -220,6 +231,10 @@ object ReviewedDistributionClaimReceiptDecoder {
         if (start < 0 || start + 64 > value.length) return null
         return value.substring(start, start + 64)
     }
+
+    private fun isSingleDataWord(data: String): Boolean =
+        data.startsWith("0x") && data.length == 66 &&
+            data.drop(2).matches(Regex("[a-fA-F0-9]{64}"))
 
     private fun dataWordCount(data: String): Int? {
         val value = data.removePrefix("0x")
