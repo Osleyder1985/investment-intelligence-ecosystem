@@ -13,7 +13,9 @@ data class UniswapV2ReviewedPair(
     val token0: String,
     val token1: String,
     val evidenceUrl: String,
-    val reviewStatus: String
+    val reviewStatus: String,
+    val validFromEpochMs: Long = 1L,
+    val validUntilEpochMs: Long? = null
 ) {
     fun validationErrors(): List<String> = buildList {
         if (chainId <= 0L) add("PAIR_CHAIN_ID_INVALID")
@@ -22,6 +24,9 @@ data class UniswapV2ReviewedPair(
         if (token0.equals(token1, true)) add("PAIR_TOKENS_MUST_DIFFER")
         if (!evidenceUrl.startsWith("https://")) add("PAIR_EVIDENCE_URL_MUST_BE_HTTPS")
         if (reviewStatus != REVIEWED) add("PAIR_MAPPING_NOT_REVIEWED")
+        if (validFromEpochMs <= 0L || (validUntilEpochMs != null && validUntilEpochMs < validFromEpochMs)) {
+            add("PAIR_VALIDITY_WINDOW_INVALID")
+        }
     }
 
     companion object { const val REVIEWED = "REVIEWED" }
@@ -43,6 +48,7 @@ data class EvmTransactionReceiptEvidence(
     val transactionTo: String,
     val blockNumber: Long,
     val blockHash: String,
+    val blockTimestampEpochMs: Long,
     val succeeded: Boolean,
     val rpcCrosschecked: Boolean,
     val logs: List<EvmReceiptLog>,
@@ -75,6 +81,13 @@ object UniswapV2BuybackReceiptDecoder {
         if (!receipt.transactionHash.matches(HASH) || !receipt.blockHash.matches(HASH) ||
             receipt.blockNumber < 0L || receipt.observedAtEpochMs <= 0L
         ) errors += "RECEIPT_BLOCK_REFERENCE_INVALID"
+        if (receipt.blockTimestampEpochMs <= 0L ||
+            receipt.blockTimestampEpochMs < executorMapping.validFromEpochMs ||
+            (executorMapping.validUntilEpochMs != null && receipt.blockTimestampEpochMs > executorMapping.validUntilEpochMs)
+        ) errors += "EXECUTOR_MAPPING_NOT_ACTIVE_AT_BLOCK_TIME"
+        if (receipt.blockTimestampEpochMs < pair.validFromEpochMs ||
+            (pair.validUntilEpochMs != null && receipt.blockTimestampEpochMs > pair.validUntilEpochMs)
+        ) errors += "PAIR_MAPPING_NOT_ACTIVE_AT_BLOCK_TIME"
         if (!pair.token0.equals(executorMapping.tokenContract, true) &&
             !pair.token1.equals(executorMapping.tokenContract, true)
         ) errors += "REVIEWED_PAIR_DOES_NOT_CONTAIN_ACQUIRED_TOKEN"
@@ -147,7 +160,8 @@ object UniswapV2BuybackReceiptDecoder {
                 outputTokenContract = executorMapping.tokenContract,
                 outputRawAmount = legs.third,
                 outputRecipient = outputRecipient.single(),
-                decodedAtEpochMs = receipt.observedAtEpochMs
+                decodedAtEpochMs = receipt.observedAtEpochMs,
+                blockTimestampEpochMs = receipt.blockTimestampEpochMs
             )
         )
     }
