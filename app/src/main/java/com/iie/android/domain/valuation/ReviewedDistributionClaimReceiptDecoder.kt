@@ -207,7 +207,14 @@ object ReviewedDistributionClaimReceiptDecoder {
                 blockTimestampEpochMs = blockTime,
                 finalityStatus = receipt.finalityStatus,
                 safeBlockNumber = receipt.safeBlockNumber,
-                finalizedBlockNumber = receipt.finalizedBlockNumber
+                finalizedBlockNumber = receipt.finalizedBlockNumber,
+                evidenceStatus = when (receipt.finalityStatus) {
+                    "FINALIZED" -> "RPC_CROSSCHECKED_FINALIZED_CLAIM_PAYMENT_PENDING_HOLDER_REVIEW"
+                    "SAFE" -> "RPC_CROSSCHECKED_SAFE_CLAIM_PAYMENT_PENDING_FINALITY_AND_HOLDER_REVIEW"
+                    "CONFIRMED" -> "RPC_CROSSCHECKED_CLAIM_PAYMENT_PENDING_SAFE_FINALITY_AND_HOLDER_REVIEW"
+                    "FINALITY_UNSUPPORTED" -> "RPC_CROSSCHECKED_CLAIM_PAYMENT_FINALITY_UNSUPPORTED_HOLDER_REVIEW_REQUIRED"
+                    else -> "RPC_CROSSCHECKED_CLAIM_PAYMENT_FINALITY_UNVERIFIED_HOLDER_REVIEW_REQUIRED"
+                }
             )
         )
     }
