@@ -11,6 +11,7 @@ import com.iie.android.domain.valuation.DefiLlamaEconomicObservation
 import com.iie.android.domain.valuation.DefiLlamaMetric
 import com.iie.android.domain.valuation.DefiLlamaMetricSeries
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -81,7 +82,7 @@ class DefiLlamaEconomicObservationStoreTest {
         assertEquals("REVIEW_REQUIRED", firstResult.sourceUseStatus)
         val stored = database.assetObservationDao()
             .observeForAsset("asset:ethereum")
-        val row = kotlinx.coroutines.flow.first(stored).single()
+        val row = stored.first().single()
         assertEquals("QUARANTINED", row.status)
         assertEquals("UNVERIFIED", row.quality)
         assertNotNull(row.payloadSha256)
