@@ -33,3 +33,20 @@ Do not use the output as an automatic valuation discount unless the sell-through
 ## Evidence and failure policy
 
 All schedule entries and movements must be marked verified and include stable evidence IDs. Duplicate identities, invalid addresses/hashes, invalid amounts, unverified observations, invalid windows, missing assumption provenance, and invalid circulating supply cause abstention. The engine never silently upgrades quarantined evidence.
+
+
+## Android reviewed-observation adapter
+
+The Room adapter can now build movements directly from persisted protocol observations for one canonical asset, token deployment, and time window. It accepts only the reviewed state tuple:
+
+- observation status `ACCEPTED`;
+- observation quality `VERIFIED`;
+- source permitted-use status `APPROVED`;
+- payload SHA-256 matching the stored JSON;
+- exact observation schema, asset identity, event timestamp, and token contract matching the selected deployment.
+
+Claim-payment and vesting-withdrawal payloads produce a single `CLAIMED_AND_TRANSFERRED` movement. A reviewed batch receipt produces one `TRANSFERRED` movement per beneficiary payment, keyed by its transfer log index. If any candidate observation in the selected window/deployment is still quarantined or otherwise not reviewed, the adapter abstains rather than presenting a partial result as complete coverage.
+
+The adapter currently does not infer scheduled unlock entries from vesting snapshots such as quarterly amounts, last-unlock timestamps, or quarters-passed counters. A reviewed schedule-specific payload contract and source adapter are still required before schedule totals can be populated.
+
+The circulating-supply denominator and sell-through assumptions remain explicit caller inputs. The adapter does not claim that a provider-reported supply is on-chain verified, and it does not infer a sell-through rate from observed transfers. A caller must preserve and disclose the provenance and limitations of those inputs before using the report in investment decisions.
