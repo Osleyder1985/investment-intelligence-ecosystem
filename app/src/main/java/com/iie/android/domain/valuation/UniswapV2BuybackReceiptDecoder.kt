@@ -52,7 +52,10 @@ data class EvmTransactionReceiptEvidence(
     val succeeded: Boolean,
     val rpcCrosschecked: Boolean,
     val logs: List<EvmReceiptLog>,
-    val observedAtEpochMs: Long
+    val observedAtEpochMs: Long,
+    val finalityStatus: String = "OBSERVED",
+    val safeBlockNumber: Long? = null,
+    val finalizedBlockNumber: Long? = null
 )
 
 sealed class UniswapV2BuybackDecodeResult {
