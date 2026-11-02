@@ -52,6 +52,12 @@ class UniswapV2BuybackReceiptDecoderTest {
             topics = listOf(transferTopic, addressTopic(pairAddress), addressTopic(recipient)),
             data = "0x" + word(250),
             transactionHash = tx, blockNumber = 100, blockHash = blockHash, logIndex = 2
+        ),
+        EvmReceiptLog(
+            address = input,
+            topics = listOf(transferTopic, addressTopic(executor), addressTopic(pairAddress)),
+            data = "0x" + word(100),
+            transactionHash = tx, blockNumber = 100, blockHash = blockHash, logIndex = 3
         )
     )
 
@@ -98,6 +104,15 @@ class UniswapV2BuybackReceiptDecoderTest {
             receipt(multiple), executorMapping, reviewedPair
         ) as UniswapV2BuybackDecodeResult.Abstained
         assertTrue(ambiguous.reasonCodes.contains("UNISWAP_V2_EXPECTED_EXACTLY_ONE_PAIR_SWAP"))
+    }
+
+    @Test fun rejectsInputAmountWithoutExactErc20FundingTransfer() {
+        val wrongFunding = validLogs().toMutableList()
+        wrongFunding[2] = wrongFunding[2].copy(data = "0x" + word(99))
+        val result = UniswapV2BuybackReceiptDecoder.decode(
+            receipt(wrongFunding), executorMapping, reviewedPair
+        ) as UniswapV2BuybackDecodeResult.Abstained
+        assertTrue(result.reasonCodes.contains("INPUT_TRANSFER_MUST_MATCH_EXACTLY_ONE_PAIR_FUNDING"))
     }
 
     @Test fun rejectsExecutorMappingThatWasNotActiveAtBlockTime() {
