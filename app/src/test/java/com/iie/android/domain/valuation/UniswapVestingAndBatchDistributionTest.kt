@@ -120,6 +120,7 @@ class UniswapVestingAndBatchDistributionTest {
     private fun vestingReceipt(
         recipient: String = vestingRecipient,
         amount: Long = 500,
+        transferAmount: Long = amount,
         quarters: Long = 2
     ) = receipt(listOf(
         EvmReceiptLog(
@@ -138,7 +139,7 @@ class UniswapVestingAndBatchDistributionTest {
                 addressTopic(UniswapUniVestingProfile.VESTING_CONTRACT),
                 addressTopic(recipient)
             ),
-            data = "0x" + word(amount),
+            data = "0x" + word(transferAmount),
             transactionHash = tx,
             blockNumber = 100,
             blockHash = blockHash,
@@ -165,7 +166,7 @@ class UniswapVestingAndBatchDistributionTest {
         assertTrue(recipientMismatch.reasonCodes.contains("VESTING_WITHDRAWAL_RECIPIENT_MISMATCH"))
 
         val amountMismatch = UniswapVestingWithdrawalDecoder.decode(
-            vestingReceipt(amount = 499), vestingSchedule(), vestingSchema()
+            vestingReceipt(amount = 499, transferAmount = 500), vestingSchedule(), vestingSchema()
         ) as VestingWithdrawalDecodeResult.Abstained
         assertTrue(amountMismatch.reasonCodes.contains("VESTING_EVENT_AMOUNT_MUST_MATCH_TOKEN_TRANSFER"))
 
