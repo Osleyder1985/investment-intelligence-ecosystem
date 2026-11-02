@@ -95,6 +95,14 @@ class EthereumRpcTransactionReceiptSource(
             if (!canonicalHash.equals(blockHash, true)) {
                 return RpcTransactionReceiptResult.Abstained("RPC_CANONICAL_BLOCK_HASH_MISMATCH")
             }
+            val finalizedBlockNumber = readBlockTagNumber(endpointUrl, "finalized")
+            val safeBlockNumber = readBlockTagNumber(endpointUrl, "safe")
+            val finalityStatus = when {
+                finalizedBlockNumber != null && finalizedBlockNumber >= blockNumber -> "FINALIZED"
+                safeBlockNumber != null && safeBlockNumber >= blockNumber -> "SAFE"
+                finalizedBlockNumber == null && safeBlockNumber == null -> "FINALITY_UNSUPPORTED"
+                else -> "CONFIRMED"
+            }
             val timestampSeconds = block.hexLong("timestamp")
                 ?: return RpcTransactionReceiptResult.Abstained("RPC_BLOCK_TIMESTAMP_INVALID")
             val blockTimestampMs = timestampSeconds * 1000L
@@ -149,12 +157,24 @@ class EthereumRpcTransactionReceiptSource(
                     succeeded = status.equals("0x1", true),
                     rpcCrosschecked = false,
                     logs = logs,
-                    observedAtEpochMs = observedAt
+                    observedAtEpochMs = observedAt,
+                    finalityStatus = finalityStatus,
+                    safeBlockNumber = safeBlockNumber,
+                    finalizedBlockNumber = finalizedBlockNumber
                 )
             )
         } catch (error: Exception) {
             RpcTransactionReceiptResult.Abstained("RPC_RECEIPT_FETCH_FAILED:${error.javaClass.simpleName}")
         }
+    }
+
+    private fun readBlockTagNumber(endpointUrl: String, tag: String): Long? = try {
+        rpc(endpointUrl, "eth_getBlockByNumber", buildJsonArray {
+            add(kotlinx.serialization.json.JsonPrimitive(tag))
+            add(kotlinx.serialization.json.JsonPrimitive(false))
+        }).resultObjectOrNull()?.hexLong("number")
+    } catch (_: Exception) {
+        null
     }
 
     private fun rpc(endpointUrl: String, method: String, params: JsonArray): JsonObject {
