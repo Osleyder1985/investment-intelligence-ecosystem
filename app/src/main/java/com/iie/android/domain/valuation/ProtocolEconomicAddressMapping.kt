@@ -16,6 +16,7 @@ data class ProtocolEconomicAddressMapping(
     val assetId: String,
     val chainId: Long,
     val address: String,
+    val tokenContract: String,
     val role: ProtocolEconomicAddressRole,
     val validFromEpochMs: Long,
     val validUntilEpochMs: Long?,
@@ -27,6 +28,7 @@ data class ProtocolEconomicAddressMapping(
         if (assetId.isBlank()) add("ASSET_ID_MISSING")
         if (chainId <= 0L) add("CHAIN_ID_INVALID")
         if (!address.matches(Regex("0x[a-fA-F0-9]{40}"))) add("ROLE_ADDRESS_INVALID")
+        if (!tokenContract.matches(Regex("0x[a-fA-F0-9]{40}"))) add("ROLE_TOKEN_CONTRACT_INVALID")
         if (validFromEpochMs <= 0L || (validUntilEpochMs != null && validUntilEpochMs < validFromEpochMs)) {
             add("ROLE_VALIDITY_WINDOW_INVALID")
         }
@@ -89,6 +91,7 @@ object ProtocolEconomicTransferClassifier {
             mapping.validationErrors().isEmpty() &&
                 mapping.assetId == transfer.assetId &&
                 mapping.chainId == transfer.chainId &&
+                mapping.tokenContract.equals(transfer.tokenContract, ignoreCase = true) &&
                 transfer.observedAtEpochMs >= mapping.validFromEpochMs &&
                 (mapping.validUntilEpochMs == null || transfer.observedAtEpochMs <= mapping.validUntilEpochMs)
         }
