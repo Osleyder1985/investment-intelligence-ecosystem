@@ -180,6 +180,51 @@ class DistributionReconciliationRepositoryTest {
         assertTrue(stored.valueJson.contains("\"estimatedSellPressureLowRaw\":\"40\""))
     }
 
+    @Test fun derivesReportDirectlyFromReviewedRoomObservations() = runBlocking {
+        registerCanonicalDeployment()
+        insertEvidence()
+        val result = DistributionReconciliationRepository(database) { now }
+            .reconcileFromReviewedObservations(
+                assetId = "asset:ethereum",
+                deploymentId = "deployment:uni",
+                windowStartEpochMs = now - 5_000,
+                windowEndEpochMs = now,
+                circulatingSupplyRaw = "10000",
+                sellThrough = SellThroughAssumption(
+                    lowBasisPoints = 1_000,
+                    highBasisPoints = 5_000,
+                    rationale = "Explicit test scenario only",
+                    evidenceId = "assumption:test:v1"
+                )
+            )
+        val persisted = result as DistributionReconciliationPersistenceResult.Persisted
+        assertEquals(1, persisted.evidenceCount)
+        assertTrue(persisted.inserted)
+        assertTrue(persisted.report.claimedRaw == "400")
+        assertTrue(persisted.report.transferredToBeneficiariesRaw == "400")
+    }
+
+    @Test fun refusesAutomaticReconciliationWhenQuarantinedCandidateExistsInWindow() = runBlocking {
+        registerCanonicalDeployment()
+        insertEvidence(status = "QUARANTINED", quality = "UNVERIFIED")
+        val result = DistributionReconciliationRepository(database) { now }
+            .reconcileFromReviewedObservations(
+                assetId = "asset:ethereum",
+                deploymentId = "deployment:uni",
+                windowStartEpochMs = now - 5_000,
+                windowEndEpochMs = now,
+                circulatingSupplyRaw = "10000",
+                sellThrough = SellThroughAssumption(
+                    lowBasisPoints = 1_000,
+                    highBasisPoints = 5_000,
+                    rationale = "Explicit test scenario only",
+                    evidenceId = "assumption:test:v1"
+                )
+            )
+        assertTrue((result as DistributionReconciliationPersistenceResult.Abstained)
+            .blockers.any { it.startsWith("DISTRIBUTION_OBSERVATION_NOT_REVIEWED") })
+    }
+
     @Test fun rejectsQuarantinedEvidenceWithoutPersistingReport() = runBlocking {
         registerCanonicalDeployment()
         insertEvidence(status = "QUARANTINED", quality = "UNVERIFIED")
