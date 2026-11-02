@@ -135,6 +135,27 @@ class FundamentalValuationOrchestratorTest {
         assertTrue(wrongTime.blockers.contains("MODEL_ESTIMATES_NOT_COMPARABLE_OR_NOT_INDEPENDENT"))
     }
 
+
+    @Test fun differentCurrencyOrValuationObjectCannotBeCombined() {
+        val currencyMismatch = FundamentalValuationOrchestrator.evaluate(
+            context(),
+            mapOf(
+                ValuationMethod.NAV to navRequest(),
+                ValuationMethod.HOLDER_ATTRIBUTABLE_DCF to dcfRequest(metadata().copy(currency = "EUR"))
+            )
+        ) as ValuationOrchestratorResult.Abstained
+        assertTrue(currencyMismatch.blockers.contains("MODEL_ESTIMATES_NOT_COMPARABLE_OR_NOT_INDEPENDENT"))
+
+        val objectMismatch = FundamentalValuationOrchestrator.evaluate(
+            context(),
+            mapOf(
+                ValuationMethod.NAV to navRequest(),
+                ValuationMethod.HOLDER_ATTRIBUTABLE_DCF to dcfRequest(metadata().copy(valuationObject = "protocol-revenue"))
+            )
+        ) as ValuationOrchestratorResult.Abstained
+        assertTrue(objectMismatch.blockers.contains("MODEL_ESTIMATES_NOT_COMPARABLE_OR_NOT_INDEPENDENT"))
+    }
+
     @Test fun missingMarketEvidenceAbstainsBeforeModelExecution() {
         val invalid = context().copy(marketEvidenceUsable = false, marketPriceUsd = null)
         val result = FundamentalValuationOrchestrator.evaluate(
