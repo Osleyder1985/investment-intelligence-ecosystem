@@ -76,6 +76,15 @@ class ProtocolBuybackEvidenceEvaluatorTest {
         assertTrue(result is ProtocolBuybackEvidenceEvaluator.Result.Abstained)
     }
 
+    @Test fun roleMappingMustBeActiveAtObservedBlockTimestamp() {
+        val result = ProtocolBuybackEvidenceEvaluator.evaluate(
+            evidence().copy(blockTimestampEpochMs = 900), mapping
+        )
+        assertTrue(result is ProtocolBuybackEvidenceEvaluator.Result.Abstained)
+        assertTrue((result as ProtocolBuybackEvidenceEvaluator.Result.Abstained)
+            .reasonCodes.contains("BUYBACK_EXECUTOR_MAPPING_NOT_ACTIVE_AT_BLOCK_TIME"))
+    }
+
     @Test fun pendingRoleMappingCannotAuthorizeBuybackCandidate() {
         val result = ProtocolBuybackEvidenceEvaluator.evaluate(
             evidence(), mapping.copy(reviewStatus = "PENDING")
