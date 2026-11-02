@@ -127,7 +127,12 @@ class EthereumRpcBurnCrossChecker(
             val checkedAt = clock()
             if (checkedAt <= 0L) return RpcBurnCrosscheckResult.Abstained("CHECK_TIMESTAMP_INVALID")
             RpcBurnCrosscheckResult.Confirmed(
-                event = event.copy(evidenceStatus = "RPC_CROSSCHECKED_ETHEREUM_MAINNET_PENDING_FINALITY"),
+                event = event.copy(
+                    evidenceStatus = "RPC_CROSSCHECKED_ETHEREUM_MAINNET_PENDING_FINALITY",
+                    rpcBlockHash = canonicalHash,
+                    rpcEndpoint = endpoint,
+                    rpcCheckedAtEpochMs = checkedAt
+                ),
                 canonicalBlockHash = canonicalHash,
                 rpcEndpoint = endpoint,
                 checkedAtEpochMs = checkedAt
