@@ -67,3 +67,14 @@ Cada observación mantiene: activo canónico, slug del protocolo, métrica del p
 ## Fuente técnica
 
 API pública documentada por DefiLlama: https://api-docs.defillama.com/ (rutas `/summary/fees/{protocol}` y parámetros `dataType`).
+
+## Registro revisado de roles económicos y clasificación conservadora
+
+Se añade un contrato de dominio para registrar direcciones de protocolo con rol explícito: fuente de distribución, ejecutor de recompra, tesorería o colector de ingresos. Cada mapping exige protocolo, activo, chainId, dirección, ventana temporal, URL HTTPS de evidencia y estado de revisión `REVIEWED`. Los mappings incompletos, vencidos o no revisados no participan en la clasificación.
+
+El clasificador de transferencias ERC-20 solo genera candidatos:
+- Una salida desde una dirección revisada como `DISTRIBUTION_SOURCE` se etiqueta `DISTRIBUTION_FLOW_CANDIDATE`.
+- Una entrada a una dirección revisada como `BUYBACK_EXECUTOR` se etiqueta `BUYBACK_FUNDING_FLOW_CANDIDATE`; no demuestra que se haya ejecutado un swap ni que se haya comprado el token del protocolo.
+- Un movimiento que toca una tesorería revisada se etiqueta `TREASURY_MOVEMENT_CANDIDATE`.
+
+Todos los resultados conservan `CANDIDATE_UNVERIFIED`. No se declaran distribuciones pagadas a holders, recompras completadas, ingresos ni captura de valor. Para avanzar se necesita decodificación específica de transacciones/swap, activos de entrada y salida, beneficiarios finales, pruebas de liquidación y validación de eventos mediante RPC/finality.
