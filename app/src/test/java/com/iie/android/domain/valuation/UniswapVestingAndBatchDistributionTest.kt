@@ -99,7 +99,7 @@ class UniswapVestingAndBatchDistributionTest {
     }
 
     private val vestingRecipient = "0x5555555555555555555555555555555555555555"
-    private val vestingTopic = "0x" + "d".repeat(64)
+    private val vestingTopic = UniswapUniVestingProfile.WITHDRAWN_EVENT_TOPIC
 
     private fun vestingSchedule() = UniswapVestingScheduleSnapshot(
         chainId = 1,
