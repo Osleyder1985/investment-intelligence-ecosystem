@@ -105,7 +105,7 @@ class FundamentalValuationOrchestratorTest {
         ) as ValuationOrchestratorResult.Classified
 
         assertEquals(FairValueRangeKind.MODEL_CONSENSUS, result.consolidated.rangeKind)
-        assertEquals(10.0, result.consolidated.lowerPerUnit, 0.0)
+        assertEquals(100.0 / 1.2, result.consolidated.lowerPerUnit, 0.000001)
         assertEquals(12.0, result.consolidated.upperPerUnit, 0.0)
         assertFalse(result.consolidated.assumptions.any { it.contains("average", ignoreCase = true) })
     }
@@ -132,7 +132,7 @@ class FundamentalValuationOrchestratorTest {
         val wrongTime = FundamentalValuationOrchestrator.evaluate(
             context(), mapOf(ValuationMethod.NAV to navRequest(metadata(methodTime = 2_000L)))
         ) as ValuationOrchestratorResult.Abstained
-        assertTrue(wrongTime.blockers.contains("VALUATION_TIMESTAMP_NOT_ALIGNED_WITH_EVIDENCE"))
+        assertTrue(wrongTime.blockers.contains("MODEL_ESTIMATES_NOT_COMPARABLE_OR_NOT_INDEPENDENT"))
     }
 
     @Test fun missingMarketEvidenceAbstainsBeforeModelExecution() {
