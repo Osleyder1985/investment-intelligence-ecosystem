@@ -78,3 +78,17 @@ El clasificador de transferencias ERC-20 solo genera candidatos:
 - Un movimiento que toca una tesorería revisada se etiqueta `TREASURY_MOVEMENT_CANDIDATE`.
 
 Todos los resultados conservan `CANDIDATE_UNVERIFIED`. No se declaran distribuciones pagadas a holders, recompras completadas, ingresos ni captura de valor. Para avanzar se necesita decodificación específica de transacciones/swap, activos de entrada y salida, beneficiarios finales, pruebas de liquidación y validación de eventos mediante RPC/finality.
+
+## Evaluación de evidencia de recompra mediante swap
+
+Se añade un evaluador de evidencia normalizada de swap. Para emitir un candidato exige simultáneamente:
+- mapping de ejecutor de recompra en estado `REVIEWED`, vigente y ligado al activo, chainId y contrato del token adquirido;
+- executor de la operación coincidente con la dirección revisada;
+- recibo de transacción exitoso y evidencia marcada como contrastada por RPC;
+- hash de transacción y bloque válidos;
+- token de entrada distinto del token del protocolo y cantidades raw positivas en ambos lados;
+- token de salida coincidente con el contrato canónico del activo y destinatario explícito.
+
+El resultado conserva token y cantidad de entrada, token y cantidad adquiridos, destinatario, hash de transacción y bloque. Se etiqueta `RPC_CROSSCHECKED_SWAP_PENDING_FINALITY_AND_PROTOCOL_REVIEW`; no es todavía una recompra aprobada para valoración.
+
+**Límite de implementación:** este evaluador consume una estructura normalizada que debe producir un decodificador específico de protocolo/DEX a partir del recibo y sus logs. No se declara que exista un decodificador universal ni se interpreta una transferencia aislada como swap. Antes de usarlo en producción se debe implementar y probar el decodificador concreto (router/ABI, eventos, rutas multihop, agregadores, fees, tokens intermedios, proxy y destinatario), volver a consultar el recibo mediante RPC y aplicar política de finality/reorg y, cuando sea posible, un segundo nodo independiente.
