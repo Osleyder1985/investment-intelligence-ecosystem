@@ -5,6 +5,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -133,6 +134,15 @@ class RoutescanErc20BurnEvidenceSource(
         const val ZERO_TOPIC = "0x0000000000000000000000000000000000000000000000000000000000000000"
         const val MAX_PAGE_SIZE = 1000
 
+        private fun parseHexOrDecimal(value: String?): Long? {
+            if (value.isNullOrBlank()) return null
+            return if (value.startsWith("0x", ignoreCase = true)) {
+                value.drop(2).toLongOrNull(16)
+            } else {
+                value.toLongOrNull()
+            }
+        }
+
         fun parseLogs(payload: String): List<RoutescanTransferLog> {
             val root = Json.parseToJsonElement(payload).jsonObject
             if (root["status"]?.jsonPrimitive?.content != "1") {
@@ -147,13 +157,14 @@ class RoutescanErc20BurnEvidenceSource(
             return result.mapNotNull { item ->
                 val row = item.jsonObject
                 val topics = row["topics"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
-                val block = row["blockNumber"]?.jsonPrimitive?.content?.removePrefix("0x")?.toLongOrNull(16)
-                    ?: row["blockNumber"]?.jsonPrimitive?.longOrNull ?: return@mapNotNull null
-                val timestamp = row["timeStamp"]?.jsonPrimitive?.content?.removePrefix("0x")?.toLongOrNull(16)
-                    ?: row["timeStamp"]?.jsonPrimitive?.longOrNull ?: return@mapNotNull null
+                val block = parseHexOrDecimal(row["blockNumber"]?.jsonPrimitive?.contentOrNull)
+                    ?: return@mapNotNull null
+                val timestamp = parseHexOrDecimal(row["timeStamp"]?.jsonPrimitive?.contentOrNull)
+                    ?: return@mapNotNull null
                 RoutescanTransferLog(
                     contractAddress = row["address"]?.jsonPrimitive?.content ?: return@mapNotNull null,
-                    transactionHash = row["transactionHash"]?.jsonPrimitive?.content ?: return@mapNotNull null,
+                    transactionHash = row["transactionHash"]?.jsonPrimitive?.content
+                        ?.takeIf { it.matches(Regex("0x[a-fA-F0-9]{64}")) } ?: return@mapNotNull null,
                     blockNumber = block,
                     timestampEpochMs = timestamp * 1000L,
                     topics = topics,
