@@ -55,12 +55,11 @@ class RoutescanErc20BurnEvidenceTest {
     }
 
     @Test fun filtersLogsFromDifferentContracts() {
-        val source = RoutescanErc20BurnEvidenceSource(RoutescanHttpTransport {
-            """{"status":"1","message":"OK","result":[
-                ${payload().substringAfter("\"result\":[")}
-            ]}"""
-        })
+        val otherContract = "0x00000000000000000000000000000000000000bb"
+        val source = RoutescanErc20BurnEvidenceSource(
+            RoutescanHttpTransport { payload(address = otherContract) }
+        )
         val result = source.fetch("asset:test", 1, contract, 2, 1, 100)
-        assertEquals(1, (result as RoutescanBurnFetchResult.Ready).events.size)
+        assertTrue((result as RoutescanBurnFetchResult.Ready).events.isEmpty())
     }
 }
