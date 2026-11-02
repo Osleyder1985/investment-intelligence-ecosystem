@@ -92,6 +92,9 @@ class RoutescanBurnObservationStore(
             put("observedAtEpochMs", observedAtEpochMs)
             put("sourceUrl", sourceUrl)
             put("evidenceStatus", evidenceStatus)
+            rpcBlockHash?.let { put("rpcBlockHash", it) }
+            rpcEndpoint?.let { put("rpcEndpoint", it) }
+            rpcCheckedAtEpochMs?.let { put("rpcCheckedAtEpochMs", it) }
         }.toString()
         return AssetObservationEntity(
             observationId = sha256("$assetId|$SOURCE_ID|$chainId|$tokenContract|$transactionHash|$logIndex"),
