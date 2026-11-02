@@ -17,6 +17,12 @@ class ProtocolDistributionObservationStore(
 ) {
     suspend fun persistVesting(assetId: String, evidence: VestingWithdrawalCandidate): ProtocolDistributionStoreResult {
         if (assetId.isBlank()) return ProtocolDistributionStoreResult.Abstained(listOf("ASSET_ID_MISSING"))
+        if (evidence.chainId != 1L || !evidence.vestingContractAddress.matches(ADDRESS) ||
+            !evidence.recipientAddress.matches(ADDRESS) || !evidence.transactionHash.matches(HASH) ||
+            !evidence.blockHash.matches(HASH) || evidence.blockNumber < 0L ||
+            evidence.rawAmount.toBigIntegerOrNull()?.signum() != 1 || evidence.quartersPaid <= 0L ||
+            evidence.withdrawalLogIndex < 0L || evidence.transferLogIndex < 0L
+        ) return ProtocolDistributionStoreResult.Abstained(listOf("VESTING_EVIDENCE_INVALID"))
         val payload = buildJsonObject {
             put("schema", "iie.protocol-vesting-withdrawal.v1")
             put("protocolId", evidence.protocolId)
@@ -42,6 +48,16 @@ class ProtocolDistributionObservationStore(
     }
 
     suspend fun persistBatch(evidence: VerifiedBatchDistributionCandidate): ProtocolDistributionStoreResult {
+        if (evidence.assetId.isBlank() || evidence.chainId != 1L ||
+            !evidence.distributorAddress.matches(ADDRESS) || !evidence.transactionHash.matches(HASH) ||
+            !evidence.blockHash.matches(HASH) || evidence.blockNumber < 0L ||
+            evidence.payments.size < 2 ||
+            evidence.payments.any {
+                !it.beneficiaryAddress.matches(ADDRESS) ||
+                    it.rawAmount.toBigIntegerOrNull()?.signum() != 1 || it.transferLogIndex < 0L
+            } ||
+            evidence.payments.map { it.beneficiaryAddress.lowercase() }.distinct().size != evidence.payments.size
+        ) return ProtocolDistributionStoreResult.Abstained(listOf("BATCH_EVIDENCE_INVALID"))
         val payload = buildJsonObject {
             put("schema", "iie.protocol-batch-distribution.v1")
             put("protocolId", evidence.protocolId)
@@ -139,6 +155,7 @@ class ProtocolDistributionObservationStore(
         const val VESTING_OBSERVATION_TYPE = "ONCHAIN_VESTING_WITHDRAWAL"
         const val BATCH_OBSERVATION_TYPE = "ONCHAIN_BATCH_DISTRIBUTION_CANDIDATE"
         private val ADDRESS = Regex("0x[a-fA-F0-9]{40}")
+        private val HASH = Regex("0x[a-fA-F0-9]{64}")
     }
 }
 
