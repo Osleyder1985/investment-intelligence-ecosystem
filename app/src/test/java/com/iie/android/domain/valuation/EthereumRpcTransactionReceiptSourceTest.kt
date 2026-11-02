@@ -38,9 +38,15 @@ class EthereumRpcTransactionReceiptSourceTest {
                     .replace("__HASH__", blockHash).replace("__STATUS__", status)
                     .replace("__CLAIM__", claimLog).replace("__TRANSFER__", transferLog)
             }
-            method.contains("eth_getBlockByNumber") ->
-                """{"jsonrpc":"2.0","id":1,"result":{"hash":"__HASH__","timestamp":"__TIME__"}}"""
+            method.contains("eth_getBlockByNumber") && method.contains("\"finalized\"") ->
+                """{"jsonrpc":"2.0","id":1,"result":{"number":"0xa5a5a8","hash":"__HASH__","timestamp":"__TIME__"}}"""
                     .replace("__HASH__", canonicalHash).replace("__TIME__", timestamp)
+            method.contains("eth_getBlockByNumber") && method.contains("\"safe\"") ->
+                """{"jsonrpc":"2.0","id":1,"result":{"number":"0xa5a5a7","hash":"__HASH__","timestamp":"__TIME__"}}"""
+                    .replace("__HASH__", canonicalHash).replace("__TIME__", timestamp)
+            method.contains("eth_getBlockByNumber") ->
+                """{"jsonrpc":"2.0","id":1,"result":{"number":"__NUMBER__","hash":"__HASH__","timestamp":"__TIME__"}}"""
+                    .replace("__NUMBER__", blockNumber).replace("__HASH__", canonicalHash).replace("__TIME__", timestamp)
             else -> """{"jsonrpc":"2.0","id":1,"error":{"code":-1,"message":"unexpected"}}"""
         }
 
@@ -61,6 +67,9 @@ class EthereumRpcTransactionReceiptSourceTest {
         assertEquals(blockHash, receipt.blockHash)
         assertTrue(receipt.succeeded)
         assertTrue(receipt.rpcCrosschecked)
+        assertEquals("FINALIZED", receipt.finalityStatus)
+        assertEquals(blockNumberLong + 3L, receipt.safeBlockNumber)
+        assertEquals(blockNumberLong + 3L, receipt.finalizedBlockNumber)
         assertEquals(2, receipt.logs.size)
         assertEquals(4L, receipt.logs[0].logIndex)
         assertEquals(5L, receipt.logs[1].logIndex)
