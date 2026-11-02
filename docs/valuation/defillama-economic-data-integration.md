@@ -227,3 +227,6 @@ Los nuevos tests usan fixtures sintéticos para:
 - rechazo de pagos únicos, beneficiarios repetidos y falta de cross-check RPC.
 
 No se declaran retiros o pagos por lotes reales observados en mainnet ni se habilita automáticamente valoración. Las observaciones siguen sujetas a finality, reorg, elegibilidad del beneficiario y revisión de derechos económicos.
+
+
+Las salidas del detector de vesting y batch se persisten mediante Room en `asset_observations`, con ID determinista, SHA-256, idempotencia, referencia al deployment UNI canónico y estado `QUARANTINED / UNVERIFIED`. El store vuelve a validar chainId, contrato/token y campos básicos de evidencia antes de insertar; no confía ciegamente en objetos candidatos construidos fuera del decodificador.
