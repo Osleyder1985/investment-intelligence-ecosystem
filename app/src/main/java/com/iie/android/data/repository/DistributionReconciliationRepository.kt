@@ -16,6 +16,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.put
 
 /**
@@ -29,6 +30,115 @@ class DistributionReconciliationRepository(
     private val database: IIEDatabase,
     private val clock: () -> Long = System::currentTimeMillis
 ) {
+    /**
+     * Builds movement inputs directly from Room observations that have already passed
+     * the explicit review gate. Quarantined candidates in the requested deployment/window
+     * cause abstention rather than being silently treated as complete coverage.
+     */
+    suspend fun reconcileFromReviewedObservations(
+        assetId: String,
+        deploymentId: String,
+        windowStartEpochMs: Long,
+        windowEndEpochMs: Long,
+        circulatingSupplyRaw: String,
+        sellThrough: com.iie.android.domain.valuation.SellThroughAssumption,
+        topBeneficiaryLimit: Int = 5
+    ): DistributionReconciliationPersistenceResult {
+        if (assetId.isBlank() || deploymentId.isBlank() || windowStartEpochMs <= 0L || windowEndEpochMs < windowStartEpochMs) {
+            return DistributionReconciliationPersistenceResult.Abstained(listOf("REVIEWED_RECONCILIATION_INPUT_INVALID"))
+        }
+        return try {
+            val relevantTypes = setOf(CLAIM_OBSERVATION_TYPE, VESTING_OBSERVATION_TYPE, BATCH_OBSERVATION_TYPE)
+            val rows = database.assetObservationDao().observeForAsset(assetId).first()
+                .filter { row -> row.deploymentId == deploymentId && row.observationType in relevantTypes &&
+                    (row.observedAtEpochMs ?: 0L) in windowStartEpochMs..windowEndEpochMs }
+                .sortedWith(compareBy<AssetObservationEntity> { it.observedAtEpochMs }.thenBy { it.observationId })
+            if (rows.isEmpty()) return DistributionReconciliationPersistenceResult.Abstained(listOf("NO_DISTRIBUTION_OBSERVATIONS_IN_WINDOW"))
+            val movements = mutableListOf<com.iie.android.domain.valuation.ObservedDistributionMovement>()
+            val blockers = mutableListOf<String>()
+            rows.forEach { row ->
+                val source = database.dataSourceDao().getSource(row.sourceId)
+                if (row.status != "ACCEPTED" || row.quality != "VERIFIED" || source?.permittedUseStatus != "APPROVED") {
+                    blockers += "DISTRIBUTION_OBSERVATION_NOT_REVIEWED:" + row.observationId
+                    return@forEach
+                }
+                if (row.payloadSha256.isNullOrBlank() || !row.payloadSha256.equals(sha256(row.valueJson), ignoreCase = true)) {
+                    blockers += "DISTRIBUTION_OBSERVATION_HASH_MISMATCH:" + row.observationId
+                    return@forEach
+                }
+                try {
+                    val payload = Json.parseToJsonElement(row.valueJson).jsonObject
+                    val payloadAssetId = payload["assetId"]?.jsonPrimitive?.content
+                    val transactionHash = payload["transactionHash"]?.jsonPrimitive?.content
+                    val timestamp = payload["blockTimestampEpochMs"]?.jsonPrimitive?.content?.toLongOrNull()
+                    val tokenContract = payload["tokenContract"]?.jsonPrimitive?.content
+                    val deployment = database.assetDeploymentDao().getDeployment(deploymentId)
+                    val expectedSchema = when (row.observationType) {
+                        CLAIM_OBSERVATION_TYPE -> "iie.protocol-distribution-claim-payment.v1"
+                        VESTING_OBSERVATION_TYPE -> "iie.protocol-vesting-withdrawal.v1"
+                        BATCH_OBSERVATION_TYPE -> "iie.protocol-batch-distribution.v1"
+                        else -> null
+                    }
+                    if (payload["schema"]?.jsonPrimitive?.content != expectedSchema ||
+                        payloadAssetId != assetId || transactionHash.isNullOrBlank() ||
+                        timestamp == null || timestamp != row.observedAtEpochMs ||
+                        deployment == null || tokenContract.isNullOrBlank() ||
+                        !deployment.reference.equals(tokenContract, ignoreCase = true)
+                    ) {
+                        blockers += "DISTRIBUTION_OBSERVATION_PAYLOAD_IDENTITY_MISMATCH:" + row.observationId
+                        return@forEach
+                    }
+                    when (row.observationType) {
+                        CLAIM_OBSERVATION_TYPE, VESTING_OBSERVATION_TYPE -> {
+                            val beneficiary = if (row.observationType == CLAIM_OBSERVATION_TYPE) payload["beneficiaryAddress"]?.jsonPrimitive?.content
+                                else payload["recipientAddress"]?.jsonPrimitive?.content
+                            val amount = payload["rawAmount"]?.jsonPrimitive?.content
+                            if (beneficiary.isNullOrBlank() || amount.isNullOrBlank()) {
+                                blockers += "DISTRIBUTION_OBSERVATION_FIELDS_MISSING:" + row.observationId
+                            } else {
+                                movements += com.iie.android.domain.valuation.ObservedDistributionMovement(
+                                    movementId = "movement:" + row.observationId, beneficiary = beneficiary,
+                                    observedAtEpochMs = timestamp, rawAmount = amount,
+                                    kind = DistributionMovementKind.CLAIMED_AND_TRANSFERRED,
+                                    evidenceId = row.observationId, transactionHash = transactionHash, verified = true
+                                )
+                            }
+                        }
+                        BATCH_OBSERVATION_TYPE -> {
+                            val payments = payload["payments"]?.jsonArray
+                            if (payments == null || payments.isEmpty()) {
+                                blockers += "BATCH_DISTRIBUTION_PAYMENTS_MISSING:" + row.observationId
+                            } else payments.forEachIndexed { index, element ->
+                                val payment = element.jsonObject
+                                val beneficiary = payment["beneficiaryAddress"]?.jsonPrimitive?.content
+                                val amount = payment["rawAmount"]?.jsonPrimitive?.content
+                                val logIndex = payment["transferLogIndex"]?.jsonPrimitive?.content
+                                if (beneficiary.isNullOrBlank() || amount.isNullOrBlank() || logIndex.isNullOrBlank()) {
+                                    blockers += "BATCH_DISTRIBUTION_PAYMENT_INVALID:" + row.observationId + ":" + index
+                                } else {
+                                    movements += com.iie.android.domain.valuation.ObservedDistributionMovement(
+                                        movementId = "movement:" + row.observationId + ":" + logIndex,
+                                        beneficiary = beneficiary, observedAtEpochMs = timestamp, rawAmount = amount,
+                                        kind = DistributionMovementKind.TRANSFERRED, evidenceId = row.observationId,
+                                        transactionHash = transactionHash, verified = true
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) { blockers += "DISTRIBUTION_OBSERVATION_PAYLOAD_UNREADABLE:" + row.observationId }
+            }
+            if (blockers.isNotEmpty()) return DistributionReconciliationPersistenceResult.Abstained(blockers.distinct())
+            if (movements.isEmpty()) return DistributionReconciliationPersistenceResult.Abstained(listOf("NO_REVIEWED_DISTRIBUTION_MOVEMENTS_IN_WINDOW"))
+            reconcileAndPersist(assetId, DistributionReconciliationInput(
+                windowStartEpochMs = windowStartEpochMs, windowEndEpochMs = windowEndEpochMs,
+                circulatingSupplyRaw = circulatingSupplyRaw, schedules = emptyList(), movements = movements,
+                sellThrough = sellThrough, topBeneficiaryLimit = topBeneficiaryLimit
+            ))
+        } catch (error: Exception) {
+            DistributionReconciliationPersistenceResult.Abstained(listOf("REVIEWED_EVIDENCE_LOAD_FAILED:" + error.javaClass.simpleName))
+        }
+    }
     suspend fun reconcileAndPersist(
         assetId: String,
         input: DistributionReconciliationInput
