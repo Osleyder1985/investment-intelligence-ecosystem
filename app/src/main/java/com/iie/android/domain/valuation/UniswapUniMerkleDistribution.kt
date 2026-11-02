@@ -42,7 +42,8 @@ object UniswapUniMerkleDistribution {
         validFromEpochMs = validFromEpochMs,
         validUntilEpochMs = validUntilEpochMs,
         beneficiaryDataWordIndex = 1,
-        expectedDataWordCount = 3
+        expectedDataWordCount = 3,
+        expectedTopicCount = 1
     )
 
     /**
