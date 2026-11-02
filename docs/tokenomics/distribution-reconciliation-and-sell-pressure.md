@@ -16,7 +16,7 @@ The movement enum preserves these states. `CLAIMED_AND_TRANSFERRED` represents a
 
 ## Reconciliation
 
-For a requested window, the engine calculates scheduled unlocks, observed unlocks, claims, transfers to beneficiaries, and the delta between scheduled unlocks and observed claims/transfers. The delta is a reconciliation signal, not automatically a protocol deficit: schedules and event windows can have different semantics or incomplete coverage.
+For a requested window, the engine calculates scheduled unlocks, observed unlocks, claims, transfers to beneficiaries, and the delta between scheduled unlocks and observed claims. The delta is a reconciliation signal, not automatically a protocol deficit: schedules and event windows can have different semantics or incomplete coverage.
 
 Recipient concentration is calculated from verified transfers to destination addresses. It does not identify beneficial owners, related wallets, exchange custody, or ultimate recipients.
 
