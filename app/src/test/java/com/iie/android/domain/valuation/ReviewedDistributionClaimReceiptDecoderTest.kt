@@ -140,4 +140,19 @@ class ReviewedDistributionClaimReceiptDecoderTest {
         ) as DistributionClaimDecodeResult.Abstained
         assertTrue(expiredSchema.reasonCodes.contains("CLAIM_SCHEMA_NOT_ACTIVE_AT_BLOCK_TIME"))
     }
+
+    @Test fun rejectsSchemaForDifferentDistributorAndInconsistentReceiptLogs() {
+        val wrongDistributor = ReviewedDistributionClaimReceiptDecoder.decode(
+            receipt(), mapping, schema.copy(distributorAddress = other)
+        ) as DistributionClaimDecodeResult.Abstained
+        assertTrue(wrongDistributor.reasonCodes.contains("CLAIM_SCHEMA_DOES_NOT_MATCH_REVIEWED_SOURCE_MAPPING"))
+
+        val inconsistentLog = validLogs().toMutableList()
+        inconsistentLog[1] = inconsistentLog[1].copy(blockHash = "0x" + "d".repeat(64))
+        val inconsistent = ReviewedDistributionClaimReceiptDecoder.decode(
+            receipt(inconsistentLog), mapping, schema
+        ) as DistributionClaimDecodeResult.Abstained
+        assertTrue(inconsistent.reasonCodes.contains("RECEIPT_LOG_BLOCK_OR_TRANSACTION_MISMATCH"))
+    }
+
 }
