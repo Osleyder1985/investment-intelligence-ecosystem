@@ -198,7 +198,7 @@ Se añade un perfil de detección para el contrato actual de vesting UNI:
 - Función de retirada: `withdraw()`.
 - Evento: `Withdrawn(address indexed recipient,uint256 amount,uint48 quartersPaid)`.
 
-El perfil requiere el topic0 extraído del ABI verificado; no codifica un hash no confirmado. Fija el layout del evento: dos topics (topic0 + recipient) y dos palabras de datos (amount + quartersPaid).
+El perfil fija el topic0 derivado de la firma ABI verificada `Withdrawn(address,uint256,uint48)`: `0xe3a7b52bde0e5e2ab4cd91182c9b2a0c7e49183cc039f6d5c3ba738c84e0427b`. Fija el layout del evento: dos topics (topic0 + recipient) y dos palabras de datos (amount + quartersPaid).
 
 La lectura de calendario se acepta solo si `UNI`, contrato, recipient, importe trimestral, último timestamp de desbloqueo y quarters passed están asociados al mismo bloque canónico y cross-check RPC. Una retirada se reconoce solo cuando el evento `Withdrawn` y un `Transfer` del token UNI desde el vesting contract coinciden exactamente en recipient e importe. El número de trimestres se conserva; no se presupone que el importe sea siempre igual al número de trimestres multiplicado por la cuota, porque el contrato admite retiradas parciales cuando la allowance es insuficiente.
 
