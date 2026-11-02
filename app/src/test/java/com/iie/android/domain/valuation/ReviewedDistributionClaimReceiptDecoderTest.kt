@@ -156,6 +156,34 @@ class ReviewedDistributionClaimReceiptDecoderTest {
     }
 
 
+    @Test fun rejectsNonCanonicalTransferLogShapeAndDuplicateReceiptIndexes() {
+        val extraTopicLogs = validLogs().mapIndexed { index, log ->
+            if (index == 1) log.copy(topics = log.topics + word(1)) else log
+        }
+        val extraTopic = ReviewedDistributionClaimReceiptDecoder.decode(
+            receipt(extraTopicLogs), mapping, schema
+        ) as DistributionClaimDecodeResult.Abstained
+        assertTrue(extraTopic.reasonCodes.contains("ERC20_TRANSFER_TOPIC_COUNT_MISMATCH"))
+
+        val extraDataLogs = validLogs().mapIndexed { index, log ->
+            if (index == 1) log.copy(data = log.data + word(1)) else log
+        }
+        val extraData = ReviewedDistributionClaimReceiptDecoder.decode(
+            receipt(extraDataLogs), mapping, schema
+        ) as DistributionClaimDecodeResult.Abstained
+        assertTrue(extraData.reasonCodes.contains("ERC20_TRANSFER_DATA_WORD_COUNT_MISMATCH"))
+
+        val duplicateIndexLogs = validLogs().mapIndexed { index, log ->
+            if (index == 1) log.copy(logIndex = 4) else log
+        }
+        val duplicateIndex = ReviewedDistributionClaimReceiptDecoder.decode(
+            receipt(duplicateIndexLogs), mapping, schema
+        ) as DistributionClaimDecodeResult.Abstained
+        assertTrue(duplicateIndex.reasonCodes.contains("RECEIPT_LOG_INDEX_DUPLICATE"))
+    }
+
+
+
     @Test fun decodesUniswapMerkleDistributorNonIndexedAbiLayout() {
         val uniswapSchema = UniswapUniMerkleDistribution.claimEventSchema()
         val uniswapMapping = mapping.copy(
