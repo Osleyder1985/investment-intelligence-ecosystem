@@ -18,6 +18,7 @@ class ProtocolEconomicTransferClassifierTest {
         assetId = "asset:test",
         chainId = 1,
         address = distributor,
+        tokenContract = token,
         role = role,
         validFromEpochMs = 1_000,
         validUntilEpochMs = null,
@@ -47,6 +48,12 @@ class ProtocolEconomicTransferClassifierTest {
     @Test fun unreviewedMappingIsIgnored() {
         assertTrue(ProtocolEconomicTransferClassifier.classify(
             transfer(), listOf(mapping(status = "PENDING"))
+        ).isEmpty())
+    }
+
+    @Test fun mappingForDifferentTokenContractIsIgnored() {
+        assertTrue(ProtocolEconomicTransferClassifier.classify(
+            transfer(), listOf(mapping().copy(tokenContract = holder))
         ).isEmpty())
     }
 
