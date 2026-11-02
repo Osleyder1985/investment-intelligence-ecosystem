@@ -69,7 +69,7 @@ class ReviewedDistributionClaimReceiptDecoderTest {
         assertEquals(4L, evidence.claimEventLogIndex)
         assertEquals(5L, evidence.paymentTransferLogIndex)
         assertEquals(
-            "RPC_CROSSCHECKED_CLAIM_PAYMENT_PENDING_FINALITY_AND_HOLDER_REVIEW",
+            "RPC_CROSSCHECKED_CLAIM_PAYMENT_FINALITY_UNVERIFIED_HOLDER_REVIEW_REQUIRED",
             evidence.evidenceStatus
         )
     }
