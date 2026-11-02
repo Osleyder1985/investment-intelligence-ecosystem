@@ -22,6 +22,21 @@ Cada tipo se conserva como serie distinta. Se importan los agregados de 24 h, pe
 - La asignación de un `protocolSlug` a un `assetId` requiere un mapeo explícito revisado; nunca se deriva solo del ticker o nombre.
 - La licencia/condiciones de uso y la metodología de cada métrica deben revisarse antes de usar estos datos en una valoración de producción.
 
+## Primera verificación on-chain: eventos de quema ERC-20
+
+Se añade un lector de logs EVM mediante la API Etherscan-compatible de Routescan:
+
+- Consulta logs del contrato ERC-20 confirmado en una red EVM y un rango de bloques explícito.
+- Filtra el evento estándar `Transfer(address,address,uint256)` cuyo destinatario indexado es la dirección cero.
+- Conserva hash de transacción, bloque, índice del log, timestamp, contrato, cantidad raw y decimales.
+- Convierte la cantidad raw a unidades de token con precisión decimal, sin estimar un valor USD.
+- Exige que el contrato y los decimales coincidan con un despliegue registrado para el activo canónico antes de persistir.
+- Persiste los eventos de forma inmutable, con SHA-256 e IDs deterministas.
+
+**Límite:** solo se identifican transferencias al cero canónico. No se cuentan automáticamente transferencias a direcciones dead/burn, no se deducen recompras, no se identifican distribuciones y no se trata un evento indexado como confirmación independiente del nodo. Los eventos permanecen `QUARANTINED` / `UNVERIFIED` hasta su contraste RPC y evaluación de finality/reorg.
+
+Routescan documenta acceso keyless gratuito, endpoint de logs Etherscan-compatible, filtros por dirección/rango de bloques y el requisito de atribución para usos fuera de privado. La integración registra `ATTRIBUTION_REQUIRED` y conserva el texto de atribución. Fuente: https://docs.routescan.io/ y https://docs.routescan.io/api/etherscan/logs.
+
 ## Contrato de observación
 
 Cada observación mantiene: activo canónico, slug del protocolo, métrica del proveedor, período, valor USD, timestamp observado cuando existe, timestamp de recuperación, URL de origen, estado de evidencia y limitaciones.
