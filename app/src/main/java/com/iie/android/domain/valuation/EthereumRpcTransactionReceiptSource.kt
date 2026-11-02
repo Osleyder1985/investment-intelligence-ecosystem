@@ -119,7 +119,7 @@ class EthereumRpcTransactionReceiptSource(
                 ?.takeIf { it.matches(HASH) }
                 ?: return RpcTransactionReceiptResult.Abstained("RPC_CANONICAL_BLOCK_HASH_MISSING")
             if (!canonicalHash.equals(blockHash, true)) {
-                return RpcTransactionReceiptResult.Abstained("RPC_CANONICAL_BLOCK_HASH_MISMATCH")
+                return RpcTransactionReceiptResult.Abstained("RPC_BLOCK_REORGED_OR_PROVIDER_INCONSISTENT")
             }
             val finalizedBlockNumber = readBlockTagNumber(endpointUrl, "finalized")
             val safeBlockNumber = readBlockTagNumber(endpointUrl, "safe")
