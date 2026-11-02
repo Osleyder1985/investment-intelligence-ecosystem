@@ -34,10 +34,36 @@ class EthereumRpcTransactionReceiptSource(
         val secondary = fetchFrom(transactionHash, secondaryEndpoint)
         if (primary is RpcTransactionReceiptResult.Abstained && secondary is RpcTransactionReceiptResult.Abstained && primary.reasonCode == secondary.reasonCode) return primary
         if (primary !is RpcTransactionReceiptResult.Confirmed || secondary !is RpcTransactionReceiptResult.Confirmed) return RpcTransactionReceiptResult.Abstained("RPC_PROVIDER_DISAGREEMENT_OR_UNAVAILABLE")
-        val first = primary.receipt.copy(observedAtEpochMs = 0L, rpcCrosschecked = false)
-        val second = secondary.receipt.copy(observedAtEpochMs = 0L, rpcCrosschecked = false)
+        val first = primary.receipt.copy(
+            observedAtEpochMs = 0L, rpcCrosschecked = false,
+            finalityStatus = "OBSERVED", safeBlockNumber = null, finalizedBlockNumber = null
+        )
+        val second = secondary.receipt.copy(
+            observedAtEpochMs = 0L, rpcCrosschecked = false,
+            finalityStatus = "OBSERVED", safeBlockNumber = null, finalizedBlockNumber = null
+        )
         if (first != second) return RpcTransactionReceiptResult.Abstained("RPC_PROVIDER_EVIDENCE_MISMATCH")
-        return RpcTransactionReceiptResult.Confirmed(primary.receipt.copy(rpcCrosschecked = true))
+        val finalized = listOfNotNull(
+            primary.receipt.finalizedBlockNumber, secondary.receipt.finalizedBlockNumber
+        ).takeIf { it.size == 2 }?.minOrNull()
+        val safe = listOfNotNull(
+            primary.receipt.safeBlockNumber, secondary.receipt.safeBlockNumber
+        ).takeIf { it.size == 2 }?.minOrNull()
+        val finality = when {
+            finalized != null && finalized >= primary.receipt.blockNumber -> "FINALIZED"
+            safe != null && safe >= primary.receipt.blockNumber -> "SAFE"
+            primary.receipt.finalizedBlockNumber == null || secondary.receipt.finalizedBlockNumber == null ||
+                primary.receipt.safeBlockNumber == null || secondary.receipt.safeBlockNumber == null -> "FINALITY_UNSUPPORTED"
+            else -> "CONFIRMED"
+        }
+        return RpcTransactionReceiptResult.Confirmed(
+            primary.receipt.copy(
+                rpcCrosschecked = true,
+                finalityStatus = finality,
+                safeBlockNumber = safe,
+                finalizedBlockNumber = finalized
+            )
+        )
     }
 
     private fun fetchFrom(transactionHash: String, endpointUrl: String): RpcTransactionReceiptResult {
