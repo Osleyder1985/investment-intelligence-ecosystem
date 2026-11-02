@@ -71,7 +71,20 @@ class DistributionReconciliationRepository(
                     val payloadAssetId = payload["assetId"]?.jsonPrimitive?.content
                     val transactionHash = payload["transactionHash"]?.jsonPrimitive?.content
                     val timestamp = payload["blockTimestampEpochMs"]?.jsonPrimitive?.content?.toLongOrNull()
-                    if (payloadAssetId != assetId || transactionHash.isNullOrBlank() || timestamp == null || timestamp != row.observedAtEpochMs) {
+                    val tokenContract = payload["tokenContract"]?.jsonPrimitive?.content
+                    val deployment = database.assetDeploymentDao().getDeployment(deploymentId)
+                    val expectedSchema = when (row.observationType) {
+                        CLAIM_OBSERVATION_TYPE -> "iie.protocol-distribution-claim-payment.v1"
+                        VESTING_OBSERVATION_TYPE -> "iie.protocol-vesting-withdrawal.v1"
+                        BATCH_OBSERVATION_TYPE -> "iie.protocol-batch-distribution.v1"
+                        else -> null
+                    }
+                    if (payload["schema"]?.jsonPrimitive?.content != expectedSchema ||
+                        payloadAssetId != assetId || transactionHash.isNullOrBlank() ||
+                        timestamp == null || timestamp != row.observedAtEpochMs ||
+                        deployment == null || tokenContract.isNullOrBlank() ||
+                        !deployment.reference.equals(tokenContract, ignoreCase = true)
+                    ) {
                         blockers += "DISTRIBUTION_OBSERVATION_PAYLOAD_IDENTITY_MISMATCH:" + row.observationId
                         return@forEach
                     }
