@@ -156,15 +156,11 @@ class DistributionReconciliationRepository(
             val payload = Json.parseToJsonElement(row.valueJson).jsonObject
             fun field(name: String): String? = payload[name]?.jsonPrimitive?.content
             val transactionHash = field("transactionHash")
-            val amount = field("rawAmount")
             val timestamp = field("blockTimestampEpochMs")?.toLongOrNull()
             val beneficiary = field("beneficiaryAddress") ?: field("recipientAddress")
 
             if (transactionHash == null || !transactionHash.equals(movement.transactionHash, true)) {
                 errors += "MOVEMENT_TRANSACTION_MISMATCH:${movement.evidenceId}"
-            }
-            if (amount == null || amount != movement.rawAmount) {
-                errors += "MOVEMENT_AMOUNT_MISMATCH:${movement.evidenceId}"
             }
             if (timestamp == null || timestamp != movement.observedAtEpochMs) {
                 errors += "MOVEMENT_TIMESTAMP_MISMATCH:${movement.evidenceId}"
@@ -174,6 +170,9 @@ class DistributionReconciliationRepository(
                 CLAIM_OBSERVATION_TYPE, VESTING_OBSERVATION_TYPE -> {
                     if (movement.kind != DistributionMovementKind.CLAIMED_AND_TRANSFERRED) {
                         errors += "MOVEMENT_KIND_NOT_SUPPORTED_BY_CLAIM_EVIDENCE:${movement.evidenceId}"
+                    }
+                    if (field("rawAmount") != movement.rawAmount) {
+                        errors += "MOVEMENT_AMOUNT_MISMATCH:${movement.evidenceId}"
                     }
                     if (beneficiary == null || !beneficiary.equals(movement.beneficiary, true)) {
                         errors += "MOVEMENT_BENEFICIARY_MISMATCH:${movement.evidenceId}"
