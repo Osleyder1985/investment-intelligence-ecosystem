@@ -89,7 +89,7 @@ class DistributionReconciliationRepositoryTest {
     }
 
     private fun payload(amount: String = "400", beneficiaryAddress: String = beneficiary) =
-        """{"schema":"test.reviewed-claim.v1","transactionHash":"$transactionHash","blockTimestampEpochMs":$now,"beneficiaryAddress":"$beneficiaryAddress","rawAmount":"$amount"}"""
+        """{"schema":"iie.protocol-distribution-claim-payment.v1","assetId":"asset:ethereum","transactionHash":"$transactionHash","blockTimestampEpochMs":$now,"beneficiaryAddress":"$beneficiaryAddress","tokenContract":"$token","rawAmount":"$amount"}"""
 
     private suspend fun insertEvidence(
         status: String = "ACCEPTED",
